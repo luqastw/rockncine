@@ -9,7 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@liveblocks/client": "^3.24.1",
+    "@liveblocks/react": "^3.24.1",
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
     "next": "16.3.1",
+    "next-auth": "^4.24.15",
+    "prisma": "^6.19.3",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
@@ -22,5 +28,11 @@
     "eslint-config-next": "16.3.1",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "allowScripts": {
+    "unrs-resolver@1.12.2": true,
+    "prisma@6.19.3": true,
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true
   }
 }

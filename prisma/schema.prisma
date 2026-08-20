@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+
+  ownedRooms  Room[]       @relation("RoomOwner")
+  memberships RoomMember[]
+}
+
+enum VideoSource {
+  YOUTUBE
+  VIMEO
+  GENERIC_IFRAME
+}
+
+model Room {
+  id             String       @id @default(cuid())
+  code           String       @unique @default(cuid()) // usado no link/código de convite
+  name           String?
+  videoSourceUrl String?      // link original colado pelo usuário
+  videoSource    VideoSource?
+  embedUrl       String?      // URL final usada no player: videoId (YouTube/Vimeo) ou iframe src genérico
+  ownerId        String
+  owner          User         @relation("RoomOwner", fields: [ownerId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  members RoomMember[]
+
+  @@index([code])
+}
+
+model RoomMember {
+  id       String   @id @default(cuid())
+  roomId   String
+  userId   String
+  room     Room     @relation(fields: [roomId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+  joinedAt DateTime @default(now())
+
+  @@unique([roomId, userId])
+}
