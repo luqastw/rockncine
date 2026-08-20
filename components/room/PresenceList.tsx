@@ -12,6 +12,7 @@ export function PresenceList({ myName }: { myName: string }) {
         <span className="h-2 w-2 rounded-full bg-[var(--ember)]" aria-hidden />
         {myPresence.name || myName}
         <span className="text-xs text-[var(--ink-muted)]">(você)</span>
+        {myPresence.isMuted && <span aria-label="mutado">🔇</span>}
       </li>
       {others.map((other) => (
         <li
@@ -20,6 +21,7 @@ export function PresenceList({ myName }: { myName: string }) {
         >
           <span className="h-2 w-2 rounded-full bg-[var(--ember)]" aria-hidden />
           {other.presence.name}
+          {other.presence.isMuted && <span aria-label="mutado">🔇</span>}
         </li>
       ))}
     </ul>

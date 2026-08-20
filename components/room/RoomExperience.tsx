@@ -6,6 +6,7 @@ import { useYouTubeSync } from "@/hooks/useYouTubeSync";
 import { SyncRing } from "@/components/room/SyncRing";
 import { PresenceList } from "@/components/room/PresenceList";
 import { LoadVideoForm } from "@/components/room/LoadVideoForm";
+import { Chat } from "@/components/room/Chat";
 import type { RoomEvent } from "@/liveblocks.config";
 
 const YT_CONTAINER_ID = "yt-player";
@@ -62,18 +63,15 @@ export function RoomExperience({
         <LoadVideoForm roomCode={roomCode} userId={userId} />
       </div>
 
-      <aside className="flex w-full flex-col gap-6 lg:w-72">
+      <aside className="flex w-full min-h-0 flex-col gap-6 lg:w-72">
         <section className="flex flex-col gap-3">
           <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
             presença
           </h2>
           <PresenceList myName={userName} />
         </section>
-        <section className="flex flex-col gap-3">
-          <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
-            chat
-          </h2>
-          <p className="text-sm text-[var(--ink-muted)]">chat entra na fase 3.</p>
+        <section className="flex min-h-0 flex-1 flex-col gap-3">
+          <Chat userId={userId} userName={userName} />
         </section>
       </aside>
     </main>
