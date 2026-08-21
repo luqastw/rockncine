@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useMyPresence } from "@liveblocks/react";
 import { useChat } from "@/hooks/useChat";
 
 function formatTime(ts: number) {
@@ -10,7 +9,6 @@ function formatTime(ts: number) {
 
 export function Chat({ userId, userName }: { userId: string; userName: string }) {
   const { messages, sendMessage } = useChat({ userId, userName });
-  const [myPresence, updateMyPresence] = useMyPresence();
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLUListElement | null>(null);
 
@@ -21,19 +19,9 @@ export function Chat({ userId, userName }: { userId: string; userName: string })
 
   return (
     <div className="flex h-full flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
-          chat
-        </h2>
-        <button
-          type="button"
-          onClick={() => updateMyPresence({ isMuted: !myPresence.isMuted })}
-          className="min-h-11 rounded-md border border-[var(--line)] px-3 text-xs text-[var(--ink-muted)] hover:border-[var(--ink)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
-          aria-pressed={myPresence.isMuted}
-        >
-          {myPresence.isMuted ? "mutado" : "mutar"}
-        </button>
-      </div>
+      <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
+        chat
+      </h2>
 
       <ul
         ref={listRef}

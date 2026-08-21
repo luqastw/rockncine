@@ -28,10 +28,11 @@ export function RoomLiveblocksProvider({
     <LiveblocksProvider
       authEndpoint="/api/liveblocks-auth"
       throttle={80}
+      badgeLocation="bottom-left"
     >
       <RoomProvider
         id={roomCode}
-        initialPresence={{ userId, name: userName, isMuted: false }}
+        initialPresence={{ userId, name: userName }}
         initialStorage={{
           video: { ...initialVideo, loadedAt: initialVideo.embedUrl ? mountedAt : null },
           player: {

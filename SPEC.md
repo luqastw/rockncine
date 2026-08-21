@@ -137,7 +137,6 @@ Fluxo: quem dispara a ação escreve em `storage.player` (fonte de verdade) e br
 type Presence = {
   userId: string;
   name: string;
-  isMuted: boolean;   // só exibição — mute em si é local, nunca sincroniza áudio
 };
 ```
 
@@ -190,7 +189,7 @@ app/
 
 1. **Skeleton de auth + salas** — NextAuth Credentials, `/register`, `/login`, Prisma migrate inicial (`User`, `Room`, `RoomMember`), menu `/rooms` (criar / entrar por código), página de sala vazia (só mostra membros via query, sem Liveblocks ainda).
 2. **Presence + player sync (YouTube)** — integra Liveblocks (`liveblocks-auth`, `LiveblocksProvider`), hook `useYouTubePlayer` via `useSyncedPlayer`, storage `player`/`video`, broadcast de `LOAD_VIDEO`/`PLAY`/`PAUSE`/`SEEK`, drift correction, lista de presence. Só YouTube nessa fase — valida o mecanismo de sync antes de generalizar.
-3. **Chat** — broadcast `CHAT_MESSAGE`, lista local reconstituída por sessão, indicador de mute (local, refletido só em `Presence.isMuted` pra exibição).
+3. **Chat** — broadcast `CHAT_MESSAGE`, lista local reconstituída por sessão.
 4. **Fontes adicionais** — adapter Vimeo (`useVimeoPlayer`, sync completo via Player SDK) e fallback `GENERIC_IFRAME` (`useIframeEmbed`, load-only, sem controle). Extração server-side por `POST /api/resolve-embed` (ver seção 7).
 5. **Polish** — parsing de formatos variados de URL do YouTube (watch, youtu.be, shorts, com timestamp) e Vimeo, estados de erro (link inválido, embed bloqueado por X-Frame-Options/CSP, sala inexistente), loading states.
 
@@ -209,6 +208,10 @@ Cada fase termina com o app rodando ponta a ponta — fase 2 sem chat ainda é d
 | `NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY` | Liveblocks project | opcional — só se optar por auth pública em vez de endpoint de auth; com Credentials + auth por sessão, preferir o secret key + endpoint de auth, não expor public key |
 
 Serviços a provisionar antes da fase 1: projeto Postgres (Neon/Supabase em produção; dev local usa container `postgres:16-alpine` via Docker, mesma `DATABASE_URL` shape) e projeto Liveblocks. Vercel só entra no deploy, não bloqueia desenvolvimento local.
+
+A badge "Powered by Liveblocks" é exigência do plano Free (remover é feature paga, Pro+) — não
+escondida via CSS. `LiveblocksProvider` usa `badgeLocation="bottom-left"` (prop oficial) só pra
+reposicionar, saindo de baixo do chat/aside.
 
 ---
 
@@ -255,13 +258,25 @@ Além disso, os hooks de sync agora tratam `onError` do YouTube (`100`: vídeo n
 
 `YOUTUBE`/`VIMEO`/`DIRECT_MEDIA` escondem o controle nativo do backend (YouTube: `playerVars: {controls: 0, disablekb: 1}`; Vimeo: `new Player(el, {controls: false})`; `<video>` nativo já não tem chrome por padrão) e renderizam uma barra própria (`components/room/player/PlayerControls.tsx`) por cima, visualmente coesa com o resto do app.
 
-Cada hook de sync (`useYouTubeSync`, `useVimeoSync`, `useNativeVideoSync`) retorna um `controller: PlaybackController` (`hooks/playerController.ts`) — formato comum de `{isReady, isPlaying, currentTime, duration, volume, isMuted, error, play, pause, togglePlay, seek, setVolume, toggleMute}` que a barra consome sem saber qual backend está por trás. `RoomExperience` escolhe o controller ativo (o do hook cujo `source` bate com `video.source`) e passa pra `<PlayerShell>`, que envolve o container do player + a barra como overlay (mostra/esconde por inatividade) e comanda fullscreen na `div` wrapper — não no iframe/video cru — pra a barra continuar visível em tela cheia.
+Cada hook de sync (`useYouTubeSync`, `useVimeoSync`, `useNativeVideoSync`) retorna um `controller: PlaybackController` (`hooks/playerController.ts`) — formato comum de `{isReady, isPlaying, currentTime, duration, volume, isMuted, error, play, pause, togglePlay, seek, setVolume, toggleMute}` que a barra consome sem saber qual backend está por trás. `RoomExperience` escolhe o controller ativo (o do hook cujo `source` bate com `video.source`) e passa pra `<PlayerShell>`, que envolve o container do player + a barra como overlay (mostra/esconde por inatividade).
 
 Chamar `controller.play()`/`pause()`/etc. não precisa de broadcast próprio: os listeners que cada hook já registra (`onStateChange`, `player.on('play'|'pause'|'seeked')`, eventos nativos de `<video>`) capturam a mudança de estado e disparam `commitPlayer`+`broadcast` como já faziam antes da barra existir — ela é só mais um chamador da mesma API imperativa que os SDKs expõem. Exceção: `seek()` broadcasta explicitamente em todo backend, porque nem toda API expõe um evento de "seek concluído" que dispararia isso sozinho.
 
-`volume`/`isMuted` são sempre locais, nunca sincronizados — mesma regra de `Presence.isMuted` (cada participante controla o próprio áudio).
+`volume`/`isMuted` do `PlaybackController` são sempre locais, nunca sincronizados — cada participante controla o próprio áudio (a funcionalidade de mute de *presença* — mutar indicando aos outros — foi removida, não é necessária pro MVP).
 
 Ícones da barra (`components/room/player/icons.tsx`) são SVG desenhado à mão, `currentColor`, sem dependência de icon-lib — decisão consistente com o rebrand monocromático da seção 8.
+
+**Fullscreen mora em `RoomExperience`, não em `PlayerShell`.** `PlayerShell` só cuida do auto-hide
+da barra por inatividade e recebe `isFullscreen`/`onToggleFullscreen` como props. Quem chama
+`requestFullscreen()` é um `stageRef` em `RoomExperience` que envolve as duas colunas (vídeo +
+aside), não só o vídeo — necessário pro "modo teatro" (seção 8) caber chat dentro da tela cheia.
+
+**Overlay pra esconder o chrome nativo do YouTube pausado.** Sem parâmetro oficial da IFrame API
+pra desligar a tela de sugestões que o YouTube desenha por cima ao pausar (mesmo com
+`controls: 0`) — `RoomExperience` cobre o iframe com um `div` opaco nosso (`bg-[var(--bg-void)]`)
+sempre que `youtubeController.isReady && !youtubeController.isPlaying`, com um botão de play
+centralizado que também serve de affordance. Só se aplica a `YOUTUBE` — Vimeo/mídia direta não têm
+esse overlay nativo.
 
 ---
 
@@ -298,21 +313,32 @@ Sem cor pra diferenciar estado, o anel usa três tratamentos estruturais (`compo
 
 ### Layout
 
-Desktop — vídeo domina, chat e presence são periféricos e quietos:
+Desktop — proporção real de ~80% vídeo / ~20% chat+presença (`lg:basis-[80%]`/`lg:basis-[20%]`
+em `RoomExperience.tsx`, container solto de `max-w-6xl` pra `max-w-[1800px]` — em 1152px, 80%
+ainda era só ~920px de vídeo, não sobrava espaço real):
 
 ```
-┌─────────────────────────────────────────────┬───────────────┐
-│                                               │  presence     │
-│                                               │  ● ● ●   3    │
-│          ╭─────────────────────╮             ├───────────────┤
-│          │                     │             │  chat         │
-│          │   [ vídeo, ~72% ]   │             │  ...          │
-│          │                     │             │  ...          │
-│          ╰─────────────────────╯             │  ...          │
-│  ● ao vivo · sincronizado        00:12:34    ├───────────────┤
-│                                               │  [ mensagem ] │
-└─────────────────────────────────────────────┴───────────────┘
+┌───────────────────────────────────────────────────────┬─────────────┐
+│                                                         │  presença ＋│
+│                                                         │  ● ● ●   3  │
+│              ╭─────────────────────────────╮           ├─────────────┤
+│              │                              │           │  chat       │
+│              │       [ vídeo, ~80% ]        │           │  ...        │
+│              │                              │           │  ...        │
+│              ╰─────────────────────────────╯           │  ...        │
+│  ● ao vivo · sincronizado           00:12:34            ├─────────────┤
+│                                                          │ [ mensagem ]│
+└───────────────────────────────────────────────────────┴─────────────┘
 ```
+
+`+` no cabeçalho de presença abre o modal de carregar link (`LoadVideoModal.tsx`) — o form de colar
+URL não fica mais fixo embaixo do vídeo, evitando competir por atenção com o player.
+
+Tela cheia: por padrão o vídeo ocupa 100% da tela (chat escondido, imersivo). Um botão no canto
+superior direito (`TheaterIcon`, só visível em fullscreen) alterna "modo teatro" — vídeo encolhe
+pra ~80% e o chat/presença aparece à direita, dentro da própria tela cheia (o alvo do
+`requestFullscreen()` é o container que envolve as duas colunas, não só o vídeo, exatamente pra
+isso caber). Reseta pra vídeo-só toda vez que sai da tela cheia.
 
 Mobile — coluna única, vídeo sempre primeiro; chat/presence colapsam abaixo (aba ou bottom sheet), nunca disputam espaço com o player.
 
@@ -321,4 +347,4 @@ Mobile — coluna única, vídeo sempre primeiro; chat/presence colapsam abaixo 
 - Contraste `--ink` sobre `--bg-void` e `--bg-surface` dentro de AA pra texto de corpo.
 - Todo elemento interativo tem estado de foco visível (anel duplo em `--outline-strong`), inclusive em navegação por teclado.
 - `prefers-reduced-motion` desliga o pulso do anel de sync e qualquer transição não-essencial — vira só o flash instantâneo de estado, sem animação contínua.
-- Alvos de toque em mobile ≥ 44px (chat, botões de mute/entrar na sala) — sala é usada por 2 pessoas, muitas vezes em celular deitado no sofá, não em mesa com mouse.
+- Alvos de toque em mobile ≥ 44px (chat, controles do player, entrar na sala) — sala é usada por 2 pessoas, muitas vezes em celular deitado no sofá, não em mesa com mouse.

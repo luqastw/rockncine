@@ -3,7 +3,6 @@ import type { VideoSourceKind } from "@/lib/video-source";
 export type RoomPresence = {
   userId: string;
   name: string;
-  isMuted: boolean;
 };
 
 export type RoomStorage = {

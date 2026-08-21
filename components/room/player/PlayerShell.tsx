@@ -7,20 +7,23 @@ import { PlayerControls } from "@/components/room/player/PlayerControls";
 const AUTO_HIDE_MS = 2500;
 
 // Envolve o container do backend ativo + a barra de controles como overlay.
-// Mostra a barra em mousemove/touch e some depois de AUTO_HIDE_MS parado —
-// padrão comum de player em tela cheia. Fullscreen roda na div wrapper (não
-// no iframe/video cru), pra a barra continuar visível dentro do fullscreen.
+// Mostra a barra em mousemove/touch e some depois de AUTO_HIDE_MS parado.
+// Fullscreen é decidido em RoomExperience (precisa envolver vídeo+chat pro
+// modo teatro caber dentro da tela cheia) — este componente só recebe o
+// estado e repassa pra PlayerControls, sem gerenciar requestFullscreen.
 export function PlayerShell({
   controller,
+  isFullscreen,
+  onToggleFullscreen,
   children,
 }: {
   controller: PlaybackController | null;
+  isFullscreen: boolean;
+  onToggleFullscreen: () => void;
   children: ReactNode;
 }) {
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const hideTimerRef = useRef<number | null>(null);
   const [showControls, setShowControls] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const scheduleHide = useCallback(() => {
     if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
@@ -39,29 +42,17 @@ export function PlayerShell({
     };
   }, [scheduleHide]);
 
+  // ao entrar/sair da tela cheia, mostra a barra na hora — senão ela pode já
+  // estar escondida pelo timer de antes de alternar o modo. setState fica
+  // dentro do callback assíncrono do timeout, não direto no corpo do efeito.
   useEffect(() => {
-    const onFsChange = () => setIsFullscreen(document.fullscreenElement === wrapperRef.current);
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
-  }, []);
-
-  const toggleFullscreen = useCallback(() => {
-    const el = wrapperRef.current;
-    if (!el) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
-    } else {
-      el.requestFullscreen?.().catch(() => {});
-    }
-  }, []);
+    const t = window.setTimeout(wake, 0);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFullscreen]);
 
   return (
-    <div
-      ref={wrapperRef}
-      className="group relative h-full w-full"
-      onMouseMove={wake}
-      onTouchStart={wake}
-    >
+    <div className="group relative h-full w-full" onMouseMove={wake} onTouchStart={wake}>
       {children}
       {controller && (
         <div
@@ -72,7 +63,7 @@ export function PlayerShell({
           <PlayerControls
             controller={controller}
             isFullscreen={isFullscreen}
-            onToggleFullscreen={toggleFullscreen}
+            onToggleFullscreen={onToggleFullscreen}
           />
         </div>
       )}
