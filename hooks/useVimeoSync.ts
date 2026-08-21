@@ -46,15 +46,34 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
   }, []);
 
   useEffect(() => {
-    if (!video?.embedUrl || video.source !== "VIMEO") return;
+    if (!video?.embedUrl || video.source !== "VIMEO") {
+      // saiu do Vimeo pra outra fonte: o container #vimeo-player é desmontado
+      // pelo RoomExperience — destrói a ref presa agora, senão um load futuro
+      // de Vimeo reusa esse player morto em vez de criar um novo contra o
+      // container recém-montado.
+      if (playerRef.current) {
+        playerRef.current.destroy();
+        playerRef.current = null;
+        loadedVideoIdRef.current = null;
+        setIsReady(false);
+      }
+      return;
+    }
     const videoId = video.embedUrl;
     let cancelled = false;
 
     if (playerRef.current) {
-      if (loadedVideoIdRef.current !== videoId) {
-        applyRemote(() => playerRef.current!.loadVideo(videoId).then(() => setError(null)));
-        loadedVideoIdRef.current = videoId;
-      }
+      // loadedAt muda a cada "carregar" mesmo pra URL idêntica — sem
+      // depender só de loadedVideoIdRef, recarregar o mesmo link virava
+      // no-op silencioso.
+      setError(null);
+      applyRemote(() =>
+        playerRef.current!.loadVideo(videoId).then(
+          () => setError(null),
+          (err) => setError(err?.message || "não foi possível reproduzir este vídeo."),
+        ),
+      );
+      loadedVideoIdRef.current = videoId;
       return;
     }
 
@@ -117,7 +136,7 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [video?.embedUrl, video?.source, containerId, userId]);
+  }, [video?.embedUrl, video?.source, video?.loadedAt, containerId, userId]);
 
   useEffect(() => {
     return () => {

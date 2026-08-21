@@ -87,6 +87,7 @@ type RoomStorage = {
     source: "YOUTUBE" | "VIMEO" | "GENERIC_IFRAME" | null;
     embedUrl: string | null;   // videoId (YouTube/Vimeo) ou iframe src genérico
     sourceUrl: string | null;  // link original colado pelo usuário
+    loadedAt: number | null;   // epoch ms, muda a cada "carregar" — inclusive pra URL idêntica repetida
   };
   player: {
     isPlaying: boolean;
@@ -119,6 +120,8 @@ type ChatEvent = {
 Fluxo: quem dispara a ação escreve em `storage.player` (fonte de verdade) e broadcasta o evento (pra listeners reagirem sem esperar round-trip de storage). Todo cliente escuta `PLAY`/`PAUSE`/`SEEK` e aplica no próprio player local.
 
 `LOAD_VIDEO` dispara sempre que alguém cola um novo link — todo cliente atualiza `storage.video` e recarrega o player/iframe com o `embedUrl` recebido.
+
+`storage.video.loadedAt` existe só pra forçar o efeito de (re)criação do player a rodar de novo mesmo quando `source`/`embedUrl` não mudam de valor — ex.: recarregar a URL idêntica que acabou de falhar. Sem esse campo, o efeito do hook de sync depende só de `embedUrl`/`source`, e uma retentativa com a mesma URL não muda nenhuma dependência — vira um no-op silencioso em todo participante da sala (era um bug real: ver seção 7).
 
 **Importante:** `PLAY`/`PAUSE`/`SEEK` só têm efeito real para `source: "YOUTUBE"` ou `"VIMEO"` — ver seção 7 sobre por quê.
 
@@ -155,22 +158,28 @@ app/
   rooms/
     page.tsx                     # menu: criar sala / entrar por código
     new/
-      route.ts                   # POST — cria Room, redireciona pra /rooms/[code]
+      route.ts                   # POST — cria Room, redireciona 303 pra /rooms/[code] (303, não o 307 default, senão o browser repete o POST no destino)
   rooms/[code]/
     page.tsx                     # sala: player + chat + presence (Server Component busca Room; Client Component monta LiveblocksProvider)
     layout.tsx                   # valida sessão, garante RoomMember (upsert on join)
+    not-found.tsx                # 404 estilizado — sala inexistente
+    video/
+      route.ts                   # PATCH — persiste o vídeo resolvido (source/embedUrl/sourceUrl) no Room do Postgres, gated por RoomMember
+  not-found.tsx                  # 404 global estilizado
   api/
     auth/[...nextauth]/route.ts  # NextAuth handler
-    liveblocks-auth/route.ts     # endpoint de auth do Liveblocks (authorize por sessão NextAuth)
+    register/route.ts            # POST — cadastro (bcrypt.hash, prisma.user.create)
+    liveblocks-auth/route.ts     # endpoint de auth do Liveblocks (authorize por sessão NextAuth + RoomMember)
+    resolve-embed/route.ts       # POST — ver seção 7
 ```
 
-`middleware.ts` na raiz protege `/rooms/**` — redireciona não-autenticado pra `/login`.
+`proxy.ts` na raiz protege `/rooms/**` — redireciona não-autenticado pra `/login`. (Next.js 16 renomeou `middleware.ts` → `proxy.ts`; o padrão `withAuth(...)` como default export continua válido, só muda o nome do arquivo.)
 
 ---
 
 ## 4. Fluxo de autenticação (NextAuth)
 
-- Provider: `CredentialsProvider` único. `authorize()` busca `User` por email, compara senha com `bcrypt.compare` contra `passwordHash`.
+- Provider: `CredentialsProvider` único. `authorize()` normaliza o email recebido (`trim().toLowerCase()`) antes de buscar `User`, compara senha com `bcrypt.compare` contra `passwordHash`. A normalização espelha a que já acontece no cadastro (`/api/register`) — sem ela, um usuário que loga com capitalização diferente da que usou ao se cadastrar (autofill, copiar/colar) toma "credenciais inválidas" mesmo com a senha certa, já que `email` é `@unique` case-sensitive no Postgres.
 - Session strategy: `jwt` (sem tabela `Session` no Prisma — não precisa do adapter de banco pra sessão, só pra usuário).
 - `/register`: form próprio (não é rota do NextAuth) → server action ou route handler que faz `bcrypt.hash` e `prisma.user.create`.
 - `session.user.id` populado via callback `jwt`/`session` a partir do `sub` do token, pra `RoomMember`/presence usarem o `User.id` real.
@@ -199,7 +208,7 @@ Cada fase termina com o app rodando ponta a ponta — fase 2 sem chat ainda é d
 | `LIVEBLOCKS_SECRET_KEY` | Liveblocks project (free tier) | usado só no endpoint `/api/liveblocks-auth`, nunca no client |
 | `NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY` | Liveblocks project | opcional — só se optar por auth pública em vez de endpoint de auth; com Credentials + auth por sessão, preferir o secret key + endpoint de auth, não expor public key |
 
-Serviços a provisionar antes da fase 1: projeto Postgres (Neon/Supabase) e projeto Liveblocks. Vercel só entra no deploy, não bloqueia desenvolvimento local.
+Serviços a provisionar antes da fase 1: projeto Postgres (Neon/Supabase em produção; dev local usa container `postgres:16-alpine` via Docker, mesma `DATABASE_URL` shape) e projeto Liveblocks. Vercel só entra no deploy, não bloqueia desenvolvimento local.
 
 ---
 
@@ -230,6 +239,16 @@ Um iframe genérico de terceiro normalmente não expõe esse contrato — é uma
 - Alguns sites bloqueiam embed via `X-Frame-Options`/`Content-Security-Policy: frame-ancestors` — nesse caso o iframe fica em branco. Tratar como estado de erro visível ("este link não permite ser incorporado"), não como bug silencioso.
 - `/api/resolve-embed` não segue redirects nem baixa/executa HTML de terceiros no servidor — só valida formato de URL (regex por domínio conhecido pra YouTube/Vimeo; pra genérico, valida que é uma URL bem formada com protocolo `https`) e devolve. Sem proxy de conteúdo.
 - Escopo do MVP é o mecanismo de embed (extrair e sincronizar um iframe), não curadoria de fontes — a responsabilidade sobre ter direito de uso/embedar o conteúdo colado é de quem cola o link, não da aplicação.
+
+### Robustez do player YouTube/Vimeo (lições de um bug real em produção)
+
+Um relatório real: um vídeo do YouTube carregou preto sem nenhum erro visível; recarregar o mesmo link mais tarde funcionou, sem nenhuma mudança de código/ambiente entre as duas tentativas. Investigação (revisão de código completa pós-incidente) achou três causas reais, nenhuma ligada a bloqueador de anúncio, Brave Shields ou restrição do vídeo em si (hipóteses descartadas por teste do usuário: um vídeo diferente carregou normalmente mesmo com Shields ativo):
+
+1. **Script da API do YouTube sem timeout/`onerror`.** `loadYouTubeIframeApi()` guarda um `Promise` singleton a nível de módulo (sobrevive a navegação client-side entre salas). Sem tratar falha de carga do `<script src="youtube.com/iframe_api">`, uma falha transitória de rede deixava essa promise pendente pra sempre — todo carregamento futuro de vídeo YouTube na mesma sessão de aba ficava preso, tela preta, sem erro, só resolvível com reload de página (que reavalia o módulo do zero). Corrigido: `tag.onerror` + `setTimeout(10s)` rejeitam a promise e resetam o singleton pra `null`, permitindo que a próxima tentativa recarregue o script sem precisar de reload.
+2. **Retentativa com a mesma URL era um no-op silencioso.** O efeito que cria/atualiza o player do YouTube/Vimeo dependia só de `video.embedUrl`/`video.source` — colar de novo o link idêntico gera o mesmo `videoId`, então nenhuma dependência do efeito muda, e React nunca reexecuta. Corrigido com `storage.video.loadedAt` (epoch ms, escrito a cada "carregar" mesmo pra URL repetida) incluído nas dependências do efeito — força a recriação/reload do player mesmo sem mudança de `videoId`. Também zera o timeout de loading (`PlayerLoadStatus` agora usa `` `${embedUrl}-${loadedAt}` `` como `key`, não só `embedUrl`).
+3. **Player preso numa ref morta ao trocar de fonte e voltar.** O container `#yt-player`/`#vimeo-player` só existe no DOM enquanto `video.source` é `"YOUTUBE"`/`"VIMEO"` (ternário em `RoomExperience`) — trocar pra outra fonte desmonta esse `div`. A instância do player em `playerRef.current`, porém, só era destruída no unmount do hook inteiro (sair da sala), nunca nessa troca de fonte. Resultado: carregar YouTube → trocar pra Vimeo/genérico → voltar pro YouTube reusava a ref antiga contra um `div` recém-montado (mesmo `id`, nó DOM diferente) — falha silenciosa, sem `onReady` nem `onError`. Corrigido: o efeito agora destrói e zera a ref assim que `video.source` deixa de ser a fonte daquele hook, então um load futuro sempre constrói um player novo contra o container atual.
+
+Além disso, os hooks de sync agora tratam `onError` do YouTube (`100`: vídeo não encontrado/privado; `101`/`150`: dono desabilitou embed nesse player) e `error` do Vimeo Player SDK, expondo uma mensagem específica via `PlayerLoadStatus` assim que o SDK reporta — em vez de depender só do timeout genérico de 8s da fase 5. Isso cobre o caso de restrição real por parte do dono do vídeo, que é diferente e mais raro do que o bug acima.
 
 ---
 

@@ -88,7 +88,7 @@ export function RoomExperience({
               </div>
             )}
             <PlayerLoadStatus
-              key={video?.embedUrl}
+              key={`${video?.embedUrl}-${video?.loadedAt}`}
               loading={playerLoading}
               error={playerError}
               sourceUrl={video?.sourceUrl ?? null}

@@ -33,7 +33,7 @@ export function RoomLiveblocksProvider({
         id={roomCode}
         initialPresence={{ userId, name: userName, isMuted: false }}
         initialStorage={{
-          video: initialVideo,
+          video: { ...initialVideo, loadedAt: initialVideo.embedUrl ? mountedAt : null },
           player: {
             isPlaying: false,
             currentTime: 0,

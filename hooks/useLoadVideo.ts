@@ -10,7 +10,7 @@ export function useLoadVideo(roomCode: string, userId: string) {
   const commitVideo = useMutation(
     ({ storage }, video: ResolvedVideo) => {
       storage.update({
-        video,
+        video: { ...video, loadedAt: Date.now() },
         player: {
           isPlaying: false,
           currentTime: 0,

@@ -11,6 +11,9 @@ export type RoomStorage = {
     source: VideoSourceKind | null;
     embedUrl: string | null;
     sourceUrl: string | null;
+    // muda a cada "carregar", mesmo pra URL idêntica — dispara o efeito de
+    // (re)criação do player mesmo quando source/embedUrl não mudam de valor.
+    loadedAt: number | null;
   };
   player: {
     isPlaying: boolean;

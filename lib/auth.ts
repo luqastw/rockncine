@@ -18,8 +18,13 @@ export const authOptions: AuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
+        // registro normaliza email pra lowercase+trim (app/api/register/route.ts)
+        // — sem normalizar aqui também, um usuário que digitar/colar o email com
+        // capitalização diferente da que usou no cadastro toma "credenciais
+        // inválidas" mesmo com a senha certa.
+        const email = credentials.email.trim().toLowerCase();
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email },
         });
         if (!user) return null;
 

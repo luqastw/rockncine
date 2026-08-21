@@ -56,9 +56,25 @@ export function useYouTubeSync({
     }, REMOTE_APPLY_COOLDOWN_MS);
   }, []);
 
-  // cria/atualiza o player quando o video.embedUrl (videoId) do storage muda
+  // cria/atualiza o player quando o video.embedUrl (videoId) ou loadedAt do
+  // storage muda. loadedAt muda a cada "carregar" mesmo pra URL idêntica —
+  // sem isso, recarregar o mesmo link não reexecutava este efeito (deps
+  // inalteradas) e a retentativa virava um no-op silencioso.
   useEffect(() => {
-    if (!video?.embedUrl || video.source !== "YOUTUBE") return;
+    if (!video?.embedUrl || video.source !== "YOUTUBE") {
+      // saiu do YouTube pra outra fonte: o container #yt-player é desmontado
+      // pelo RoomExperience, então o player preso na ref antiga ficaria
+      // apontando pra um nó DOM morto. Destrói e limpa a ref agora, senão um
+      // load futuro de YouTube reusa essa ref morta em vez de criar um player
+      // novo contra o container recém-montado.
+      if (playerRef.current) {
+        playerRef.current.destroy();
+        playerRef.current = null;
+        loadedVideoIdRef.current = null;
+        setIsReady(false);
+      }
+      return;
+    }
     const videoId = video.embedUrl;
     let cancelled = false;
 
@@ -67,10 +83,8 @@ export function useYouTubeSync({
       setError(null); // reinicia o estado de erro pra cada novo vídeo carregado
 
       if (playerRef.current) {
-        if (loadedVideoIdRef.current !== videoId) {
-          applyRemote(() => playerRef.current!.loadVideoById(videoId));
-          loadedVideoIdRef.current = videoId;
-        }
+        applyRemote(() => playerRef.current!.loadVideoById(videoId));
+        loadedVideoIdRef.current = videoId;
         return;
       }
 
@@ -129,13 +143,20 @@ export function useYouTubeSync({
           },
         },
       });
+    }).catch((err: unknown) => {
+      if (cancelled) return;
+      setError(
+        err instanceof Error
+          ? `${err.message} tente carregar o vídeo de novo.`
+          : "falha ao carregar o player do YouTube. tente carregar o vídeo de novo.",
+      );
     });
 
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [video?.embedUrl, video?.source, containerId, userId]);
+  }, [video?.embedUrl, video?.source, video?.loadedAt, containerId, userId]);
 
   useEffect(() => {
     return () => {
