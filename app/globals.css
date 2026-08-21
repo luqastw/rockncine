@@ -1,13 +1,26 @@
 @import "tailwindcss";
 
 :root {
-  /* dark-first, único tema — ver SPEC.md seção 8 */
-  --bg-void: #0a0c10;
-  --bg-surface: #14171e;
-  --line: #262a35;
-  --ink: #e8e9ed;
-  --ink-muted: #868a9b;
-  --ember: #ff8a3d;
+  /* monocromático, dark-first — ver SPEC.md seção 8. Nenhuma cor de marca:
+     estado é sinalizado por contraste/inversão/peso, nunca por matiz. */
+  --gray-950: #0a0a0a;
+  --gray-900: #141414;
+  --gray-700: #2a2a2a;
+  --gray-500: #7a7a7a;
+  --gray-100: #f2f2f2;
+  --pure-black: #000000;
+  --pure-white: #ffffff;
+
+  --bg-void: var(--gray-950);
+  --bg-surface: var(--gray-900);
+  --line: var(--gray-700);
+  --ink: var(--gray-100);
+  --ink-muted: var(--gray-500);
+
+  /* substituem o antigo acento --ember — só contraste/inversão, sem matiz */
+  --invert-bg: var(--pure-white); /* CTA primário / estado ativo */
+  --invert-fg: var(--pure-black); /* texto/ícone sobre --invert-bg */
+  --outline-strong: var(--pure-white); /* foco, borda de "ao vivo" */
 
   --background: var(--bg-void);
   --foreground: var(--ink);
@@ -29,10 +42,12 @@ body {
 @keyframes sync-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(255, 138, 61, 0.25);
+    border-width: 2px;
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.15);
   }
   50% {
-    box-shadow: 0 0 22px 2px rgba(255, 138, 61, 0.45);
+    border-width: 3px;
+    box-shadow: 0 0 18px 1px rgba(255, 255, 255, 0.3);
   }
 }
 
@@ -42,10 +57,10 @@ body {
 
 @keyframes sync-flash {
   0% {
-    box-shadow: 0 0 0 4px rgba(255, 138, 61, 0.7);
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.8);
   }
   100% {
-    box-shadow: 0 0 0 4px rgba(255, 138, 61, 0);
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0);
   }
 }
 

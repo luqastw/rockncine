@@ -3,16 +3,20 @@
 import { useStatus, useStorage } from "@liveblocks/react";
 import { useYouTubeSync } from "@/hooks/useYouTubeSync";
 import { useVimeoSync } from "@/hooks/useVimeoSync";
+import { useNativeVideoSync } from "@/hooks/useNativeVideoSync";
 import { useLastRoomEvent } from "@/hooks/useLastRoomEvent";
 import { SyncRing } from "@/components/room/SyncRing";
 import { PresenceList } from "@/components/room/PresenceList";
 import { LoadVideoForm } from "@/components/room/LoadVideoForm";
 import { GenericIframe } from "@/components/room/GenericIframe";
+import { NativeVideoPlayer } from "@/components/room/NativeVideoPlayer";
 import { PlayerLoadStatus } from "@/components/room/PlayerLoadStatus";
+import { PlayerShell } from "@/components/room/player/PlayerShell";
 import { Chat } from "@/components/room/Chat";
 
 const YT_CONTAINER_ID = "yt-player";
 const VIMEO_CONTAINER_ID = "vimeo-player";
+const NATIVE_CONTAINER_ID = "native-player";
 
 const CONNECTION_LABEL: Partial<Record<ReturnType<typeof useStatus>, string>> = {
   initial: "conectando...",
@@ -35,22 +39,37 @@ export function RoomExperience({
   const lastEvent = useLastRoomEvent();
   const status = useStatus();
 
-  const { isReady: youtubeReady, error: youtubeError } = useYouTubeSync({
-    containerId: YT_CONTAINER_ID,
-    userId,
-  });
-  const { isReady: vimeoReady, error: vimeoError } = useVimeoSync({
+  const { isReady: youtubeReady, error: youtubeError, controller: youtubeController } =
+    useYouTubeSync({ containerId: YT_CONTAINER_ID, userId });
+  const { isReady: vimeoReady, error: vimeoError, controller: vimeoController } = useVimeoSync({
     containerId: VIMEO_CONTAINER_ID,
     userId,
   });
+  const { isReady: nativeReady, error: nativeError, controller: nativeController } =
+    useNativeVideoSync({ containerId: NATIVE_CONTAINER_ID, userId });
 
   const hasYouTube = video?.source === "YOUTUBE" && !!video.embedUrl;
   const hasVimeo = video?.source === "VIMEO" && !!video.embedUrl;
+  const hasDirectMedia = video?.source === "DIRECT_MEDIA" && !!video.embedUrl;
   const hasGeneric = video?.source === "GENERIC_IFRAME" && !!video.embedUrl;
   const syncLimited = video?.source === "GENERIC_IFRAME";
 
-  const playerLoading = (hasYouTube && !youtubeReady) || (hasVimeo && !vimeoReady);
-  const playerError = hasYouTube ? youtubeError : hasVimeo ? vimeoError : null;
+  const playerLoading =
+    (hasYouTube && !youtubeReady) || (hasVimeo && !vimeoReady) || (hasDirectMedia && !nativeReady);
+  const playerError = hasYouTube
+    ? youtubeError
+    : hasVimeo
+      ? vimeoError
+      : hasDirectMedia
+        ? nativeError
+        : null;
+  const activeController = hasYouTube
+    ? youtubeController
+    : hasVimeo
+      ? vimeoController
+      : hasDirectMedia
+        ? nativeController
+        : null;
   const connectionLabel = CONNECTION_LABEL[status];
 
   return (
@@ -76,17 +95,21 @@ export function RoomExperience({
           lastEvent={lastEvent}
         >
           <div className="relative aspect-video w-full overflow-hidden rounded-md bg-black">
-            {hasYouTube ? (
-              <div id={YT_CONTAINER_ID} className="h-full w-full" />
-            ) : hasVimeo ? (
-              <div id={VIMEO_CONTAINER_ID} className="h-full w-full" />
-            ) : hasGeneric ? (
-              <GenericIframe src={video.embedUrl!} />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-sm text-[var(--ink-muted)]">
-                cole um link (YouTube, Vimeo, Google Drive ou outro) abaixo pra começar
-              </div>
-            )}
+            <PlayerShell controller={activeController}>
+              {hasYouTube ? (
+                <div id={YT_CONTAINER_ID} className="h-full w-full" />
+              ) : hasVimeo ? (
+                <div id={VIMEO_CONTAINER_ID} className="h-full w-full" />
+              ) : hasDirectMedia ? (
+                <NativeVideoPlayer containerId={NATIVE_CONTAINER_ID} />
+              ) : hasGeneric ? (
+                <GenericIframe src={video.embedUrl!} />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-sm text-[var(--ink-muted)]">
+                  cole um link (YouTube, Vimeo, mídia direta ou outro) abaixo pra começar
+                </div>
+              )}
+            </PlayerShell>
             <PlayerLoadStatus
               key={`${video?.embedUrl}-${video?.loadedAt}`}
               loading={playerLoading}
@@ -105,7 +128,7 @@ export function RoomExperience({
               href={video!.embedUrl!}
               target="_blank"
               rel="noreferrer noopener"
-              className="text-[var(--ember)] hover:underline"
+              className="text-[var(--ink)] underline"
             >
               abrir em nova aba
             </a>

@@ -84,8 +84,8 @@ Room = um Liveblocks Room (`roomId` do Liveblocks = `Room.code` do Postgres).
 ```ts
 type RoomStorage = {
   video: {
-    source: "YOUTUBE" | "VIMEO" | "GENERIC_IFRAME" | null;
-    embedUrl: string | null;   // videoId (YouTube/Vimeo) ou iframe src genérico
+    source: "YOUTUBE" | "VIMEO" | "GENERIC_IFRAME" | "DIRECT_MEDIA" | null;
+    embedUrl: string | null;   // videoId (YouTube/Vimeo), URL direta (DIRECT_MEDIA) ou iframe src genérico
     sourceUrl: string | null;  // link original colado pelo usuário
     loadedAt: number | null;   // epoch ms, muda a cada "carregar" — inclusive pra URL idêntica repetida
   };
@@ -102,7 +102,7 @@ type RoomStorage = {
 
 ```ts
 type PlayerEvent =
-  | { type: "LOAD_VIDEO"; source: "YOUTUBE" | "VIMEO" | "GENERIC_IFRAME"; embedUrl: string; sourceUrl: string; actorId: string; ts: number }
+  | { type: "LOAD_VIDEO"; source: "YOUTUBE" | "VIMEO" | "GENERIC_IFRAME" | "DIRECT_MEDIA"; embedUrl: string; sourceUrl: string; actorId: string; ts: number }
   | { type: "PLAY"; time: number; actorId: string; ts: number }
   | { type: "PAUSE"; time: number; actorId: string; ts: number }
   | { type: "SEEK"; time: number; actorId: string; ts: number };
@@ -123,7 +123,7 @@ Fluxo: quem dispara a ação escreve em `storage.player` (fonte de verdade) e br
 
 `storage.video.loadedAt` existe só pra forçar o efeito de (re)criação do player a rodar de novo mesmo quando `source`/`embedUrl` não mudam de valor — ex.: recarregar a URL idêntica que acabou de falhar. Sem esse campo, o efeito do hook de sync depende só de `embedUrl`/`source`, e uma retentativa com a mesma URL não muda nenhuma dependência — vira um no-op silencioso em todo participante da sala (era um bug real: ver seção 7).
 
-**Importante:** `PLAY`/`PAUSE`/`SEEK` só têm efeito real para `source: "YOUTUBE"` ou `"VIMEO"` — ver seção 7 sobre por quê.
+**Importante:** `PLAY`/`PAUSE`/`SEEK` só têm efeito real para `source: "YOUTUBE"`, `"VIMEO"` ou `"DIRECT_MEDIA"` — ver seção 7 sobre por quê.
 
 ### Drift correction
 
@@ -220,12 +220,13 @@ Recebe `{ url: string }`, retorna `{ source, embedUrl, sourceUrl }` ou erro. Rod
 
 1. URL bate com padrão do YouTube (`youtube.com/watch`, `youtu.be/`, `youtube.com/shorts/`) → extrai `videoId`, `source: YOUTUBE`. Client monta `https://www.youtube.com/embed/{id}` via IFrame API.
 2. URL bate com padrão do Vimeo (`vimeo.com/{id}`) → resolve via oEmbed público do Vimeo (`https://vimeo.com/api/oembed.json?url=...`), extrai o `videoId` do `iframe src` retornado, `source: VIMEO`.
-3. URL bate com padrão do Google Drive (`drive.google.com/file/d/{id}/view`, `/open?id={id}`, ou já `/preview`) → extrai `{id}` por regex e monta `embedUrl = https://drive.google.com/file/d/{id}/preview`. Necessário porque o link de compartilhamento padrão (`/view`) não é embutível — só a variante `/preview` libera `frame-ancestors`. `source: GENERIC_IFRAME` (Drive não expõe API de controle via `postMessage`, então cai no mesmo nível de sync do item 4 — só `LOAD_VIDEO`).
-4. Qualquer outra URL → tratada como `GENERIC_IFRAME`: `embedUrl` = a própria URL colada, usada direto como `iframe src`. Sem scraping de HTML, sem oEmbed discovery genérico no MVP — o usuário cola o link que já é o player embutível (uma URL de `.../player.html?...`, por exemplo), não a página do site. Cobre "qualquer link com vídeo" como fallback universal — cada novo padrão conhecido (como Drive acima) só ganha um passo próprio na lista quando precisa de transformação de URL pra funcionar num iframe; senão o fallback genérico já resolve.
+3. URL bate com padrão do Google Drive (`drive.google.com/file/d/{id}/view`, `/open?id={id}`, ou já `/preview`) → extrai `{id}` por regex e monta `embedUrl = https://drive.google.com/file/d/{id}/preview`. Necessário porque o link de compartilhamento padrão (`/view`) não é embutível — só a variante `/preview` libera `frame-ancestors`. `source: GENERIC_IFRAME` (Drive não expõe API de controle via `postMessage`, então cai no mesmo nível de sync do item 5 — só `LOAD_VIDEO`).
+4. URL termina em `.mp4`/`.webm`/`.m3u8` (sniff de extensão no `pathname`, com ou sem query string depois) → `source: DIRECT_MEDIA`, `embedUrl` = a própria URL. Tocado num `<video>` próprio (`.mp4`/`.webm` direto; `.m3u8` via `hls.js` em browsers com MSE, ou `video.src` nativo no Safari, que já suporta HLS sem precisar de `hls.js`). **Limitação conhecida**: é só sniff de extensão, sem `HEAD`/checagem de `Content-Type` (consistente com a regra de não fazer proxy/scraping de terceiro abaixo) — uma URL assinada sem extensão visível na `pathname` cai no fallback genérico do item 5 em vez de ser detectada como mídia direta.
+5. Qualquer outra URL → tratada como `GENERIC_IFRAME`: `embedUrl` = a própria URL colada, usada direto como `iframe src`. Sem scraping de HTML, sem oEmbed discovery genérico no MVP — o usuário cola o link que já é o player embutível (uma URL de `.../player.html?...`, por exemplo), não a página do site. Cobre "qualquer link com vídeo" como fallback universal — cada novo padrão conhecido (como Drive acima) só ganha um passo próprio na lista quando precisa de transformação de URL pra funcionar num iframe; senão o fallback genérico já resolve. **Deliberadamente não faz scraping/extração de stream de sites de terceiro** (ex. agregadores de streaming) pra montar um `DIRECT_MEDIA` a partir da página deles — isso seria bypassar o mecanismo de entrega deles pra redistribuir conteúdo que não é nosso pra redistribuir, fora de escopo independente de quão conveniente seria tecnicamente.
 
-### Por que YouTube e Vimeo sincronizam e o resto não
+### Por que YouTube, Vimeo e mídia direta sincronizam e o resto não
 
-YouTube (IFrame Player API) e Vimeo (Player SDK) expõem uma API JS baseada em `postMessage` que o parent (nosso app) chama pra controlar o player dentro do iframe, mesmo sendo cross-origin — é assim que `play()`/`pause()`/`seekTo()`/`getCurrentTime()` funcionam nesses dois casos.
+YouTube (IFrame Player API) e Vimeo (Player SDK) expõem uma API JS baseada em `postMessage` que o parent (nosso app) chama pra controlar o player dentro do iframe, mesmo sendo cross-origin — é assim que `play()`/`pause()`/`seekTo()`/`getCurrentTime()` funcionam nesses dois casos. `DIRECT_MEDIA` sincroniza pelo mesmo motivo por um caminho mais direto ainda: é um `<video>` nosso, sem iframe nenhum no meio, então `play()`/`pause()`/`currentTime` são só a API nativa do elemento.
 
 Um iframe genérico de terceiro normalmente não expõe esse contrato — é uma janela cross-origin isolada por padrão do navegador. Sem o player do lado de dentro implementar seu próprio protocolo de `postMessage`, não há como o nosso JS chamar play/pause/seek nele. Por isso, para `GENERIC_IFRAME`:
 
@@ -250,24 +251,40 @@ Um relatório real: um vídeo do YouTube carregou preto sem nenhum erro visível
 
 Além disso, os hooks de sync agora tratam `onError` do YouTube (`100`: vídeo não encontrado/privado; `101`/`150`: dono desabilitou embed nesse player) e `error` do Vimeo Player SDK, expondo uma mensagem específica via `PlayerLoadStatus` assim que o SDK reporta — em vez de depender só do timeout genérico de 8s da fase 5. Isso cobre o caso de restrição real por parte do dono do vídeo, que é diferente e mais raro do que o bug acima.
 
+### Chrome de player próprio (`PlaybackController`)
+
+`YOUTUBE`/`VIMEO`/`DIRECT_MEDIA` escondem o controle nativo do backend (YouTube: `playerVars: {controls: 0, disablekb: 1}`; Vimeo: `new Player(el, {controls: false})`; `<video>` nativo já não tem chrome por padrão) e renderizam uma barra própria (`components/room/player/PlayerControls.tsx`) por cima, visualmente coesa com o resto do app.
+
+Cada hook de sync (`useYouTubeSync`, `useVimeoSync`, `useNativeVideoSync`) retorna um `controller: PlaybackController` (`hooks/playerController.ts`) — formato comum de `{isReady, isPlaying, currentTime, duration, volume, isMuted, error, play, pause, togglePlay, seek, setVolume, toggleMute}` que a barra consome sem saber qual backend está por trás. `RoomExperience` escolhe o controller ativo (o do hook cujo `source` bate com `video.source`) e passa pra `<PlayerShell>`, que envolve o container do player + a barra como overlay (mostra/esconde por inatividade) e comanda fullscreen na `div` wrapper — não no iframe/video cru — pra a barra continuar visível em tela cheia.
+
+Chamar `controller.play()`/`pause()`/etc. não precisa de broadcast próprio: os listeners que cada hook já registra (`onStateChange`, `player.on('play'|'pause'|'seeked')`, eventos nativos de `<video>`) capturam a mudança de estado e disparam `commitPlayer`+`broadcast` como já faziam antes da barra existir — ela é só mais um chamador da mesma API imperativa que os SDKs expõem. Exceção: `seek()` broadcasta explicitamente em todo backend, porque nem toda API expõe um evento de "seek concluído" que dispararia isso sozinho.
+
+`volume`/`isMuted` são sempre locais, nunca sincronizados — mesma regra de `Presence.isMuted` (cada participante controla o próprio áudio).
+
+Ícones da barra (`components/room/player/icons.tsx`) são SVG desenhado à mão, `currentColor`, sem dependência de icon-lib — decisão consistente com o rebrand monocromático da seção 8.
+
 ---
 
-## 8. Direção visual (dark, minimalista)
+## 8. Direção visual (monocromática, minimalista)
 
 Princípio geral: o vídeo é o objeto — a UI existe pra sumir ao redor dele, como uma sala escura em volta de uma tela. Nada de decoração que compita com o player.
 
-### Paleta (dark-first, um único acento)
+### Paleta (dark-first, estritamente monocromática)
+
+Zero cor de marca — preto, branco, cinza, só. Estado é sinalizado por **contraste/inversão/peso**, nunca por matiz. Referência de linha: a vertente "ink-is-the-brand" (ex. Vercel/Geist) — ação primária é uma inversão de polaridade (bloco sólido invertido), foco usa espessura/contraste em vez de cor, hierarquia vem de peso e espaçamento.
 
 | Token | Hex | Uso |
 |---|---|---|
-| `--bg-void` | `#0A0C10` | fundo base — quase preto, leve subtom frio |
-| `--bg-surface` | `#14171E` | painéis: chat, sidebar de presence, modais |
-| `--line` | `#262A35` | divisores e bordas, sempre discretos |
-| `--ink` | `#E8E9ED` | texto primário — branco suave, não `#FFF` puro (reduz halo/glare em ambiente escuro) |
-| `--ink-muted` | `#868A9B` | metadados: timestamps, nomes secundários, placeholders |
-| `--ember` | `#FF8A3D` | **único** acento — live/sincronizado, CTA primário, foco, presença ativa |
+| `--bg-void` | `#0A0A0A` | fundo base |
+| `--bg-surface` | `#141414` | painéis: chat, sidebar de presence, modais |
+| `--line` | `#2A2A2A` | divisores e bordas, sempre discretos |
+| `--ink` | `#F2F2F2` | texto primário — branco suave, não `#FFF` puro (reduz halo/glare em ambiente escuro) |
+| `--ink-muted` | `#7A7A7A` | metadados: timestamps, nomes secundários, placeholders |
+| `--invert-bg` | `#FFFFFF` | CTA primário / estado ativo — bloco sólido invertido, substitui o antigo acento |
+| `--invert-fg` | `#000000` | texto/ícone sobre `--invert-bg` |
+| `--outline-strong` | `#FFFFFF` | foco (anel duplo: `ring` + `ring-offset` sobre `--bg-void`), borda de estado "ao vivo" |
 
-Um acento só, usado com disciplina — se tudo vira `--ember`, nada é `--ember`. Reservar pra: estado "ao vivo", botão de ação primária, anel de foco, indicador de presença ativa.
+Substituição de semântica, aplicada em todo botão/link/estado que antes usava o acento laranja: **CTA primário** = bloco `--invert-bg`/`--invert-fg` (não mais cor de fundo colorida); **foco** = anel duplo em `--outline-strong` com `ring-offset` em `--bg-void` (espessura/contraste, não cor); **erro** = bloco com borda em `--ink` + texto em negrito (antes usava a mesma cor do CTA, o que confundia os dois sinais); **link** = `--ink` com sublinhado sempre visível (não pode depender só de cor); **presença ativa** = ponto sólido em `--ink`.
 
 ### Tipografia (3 papéis)
 
@@ -277,9 +294,7 @@ Um acento só, usado com disciplina — se tudo vira `--ember`, nada é `--ember
 
 ### Assinatura visual: anel de sync ao redor do vídeo
 
-Uma borda fina em `--ember` ao redor do frame do vídeo, com pulso lento e ambiente enquanto a sala está `isPlaying`. A cada evento `LOAD_VIDEO`/`PLAY`/`PAUSE`/`SEEK` recebido de qualquer participante (seção 2), o anel dá um flash breve — um eco visual real do broadcast, não um efeito decorativo solto.
-
-Quando `source === "GENERIC_IFRAME"` (seção 7), o anel fica estático/apagado em vez de pulsar — reforça visualmente, sem precisar de texto, que aquela sala não tem sync de play/pause real. Um elemento, dois estados, comunicando um fato técnico verdadeiro do sistema — não decoração.
+Sem cor pra diferenciar estado, o anel usa três tratamentos estruturais (`components/room/SyncRing.tsx`): borda sólida em `--line` (idle/pausado), borda sólida em `--outline-strong` (branca) com pulso lento (`isPlaying`), e borda **tracejada** em `--line` quando `source === "GENERIC_IFRAME"` (seção 7) — o tracejado é o único jeito de comunicar "essa sala não tem sync de play/pause real" sem depender de matiz. A cada evento `LOAD_VIDEO`/`PLAY`/`PAUSE`/`SEEK` recebido de qualquer participante (seção 2), o anel dá um flash breve em branco — um eco visual real do broadcast, não um efeito decorativo solto.
 
 ### Layout
 
@@ -304,6 +319,6 @@ Mobile — coluna única, vídeo sempre primeiro; chat/presence colapsam abaixo 
 ### Piso de qualidade (não negociável, independe de tema)
 
 - Contraste `--ink` sobre `--bg-void` e `--bg-surface` dentro de AA pra texto de corpo.
-- Todo elemento interativo tem estado de foco visível (`outline` em `--ember`), inclusive em navegação por teclado.
+- Todo elemento interativo tem estado de foco visível (anel duplo em `--outline-strong`), inclusive em navegação por teclado.
 - `prefers-reduced-motion` desliga o pulso do anel de sync e qualquer transição não-essencial — vira só o flash instantâneo de estado, sem animação contínua.
 - Alvos de toque em mobile ≥ 44px (chat, botões de mute/entrar na sala) — sala é usada por 2 pessoas, muitas vezes em celular deitado no sofá, não em mesa com mouse.

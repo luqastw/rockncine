@@ -1,4 +1,14 @@
-export type VideoSourceKind = "YOUTUBE" | "VIMEO" | "GENERIC_IFRAME";
+export type VideoSourceKind = "YOUTUBE" | "VIMEO" | "GENERIC_IFRAME" | "DIRECT_MEDIA";
+
+const DIRECT_MEDIA_RE = /\.(mp4|webm|m3u8)(\?|$)/i;
+const HLS_RE = /\.m3u8(\?|$)/i;
+
+// sniff de extensão só — sem HEAD/Content-Type (consistente com a regra de não
+// fazer proxy/scraping de terceiro). URL assinada sem extensão visível cai no
+// fallback GENERIC_IFRAME — limitação conhecida, ver SPEC.md seção 7.
+export function isHlsUrl(url: string): boolean {
+  return HLS_RE.test(url);
+}
 
 export type ResolvedVideo = {
   source: VideoSourceKind;
@@ -98,6 +108,10 @@ export async function resolveVideoUrl(rawUrl: string): Promise<ResolvedVideo | n
   const youtubeId = parseYouTubeId(url);
   if (youtubeId) {
     return { source: "YOUTUBE", embedUrl: youtubeId, sourceUrl: normalized };
+  }
+
+  if (DIRECT_MEDIA_RE.test(url.pathname)) {
+    return { source: "DIRECT_MEDIA", embedUrl: normalized, sourceUrl: normalized };
   }
 
   const vimeoIdFromUrl = parseVimeoIdFromUrl(url);

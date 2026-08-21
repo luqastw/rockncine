@@ -22,6 +22,7 @@ enum VideoSource {
   YOUTUBE
   VIMEO
   GENERIC_IFRAME
+  DIRECT_MEDIA
 }
 
 model Room {

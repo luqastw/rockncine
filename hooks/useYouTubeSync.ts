@@ -4,11 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@liveblocks/react";
 import { loadYouTubeIframeApi } from "@/lib/youtube-iframe";
 import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
+import type { PlaybackController } from "@/hooks/playerController";
 
 const DRIFT_THRESHOLD_S = 1.5;
 const CHECK_INTERVAL_MS = 3000;
 const SEEK_WHILE_PAUSED_THRESHOLD_S = 2;
 const REMOTE_APPLY_COOLDOWN_MS = 400;
+const TIME_POLL_MS = 400; // YT API não emite timeupdate — só leitura pra UI do scrubber
 
 function youtubeErrorMessage(code: YT.PlayerError): string {
   switch (code) {
@@ -47,6 +49,13 @@ export function useYouTubeSync({
   const [error, setError] = useState<string | null>(null);
   const isApplyingRemoteRef = useRef(false);
   const loadedVideoIdRef = useRef<string | null>(null);
+
+  // estado local só pra UI da barra de controles — não participa do sync
+  const [isPlayingLocal, setIsPlayingLocal] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolumeLocal] = useState(1);
+  const [isMutedLocal, setIsMutedLocal] = useState(false);
 
   const applyRemote = useCallback((fn: () => void) => {
     isApplyingRemoteRef.current = true;
@@ -92,11 +101,14 @@ export function useYouTubeSync({
         videoId,
         width: "100%",
         height: "100%",
-        playerVars: { autoplay: 0, playsinline: 1, rel: 0 },
+        playerVars: { autoplay: 0, playsinline: 1, rel: 0, controls: 0, disablekb: 1 },
         events: {
           onReady: () => {
             loadedVideoIdRef.current = videoId;
             setIsReady(true);
+            setDuration(playerRef.current!.getDuration());
+            setVolumeLocal(playerRef.current!.getVolume() / 100);
+            setIsMutedLocal(playerRef.current!.isMuted());
 
             // late join: aplica o snapshot atual do storage em vez de esperar broadcast
             const snapshot = playerStorageRef.current;
@@ -109,12 +121,16 @@ export function useYouTubeSync({
                 if (snapshot.isPlaying) playerRef.current!.playVideo();
                 else playerRef.current!.pauseVideo();
               });
+              setIsPlayingLocal(snapshot.isPlaying);
             }
           },
           onError: (e) => {
             setError(youtubeErrorMessage(e.data));
           },
           onStateChange: (e) => {
+            if (e.data === window.YT.PlayerState.PLAYING) setIsPlayingLocal(true);
+            else if (e.data === window.YT.PlayerState.PAUSED) setIsPlayingLocal(false);
+
             if (isApplyingRemoteRef.current) return;
             const player = playerRef.current;
             if (!player) return;
@@ -177,14 +193,33 @@ export function useYouTubeSync({
       if (event.type === "PLAY") {
         player.seekTo(event.time, true);
         player.playVideo();
+        setIsPlayingLocal(true);
       } else if (event.type === "PAUSE") {
         player.seekTo(event.time, true);
         player.pauseVideo();
+        setIsPlayingLocal(false);
       } else if (event.type === "SEEK") {
         player.seekTo(event.time, true);
       }
     });
   });
+
+  // polling leve só pra UI (scrubber/tempo) — API do YouTube não emite
+  // evento de progresso, diferente do Vimeo/<video> nativo.
+  useEffect(() => {
+    if (!isReady) return;
+    const interval = window.setInterval(() => {
+      const player = playerRef.current;
+      if (!player) return;
+      try {
+        setCurrentTime(player.getCurrentTime());
+        setDuration(player.getDuration());
+      } catch {
+        // player pode estar num estado transitório entre troca de vídeo
+      }
+    }, TIME_POLL_MS);
+    return () => window.clearInterval(interval);
+  }, [isReady]);
 
   // drift correction (seguidores) + detecção de seek-enquanto-pausado (quem controla)
   useEffect(() => {
@@ -228,5 +263,72 @@ export function useYouTubeSync({
     return () => window.clearInterval(interval);
   }, [isReady, userId, commitPlayer, broadcast, applyRemote]);
 
-  return { isReady, error };
+  // controles imperativos — chamados pela nossa própria barra (chrome nativo
+  // do YouTube fica escondido via controls:0/disablekb:1). Os listeners acima
+  // (onStateChange) já cuidam de commit+broadcast quando o estado muda de
+  // fato; aqui só disparamos a ação no player, exceto seek(), que precisa de
+  // broadcast explícito próprio — a API do YouTube não emite evento de seek.
+  const play = useCallback(() => playerRef.current?.playVideo(), []);
+  const pause = useCallback(() => playerRef.current?.pauseVideo(), []);
+  const togglePlay = useCallback(() => {
+    if (isPlayingLocal) playerRef.current?.pauseVideo();
+    else playerRef.current?.playVideo();
+  }, [isPlayingLocal]);
+
+  const seek = useCallback(
+    (seconds: number) => {
+      const player = playerRef.current;
+      if (!player) return;
+      player.seekTo(seconds, true);
+      setCurrentTime(seconds);
+      const evt: PlayerEvent = { type: "SEEK", time: seconds, actorId: userId, ts: Date.now() };
+      commitPlayer({
+        isPlaying: player.getPlayerState() === window.YT.PlayerState.PLAYING,
+        currentTime: seconds,
+        updatedAt: evt.ts,
+        lastActorId: userId,
+      });
+      broadcast(evt);
+    },
+    [userId, commitPlayer, broadcast],
+  );
+
+  const setVolume = useCallback((v: number) => {
+    playerRef.current?.setVolume(Math.round(v * 100));
+    setVolumeLocal(v);
+    if (v > 0) {
+      playerRef.current?.unMute();
+      setIsMutedLocal(false);
+    }
+  }, []);
+
+  const toggleMute = useCallback(() => {
+    const player = playerRef.current;
+    if (!player) return;
+    if (isMutedLocal) {
+      player.unMute();
+      setIsMutedLocal(false);
+    } else {
+      player.mute();
+      setIsMutedLocal(true);
+    }
+  }, [isMutedLocal]);
+
+  const controller: PlaybackController = {
+    isReady,
+    isPlaying: isPlayingLocal,
+    currentTime,
+    duration,
+    volume,
+    isMuted: isMutedLocal,
+    error,
+    play,
+    pause,
+    togglePlay,
+    seek,
+    setVolume,
+    toggleMute,
+  };
+
+  return { isReady, error, controller };
 }

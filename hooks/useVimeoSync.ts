@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@liveblocks/react";
 import Player from "@vimeo/player";
 import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
+import type { PlaybackController } from "@/hooks/playerController";
 
 const DRIFT_THRESHOLD_S = 1.5;
 const CHECK_INTERVAL_MS = 3000;
@@ -29,6 +30,13 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
   const [error, setError] = useState<string | null>(null);
   const isApplyingRemoteRef = useRef(false);
   const loadedVideoIdRef = useRef<string | null>(null);
+
+  // estado local só pra UI da barra de controles — não participa do sync
+  const [isPlayingLocal, setIsPlayingLocal] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolumeLocal] = useState(1);
+  const [isMutedLocal, setIsMutedLocal] = useState(false);
 
   // API do Vimeo é baseada em Promise — o cooldown termina quando a promise
   // resolve, não num timeout fixo (evita reabrir a janela cedo demais).
@@ -80,7 +88,7 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const player = new Player(container, { id: videoId });
+    const player = new Player(container, { id: videoId, controls: false });
     playerRef.current = player;
 
     player.on("error", (data) => {
@@ -91,6 +99,9 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
       if (cancelled) return;
       loadedVideoIdRef.current = videoId;
       setIsReady(true);
+      player.getDuration().then(setDuration);
+      player.getVolume().then(setVolumeLocal);
+      player.getMuted().then(setIsMutedLocal);
 
       const snapshot = playerStorageRef.current;
       if (snapshot) {
@@ -102,10 +113,17 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
           if (snapshot.isPlaying) await player.play();
           else await player.pause();
         });
+        setIsPlayingLocal(snapshot.isPlaying);
       }
     });
 
+    player.on("timeupdate", (data: { seconds: number; duration: number }) => {
+      setCurrentTime(data.seconds);
+      if (data.duration) setDuration(data.duration);
+    });
+
     player.on("play", (data) => {
+      setIsPlayingLocal(true);
       if (isApplyingRemoteRef.current) return;
       const evt: PlayerEvent = { type: "PLAY", time: data.seconds, actorId: userId, ts: Date.now() };
       commitPlayer({ isPlaying: true, currentTime: data.seconds, updatedAt: evt.ts, lastActorId: userId });
@@ -113,6 +131,7 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
     });
 
     player.on("pause", (data) => {
+      setIsPlayingLocal(false);
       if (isApplyingRemoteRef.current) return;
       const evt: PlayerEvent = { type: "PAUSE", time: data.seconds, actorId: userId, ts: Date.now() };
       commitPlayer({ isPlaying: false, currentTime: data.seconds, updatedAt: evt.ts, lastActorId: userId });
@@ -156,14 +175,17 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
       applyRemote(async () => {
         await player.setCurrentTime(event.time);
         await player.play();
+        setIsPlayingLocal(true);
       });
     } else if (event.type === "PAUSE") {
       applyRemote(async () => {
         await player.setCurrentTime(event.time);
         await player.pause();
+        setIsPlayingLocal(false);
       });
     } else if (event.type === "SEEK") {
       applyRemote(() => player.setCurrentTime(event.time));
+      setCurrentTime(event.time);
     }
   });
 
@@ -190,5 +212,73 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
     return () => window.clearInterval(interval);
   }, [isReady, userId, applyRemote]);
 
-  return { isReady, error };
+  // controles imperativos — chamados pela nossa própria barra (chrome nativo
+  // do Vimeo fica escondido via controls:false). Os listeners 'play'/'pause'
+  // já cuidam de commit+broadcast; seek() aqui dispara commit+broadcast
+  // explícito porque um seek isolado durante playback não passa por
+  // 'play'/'pause' — só o evento 'seeked', que já é tratado por remoto acima,
+  // não por ação local (esse listener só reage a eventos vindos de fora).
+  const play = useCallback(() => {
+    playerRef.current?.play();
+  }, []);
+  const pause = useCallback(() => {
+    playerRef.current?.pause();
+  }, []);
+  const togglePlay = useCallback(() => {
+    if (isPlayingLocal) playerRef.current?.pause();
+    else playerRef.current?.play();
+  }, [isPlayingLocal]);
+
+  const seek = useCallback(
+    (seconds: number) => {
+      const player = playerRef.current;
+      if (!player) return;
+      player.setCurrentTime(seconds);
+      setCurrentTime(seconds);
+      const evt: PlayerEvent = { type: "SEEK", time: seconds, actorId: userId, ts: Date.now() };
+      commitPlayer({
+        isPlaying: isPlayingLocal,
+        currentTime: seconds,
+        updatedAt: evt.ts,
+        lastActorId: userId,
+      });
+      broadcast(evt);
+    },
+    [userId, commitPlayer, broadcast, isPlayingLocal],
+  );
+
+  const setVolume = useCallback((v: number) => {
+    playerRef.current?.setVolume(v);
+    setVolumeLocal(v);
+    if (v > 0) {
+      playerRef.current?.setMuted(false);
+      setIsMutedLocal(false);
+    }
+  }, []);
+
+  const toggleMute = useCallback(() => {
+    const player = playerRef.current;
+    if (!player) return;
+    const next = !isMutedLocal;
+    player.setMuted(next);
+    setIsMutedLocal(next);
+  }, [isMutedLocal]);
+
+  const controller: PlaybackController = {
+    isReady,
+    isPlaying: isPlayingLocal,
+    currentTime,
+    duration,
+    volume,
+    isMuted: isMutedLocal,
+    error,
+    play,
+    pause,
+    togglePlay,
+    seek,
+    setVolume,
+    toggleMute,
+  };
+
+  return { isReady, error, controller };
 }

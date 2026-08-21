@@ -28,7 +28,7 @@ export function Chat({ userId, userName }: { userId: string; userName: string })
         <button
           type="button"
           onClick={() => updateMyPresence({ isMuted: !myPresence.isMuted })}
-          className="min-h-11 rounded-md border border-[var(--line)] px-3 text-xs text-[var(--ink-muted)] hover:border-[var(--ember)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--ember)]"
+          className="min-h-11 rounded-md border border-[var(--line)] px-3 text-xs text-[var(--ink-muted)] hover:border-[var(--ink)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
           aria-pressed={myPresence.isMuted}
         >
           {myPresence.isMuted ? "mutado" : "mutar"}
@@ -69,11 +69,11 @@ export function Chat({ userId, userName }: { userId: string; userName: string })
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="mensagem"
-          className="min-h-11 min-w-0 flex-1 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--ember)]"
+          className="min-h-11 min-w-0 flex-1 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
         />
         <button
           type="submit"
-          className="min-h-11 shrink-0 rounded-md bg-[var(--ember)] px-4 text-sm font-medium text-[var(--bg-void)] focus:outline-none focus:ring-2 focus:ring-[var(--ember)]"
+          className="min-h-11 shrink-0 rounded-md bg-[var(--invert-bg)] px-4 text-sm font-medium text-[var(--invert-fg)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
         >
           enviar
         </button>

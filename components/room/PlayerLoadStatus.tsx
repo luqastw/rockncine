@@ -32,10 +32,10 @@ export function PlayerLoadStatus({
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-black/60 px-4 text-center text-sm text-[var(--ink-muted)]">
       {message ? (
-        <div className="flex flex-col items-center gap-2">
-          <span>{message}</span>
+        <div className="flex flex-col items-center gap-2 rounded-md border-2 border-[var(--ink)] bg-[var(--bg-void)] px-4 py-3">
+          <span className="font-semibold text-[var(--ink)]">{message}</span>
           {!error && (
-            <span className="text-xs">
+            <span className="text-xs text-[var(--ink-muted)]">
               se você usa bloqueador de anúncios/rastreamento, tente liberar este site.
             </span>
           )}
@@ -44,7 +44,7 @@ export function PlayerLoadStatus({
               href={sourceUrl}
               target="_blank"
               rel="noreferrer noopener"
-              className="text-[var(--ember)] hover:underline"
+              className="text-[var(--ink)] underline"
             >
               abrir o link original
             </a>

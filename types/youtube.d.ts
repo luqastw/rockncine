@@ -50,8 +50,14 @@ declare global {
       pauseVideo(): void;
       seekTo(seconds: number, allowSeekAhead: boolean): void;
       getCurrentTime(): number;
+      getDuration(): number;
       getPlayerState(): PlayerState;
       loadVideoById(videoId: string): void;
+      setVolume(volume: number): void;
+      getVolume(): number;
+      mute(): void;
+      unMute(): void;
+      isMuted(): boolean;
       destroy(): void;
     }
   }

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { RoomEvent } from "@/liveblocks.config";
+import type { VideoSourceKind } from "@/lib/video-source";
 
 export function SyncRing({
   isPlaying,
@@ -10,7 +11,7 @@ export function SyncRing({
   children,
 }: {
   isPlaying: boolean;
-  source: "YOUTUBE" | "VIMEO" | "GENERIC_IFRAME" | null;
+  source: VideoSourceKind | null;
   lastEvent: RoomEvent | null;
   children: ReactNode;
 }) {
@@ -19,11 +20,18 @@ export function SyncRing({
   // de flash — sem precisar de useEffect+setState pra "ecoar" o broadcast.
   const flashKey = lastEvent ? `${lastEvent.type}-${lastEvent.ts}` : "idle";
 
+  // sem cor pra diferenciar estado: idle é borda sólida --line, "ao vivo" é
+  // borda sólida --outline-strong (branca) com pulso, sync-limitado é
+  // tracejada — três estados, três tratamentos estruturais, zero matiz.
   return (
     <div
       className={[
         "relative rounded-lg border-2 transition-shadow duration-300",
-        syncLimited ? "border-[var(--line)]" : "border-[var(--ember)]",
+        syncLimited
+          ? "border-dashed border-[var(--line)]"
+          : isPlaying
+            ? "border-[var(--outline-strong)]"
+            : "border-[var(--line)]",
         !syncLimited && isPlaying ? "animate-sync-pulse" : "",
       ]
         .filter(Boolean)

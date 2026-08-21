@@ -15,7 +15,7 @@ export default function RegisterPage() {
         já tem conta?{" "}
         <Link
           href="/login"
-          className="rounded-sm text-[var(--ember)] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--ember)]"
+          className="rounded-sm text-[var(--ink)] underline focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
         >
           entrar
         </Link>

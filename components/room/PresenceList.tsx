@@ -9,7 +9,7 @@ export function PresenceList({ myName }: { myName: string }) {
   return (
     <ul className="flex flex-col gap-2">
       <li className="flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--ink)]">
-        <span className="h-2 w-2 rounded-full bg-[var(--ember)]" aria-hidden />
+        <span className="h-2 w-2 rounded-full bg-[var(--ink)]" aria-hidden />
         {myPresence.name || myName}
         <span className="text-xs text-[var(--ink-muted)]">(você)</span>
         {myPresence.isMuted && <span aria-label="mutado">🔇</span>}
@@ -19,7 +19,7 @@ export function PresenceList({ myName }: { myName: string }) {
           key={other.connectionId}
           className="flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--ink)]"
         >
-          <span className="h-2 w-2 rounded-full bg-[var(--ember)]" aria-hidden />
+          <span className="h-2 w-2 rounded-full bg-[var(--ink)]" aria-hidden />
           {other.presence.name}
           {other.presence.isMuted && <span aria-label="mutado">🔇</span>}
         </li>

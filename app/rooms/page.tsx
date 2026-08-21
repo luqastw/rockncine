@@ -21,7 +21,7 @@ export default async function RoomsPage() {
         <form action="/rooms/new" method="POST">
           <button
             type="submit"
-            className="min-h-11 w-full rounded-md bg-[var(--ember)] px-4 py-2 text-sm font-medium text-[var(--bg-void)] focus:outline-none focus:ring-2 focus:ring-[var(--ember)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+            className="min-h-11 w-full rounded-md bg-[var(--invert-bg)] px-4 py-2 text-sm font-medium text-[var(--invert-fg)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
           >
             nova sala
           </button>
