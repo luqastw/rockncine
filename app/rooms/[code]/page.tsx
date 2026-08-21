@@ -13,8 +13,9 @@ export default async function RoomPage({
   const { code } = await params;
   const session = await getServerSession(authOptions);
 
+  // ver layout.tsx: igualdade exata em vez de ILIKE (achado 1, seção 11 do SPEC.md).
   const room = await prisma.room.findFirst({
-    where: { code: { equals: code, mode: "insensitive" } },
+    where: { OR: [{ code }, { code: code.toUpperCase() }] },
     select: {
       code: true,
       name: true,

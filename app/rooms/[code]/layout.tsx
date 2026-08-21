@@ -14,11 +14,13 @@ export default async function RoomLayout({
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) redirect("/login");
 
-  // busca insensível a caixa: o código curto (lib/room-code.ts) existe pra ser
-  // ditado, e quem digita raramente acerta a caixa. O `Room.code` do banco
-  // continua sendo a forma canônica usada no link e no id do Liveblocks.
+  // busca tolerante a caixa sem ILIKE: `mode: "insensitive"` vira ILIKE no
+  // Postgres e trata `%`/`_` no segmento de URL cru como curinga — bypass de
+  // autorização real (achado 1, seção 11 do SPEC.md). Duas comparações de
+  // igualdade exata cobrem o mesmo caso de uso (código curto ditado em
+  // qualquer caixa, `lib/room-code.ts`, e cuid antigo digitado como está).
   const room = await prisma.room.findFirst({
-    where: { code: { equals: code, mode: "insensitive" } },
+    where: { OR: [{ code }, { code: code.toUpperCase() }] },
   });
   if (!room) notFound();
 

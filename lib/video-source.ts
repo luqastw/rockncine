@@ -115,6 +115,21 @@ function parseUrl(rawUrl: string): URL | null {
   }
 }
 
+// Guarda de protocolo pra qualquer ponto que renderize `embedUrl`/`sourceUrl`
+// como `iframe src`/`a href` (GenericIframe.tsx, RoomExperience.tsx). Fecha o
+// vetor de injeção mesmo quando o valor chega tainted por um caminho que não
+// passou por `resolveVideoUrl` — ex. escrita direta no storage do Liveblocks
+// por um client malicioso, que nenhuma validação de rota server-side alcança
+// (achado 5, seção 11 do SPEC.md).
+export function isSafeEmbedUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export async function resolveVideoUrl(rawUrl: string): Promise<ResolvedVideo | null> {
   const url = parseUrl(rawUrl);
   if (!url) return null;

@@ -11,6 +11,7 @@ import { useRoomJoinAnnouncement } from "@/hooks/useRoomJoinAnnouncement";
 import { SyncRing } from "@/components/room/SyncRing";
 import { PresenceList } from "@/components/room/PresenceList";
 import { GenericIframe } from "@/components/room/GenericIframe";
+import { isSafeEmbedUrl } from "@/lib/video-source";
 import { NativeVideoPlayer } from "@/components/room/NativeVideoPlayer";
 import { PlayerLoadStatus } from "@/components/room/PlayerLoadStatus";
 import { PlayerShell } from "@/components/room/player/PlayerShell";
@@ -205,6 +206,13 @@ export function RoomExperience({
       ) {
         return;
       }
+
+      // Sem essa guarda, `preventDefault()` sequestrava Ctrl+F/Cmd+F (busca
+      // do browser), Ctrl+K (barra de endereço em alguns browsers) e Cmd+M
+      // (minimizar no macOS) — nenhum atalho deste handler tem combinação
+      // com modificador, então qualquer tecla com Ctrl/Cmd/Alt não é dele
+      // (achado 5, seção 11 do SPEC.md).
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       if (e.key === "Escape" && cssFullscreen) {
         setCssFullscreen(false);
@@ -404,7 +412,7 @@ export function RoomExperience({
             </SyncRing>
           </div>
 
-          {hasGeneric && (
+          {hasGeneric && isSafeEmbedUrl(video!.embedUrl!) && (
             <p className="text-xs text-[var(--ink-muted)]">
               se a prévia não aparecer, o site pode não permitir incorporação —{" "}
               <a

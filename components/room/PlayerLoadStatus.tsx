@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isSafeEmbedUrl } from "@/lib/video-source";
 
 const TIMEOUT_MS = 8000;
 
@@ -25,7 +26,12 @@ export function PlayerLoadStatus({
     return () => window.clearTimeout(t);
   }, [loading, error]);
 
-  if (!loading) return null;
+  // `!loading` sozinho escondia o overlay assim que o backend reportava
+  // `isReady` — erro emitido depois disso (autoplay bloqueado, embed
+  // restrito reportado só após `onReady`) nunca chegava a aparecer (achado 3,
+  // seção 11 do SPEC.md). `error` mantém o overlay vivo independente do
+  // estado de `loading`.
+  if (!loading && !error) return null;
 
   const message = error ?? (timedOut ? "não foi possível carregar o player." : null);
 
@@ -39,7 +45,7 @@ export function PlayerLoadStatus({
               se você usa bloqueador de anúncios/rastreamento, tente liberar este site.
             </span>
           )}
-          {sourceUrl && (
+          {sourceUrl && isSafeEmbedUrl(sourceUrl) && (
             <a
               href={sourceUrl}
               target="_blank"
