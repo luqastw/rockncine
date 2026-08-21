@@ -3,8 +3,9 @@
 import { PlusIcon, TheaterIcon } from "@/components/room/player/icons";
 
 // Par de botões renderizado sempre com a mesma ordem/estilo — só a âncora
-// muda conforme o estado de tela cheia (ver SPEC.md seção 9.2). Nunca
-// renderizado duas vezes ao mesmo tempo.
+// muda conforme o estado de tela cheia (ver SPEC.md seção 9.2). Pode existir
+// em duas instâncias no DOM ao mesmo tempo (aside sempre montado desde a
+// seção 9.6), mas nunca mais de uma visível — a outra fica `hidden`.
 export function RoomActions({
   onLoadVideo,
   onToggleTheater,
