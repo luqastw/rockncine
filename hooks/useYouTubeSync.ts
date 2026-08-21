@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@liveblocks/react";
 import { loadYouTubeIframeApi } from "@/lib/youtube-iframe";
-import type { PlayerEvent, RoomEvent, RoomStorage } from "@/liveblocks.config";
+import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
 
 const DRIFT_THRESHOLD_S = 1.5;
 const CHECK_INTERVAL_MS = 3000;
@@ -13,11 +13,9 @@ const REMOTE_APPLY_COOLDOWN_MS = 400;
 export function useYouTubeSync({
   containerId,
   userId,
-  onRemoteEvent,
 }: {
   containerId: string;
   userId: string;
-  onRemoteEvent?: (event: RoomEvent) => void;
 }) {
   const video = useStorage((root) => root.video);
   const playerStorage = useStorage((root) => root.player);
@@ -131,7 +129,6 @@ export function useYouTubeSync({
 
   // aplica PLAY/PAUSE/SEEK vindos de outros participantes
   useEventListener(({ event }) => {
-    onRemoteEvent?.(event);
     if (event.type === "CHAT_MESSAGE" || event.type === "LOAD_VIDEO") return;
     if (event.actorId === userId) return; // origem já aplicou localmente
 

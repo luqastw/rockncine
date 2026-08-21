@@ -1,0 +1,170 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@liveblocks/react";
+import Player from "@vimeo/player";
+import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
+
+const DRIFT_THRESHOLD_S = 1.5;
+const CHECK_INTERVAL_MS = 3000;
+
+// Vimeo Player SDK expõe eventos nativos de play/pause/seeked — ao contrário do
+// YouTube, não precisa de heurística de BUFFERING pra detectar seek manual.
+export function useVimeoSync({ containerId, userId }: { containerId: string; userId: string }) {
+  const video = useStorage((root) => root.video);
+  const playerStorage = useStorage((root) => root.player);
+  const playerStorageRef = useRef(playerStorage);
+  useEffect(() => {
+    playerStorageRef.current = playerStorage;
+  }, [playerStorage]);
+
+  const broadcast = useBroadcastEvent();
+
+  const commitPlayer = useMutation(({ storage }, player: RoomStorage["player"]) => {
+    storage.update({ player });
+  }, []);
+
+  const playerRef = useRef<Player | null>(null);
+  const [isReady, setIsReady] = useState(false);
+  const isApplyingRemoteRef = useRef(false);
+  const loadedVideoIdRef = useRef<string | null>(null);
+
+  // API do Vimeo é baseada em Promise — o cooldown termina quando a promise
+  // resolve, não num timeout fixo (evita reabrir a janela cedo demais).
+  const applyRemote = useCallback((fn: () => unknown) => {
+    isApplyingRemoteRef.current = true;
+    const result = fn();
+    const clear = () => {
+      isApplyingRemoteRef.current = false;
+    };
+    if (result && typeof (result as Promise<unknown>).then === "function") {
+      (result as Promise<unknown>).then(clear, clear);
+    } else {
+      window.setTimeout(clear, 400);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!video?.embedUrl || video.source !== "VIMEO") return;
+    const videoId = video.embedUrl;
+    let cancelled = false;
+
+    if (playerRef.current) {
+      if (loadedVideoIdRef.current !== videoId) {
+        applyRemote(() => playerRef.current!.loadVideo(videoId));
+        loadedVideoIdRef.current = videoId;
+      }
+      return;
+    }
+
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const player = new Player(container, { id: videoId });
+    playerRef.current = player;
+
+    player.ready().then(() => {
+      if (cancelled) return;
+      loadedVideoIdRef.current = videoId;
+      setIsReady(true);
+
+      const snapshot = playerStorageRef.current;
+      if (snapshot) {
+        const expected =
+          snapshot.currentTime +
+          (snapshot.isPlaying ? (Date.now() - snapshot.updatedAt) / 1000 : 0);
+        applyRemote(async () => {
+          await player.setCurrentTime(Math.max(expected, 0));
+          if (snapshot.isPlaying) await player.play();
+          else await player.pause();
+        });
+      }
+    });
+
+    player.on("play", (data) => {
+      if (isApplyingRemoteRef.current) return;
+      const evt: PlayerEvent = { type: "PLAY", time: data.seconds, actorId: userId, ts: Date.now() };
+      commitPlayer({ isPlaying: true, currentTime: data.seconds, updatedAt: evt.ts, lastActorId: userId });
+      broadcast(evt);
+    });
+
+    player.on("pause", (data) => {
+      if (isApplyingRemoteRef.current) return;
+      const evt: PlayerEvent = { type: "PAUSE", time: data.seconds, actorId: userId, ts: Date.now() };
+      commitPlayer({ isPlaying: false, currentTime: data.seconds, updatedAt: evt.ts, lastActorId: userId });
+      broadcast(evt);
+    });
+
+    player.on("seeked", (data) => {
+      if (isApplyingRemoteRef.current) return;
+      const base = playerStorageRef.current;
+      const evt: PlayerEvent = { type: "SEEK", time: data.seconds, actorId: userId, ts: Date.now() };
+      commitPlayer({
+        isPlaying: base?.isPlaying ?? false,
+        currentTime: data.seconds,
+        updatedAt: evt.ts,
+        lastActorId: userId,
+      });
+      broadcast(evt);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [video?.embedUrl, video?.source, containerId, userId]);
+
+  useEffect(() => {
+    return () => {
+      playerRef.current?.destroy();
+      playerRef.current = null;
+    };
+  }, []);
+
+  useEventListener(({ event }) => {
+    if (event.type === "CHAT_MESSAGE" || event.type === "LOAD_VIDEO") return;
+    if (event.actorId === userId) return;
+
+    const player = playerRef.current;
+    if (!player) return;
+
+    if (event.type === "PLAY") {
+      applyRemote(async () => {
+        await player.setCurrentTime(event.time);
+        await player.play();
+      });
+    } else if (event.type === "PAUSE") {
+      applyRemote(async () => {
+        await player.setCurrentTime(event.time);
+        await player.pause();
+      });
+    } else if (event.type === "SEEK") {
+      applyRemote(() => player.setCurrentTime(event.time));
+    }
+  });
+
+  // drift correction — só pra quem não é o dono da última ação (o dono já
+  // está coberto pelos eventos nativos play/pause/seeked acima).
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      const player = playerRef.current;
+      const snapshot = playerStorageRef.current;
+      if (!player || !snapshot || !isReady) return;
+      if (isApplyingRemoteRef.current) return;
+      if (snapshot.lastActorId === userId) return;
+
+      player.getCurrentTime().then((localTime) => {
+        const expected =
+          snapshot.currentTime +
+          (snapshot.isPlaying ? (Date.now() - snapshot.updatedAt) / 1000 : 0);
+        if (Math.abs(localTime - expected) > DRIFT_THRESHOLD_S) {
+          applyRemote(() => player.setCurrentTime(Math.max(expected, 0)));
+        }
+      });
+    }, CHECK_INTERVAL_MS);
+
+    return () => window.clearInterval(interval);
+  }, [isReady, userId, applyRemote]);
+
+  return { isReady };
+}

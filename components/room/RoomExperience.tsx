@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
 import { useStorage } from "@liveblocks/react";
 import { useYouTubeSync } from "@/hooks/useYouTubeSync";
+import { useVimeoSync } from "@/hooks/useVimeoSync";
+import { useLastRoomEvent } from "@/hooks/useLastRoomEvent";
 import { SyncRing } from "@/components/room/SyncRing";
 import { PresenceList } from "@/components/room/PresenceList";
 import { LoadVideoForm } from "@/components/room/LoadVideoForm";
+import { GenericIframe } from "@/components/room/GenericIframe";
 import { Chat } from "@/components/room/Chat";
-import type { RoomEvent } from "@/liveblocks.config";
 
 const YT_CONTAINER_ID = "yt-player";
+const VIMEO_CONTAINER_ID = "vimeo-player";
 
 export function RoomExperience({
   roomCode,
@@ -22,22 +24,22 @@ export function RoomExperience({
 }) {
   const video = useStorage((root) => root.video);
   const player = useStorage((root) => root.player);
-  const [lastEvent, setLastEvent] = useState<RoomEvent | null>(null);
+  const lastEvent = useLastRoomEvent();
 
-  useYouTubeSync({
-    containerId: YT_CONTAINER_ID,
-    userId,
-    onRemoteEvent: setLastEvent,
-  });
+  useYouTubeSync({ containerId: YT_CONTAINER_ID, userId });
+  useVimeoSync({ containerId: VIMEO_CONTAINER_ID, userId });
 
-  const hasVideo = video?.source === "YOUTUBE" && !!video.embedUrl;
+  const hasYouTube = video?.source === "YOUTUBE" && !!video.embedUrl;
+  const hasVimeo = video?.source === "VIMEO" && !!video.embedUrl;
+  const hasGeneric = video?.source === "GENERIC_IFRAME" && !!video.embedUrl;
+  const syncLimited = video?.source === "GENERIC_IFRAME";
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-6 px-6 py-8 lg:flex-row">
       <div className="flex flex-1 flex-col gap-4">
         <header className="flex items-baseline justify-between">
           <h1 className="font-mono text-sm text-[var(--ink-muted)]">sala {roomCode}</h1>
-          {player && (
+          {player && !syncLimited && (
             <span className="font-mono text-xs text-[var(--ink-muted)]">
               {player.isPlaying ? "● ao vivo · sincronizado" : "○ pausado"}
             </span>
@@ -50,11 +52,15 @@ export function RoomExperience({
           lastEvent={lastEvent}
         >
           <div className="aspect-video w-full overflow-hidden rounded-md bg-black">
-            {hasVideo ? (
+            {hasYouTube ? (
               <div id={YT_CONTAINER_ID} className="h-full w-full" />
+            ) : hasVimeo ? (
+              <div id={VIMEO_CONTAINER_ID} className="h-full w-full" />
+            ) : hasGeneric ? (
+              <GenericIframe src={video.embedUrl!} />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-sm text-[var(--ink-muted)]">
-                cole um link do YouTube abaixo pra começar
+                cole um link (YouTube, Vimeo, Google Drive ou outro) abaixo pra começar
               </div>
             )}
           </div>

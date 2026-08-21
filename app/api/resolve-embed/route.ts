@@ -15,12 +15,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "url obrigatória." }, { status: 400 });
   }
 
-  const resolved = resolveVideoUrl(url);
+  const resolved = await resolveVideoUrl(url);
   if (!resolved) {
-    return NextResponse.json(
-      { error: "link não reconhecido. Nesta fase só links do YouTube funcionam." },
-      { status: 422 },
-    );
+    return NextResponse.json({ error: "link inválido." }, { status: 422 });
   }
 
   return NextResponse.json(resolved);
