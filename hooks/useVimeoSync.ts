@@ -26,6 +26,7 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
 
   const playerRef = useRef<Player | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const isApplyingRemoteRef = useRef(false);
   const loadedVideoIdRef = useRef<string | null>(null);
 
@@ -51,7 +52,7 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
 
     if (playerRef.current) {
       if (loadedVideoIdRef.current !== videoId) {
-        applyRemote(() => playerRef.current!.loadVideo(videoId));
+        applyRemote(() => playerRef.current!.loadVideo(videoId).then(() => setError(null)));
         loadedVideoIdRef.current = videoId;
       }
       return;
@@ -62,6 +63,10 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
 
     const player = new Player(container, { id: videoId });
     playerRef.current = player;
+
+    player.on("error", (data) => {
+      setError(data.message || "não foi possível reproduzir este vídeo.");
+    });
 
     player.ready().then(() => {
       if (cancelled) return;
@@ -166,5 +171,5 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
     return () => window.clearInterval(interval);
   }, [isReady, userId, applyRemote]);
 
-  return { isReady };
+  return { isReady, error };
 }

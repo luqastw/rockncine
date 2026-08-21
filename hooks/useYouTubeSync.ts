@@ -10,6 +10,18 @@ const CHECK_INTERVAL_MS = 3000;
 const SEEK_WHILE_PAUSED_THRESHOLD_S = 2;
 const REMOTE_APPLY_COOLDOWN_MS = 400;
 
+function youtubeErrorMessage(code: YT.PlayerError): string {
+  switch (code) {
+    case 100:
+      return "vídeo não encontrado ou privado.";
+    case 101:
+    case 150:
+      return "o dono deste vídeo não permite reprodução embutida (comum em vídeos com restrição de idade).";
+    default:
+      return "não foi possível reproduzir este vídeo.";
+  }
+}
+
 export function useYouTubeSync({
   containerId,
   userId,
@@ -32,6 +44,7 @@ export function useYouTubeSync({
 
   const playerRef = useRef<YT.Player | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const isApplyingRemoteRef = useRef(false);
   const loadedVideoIdRef = useRef<string | null>(null);
 
@@ -51,6 +64,7 @@ export function useYouTubeSync({
 
     loadYouTubeIframeApi().then(() => {
       if (cancelled) return;
+      setError(null); // reinicia o estado de erro pra cada novo vídeo carregado
 
       if (playerRef.current) {
         if (loadedVideoIdRef.current !== videoId) {
@@ -82,6 +96,9 @@ export function useYouTubeSync({
                 else playerRef.current!.pauseVideo();
               });
             }
+          },
+          onError: (e) => {
+            setError(youtubeErrorMessage(e.data));
           },
           onStateChange: (e) => {
             if (isApplyingRemoteRef.current) return;
@@ -190,5 +207,5 @@ export function useYouTubeSync({
     return () => window.clearInterval(interval);
   }, [isReady, userId, commitPlayer, broadcast, applyRemote]);
 
-  return { isReady };
+  return { isReady, error };
 }

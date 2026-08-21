@@ -21,9 +21,19 @@ declare global {
       target: Player;
     }
 
+    // 2: parâmetro inválido, 5: erro de HTML5, 100: não encontrado/privado,
+    // 101/150: dono desabilitou embed nesse player (inclui vídeos restritos)
+    type PlayerError = 2 | 5 | 100 | 101 | 150;
+
+    interface OnErrorEvent {
+      data: PlayerError;
+      target: Player;
+    }
+
     interface PlayerEvents {
       onReady?: (event: { target: Player }) => void;
       onStateChange?: (event: OnStateChangeEvent) => void;
+      onError?: (event: OnErrorEvent) => void;
     }
 
     interface PlayerOptions {

@@ -35,8 +35,14 @@ export function RoomExperience({
   const lastEvent = useLastRoomEvent();
   const status = useStatus();
 
-  const { isReady: youtubeReady } = useYouTubeSync({ containerId: YT_CONTAINER_ID, userId });
-  const { isReady: vimeoReady } = useVimeoSync({ containerId: VIMEO_CONTAINER_ID, userId });
+  const { isReady: youtubeReady, error: youtubeError } = useYouTubeSync({
+    containerId: YT_CONTAINER_ID,
+    userId,
+  });
+  const { isReady: vimeoReady, error: vimeoError } = useVimeoSync({
+    containerId: VIMEO_CONTAINER_ID,
+    userId,
+  });
 
   const hasYouTube = video?.source === "YOUTUBE" && !!video.embedUrl;
   const hasVimeo = video?.source === "VIMEO" && !!video.embedUrl;
@@ -44,6 +50,7 @@ export function RoomExperience({
   const syncLimited = video?.source === "GENERIC_IFRAME";
 
   const playerLoading = (hasYouTube && !youtubeReady) || (hasVimeo && !vimeoReady);
+  const playerError = hasYouTube ? youtubeError : hasVimeo ? vimeoError : null;
   const connectionLabel = CONNECTION_LABEL[status];
 
   return (
@@ -83,6 +90,7 @@ export function RoomExperience({
             <PlayerLoadStatus
               key={video?.embedUrl}
               loading={playerLoading}
+              error={playerError}
               sourceUrl={video?.sourceUrl ?? null}
             />
           </div>
