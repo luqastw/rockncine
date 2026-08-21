@@ -181,6 +181,7 @@ export function RoomExperience({
                 controller={activeController}
                 isFullscreen={isFullscreen}
                 onToggleFullscreen={toggleFullscreen}
+                showFullscreenOnly={hasGeneric}
               >
                 {hasYouTube ? (
                   <>

@@ -725,3 +725,24 @@ condicional virou só troca de classe (`showAside ? "flex" : "hidden"`, `display
 (`lg:basis-[80%]`/`w-full` na coluna do vídeo, que já era baseado na mesma variável `showAside`)
 continua reagindo normalmente. Efeito colateral positivo: o rascunho não-enviado no campo de
 mensagem também deixa de ser perdido nesses toggles, pelo mesmo motivo.
+
+### 9.7 Tela cheia (e modo teatro) inacessíveis em `GENERIC_IFRAME`
+
+A 9.2 assumia que o botão de tela cheia sempre existe — mas ele mora dentro de `PlayerControls`
+(`components/room/player/PlayerControls.tsx:105-116`), renderizado por `PlayerShell` só quando há um
+`PlaybackController` (`{controller && (...)}`). `GENERIC_IFRAME` (iframe arbitrário de terceiro, ex.
+um agregador de streaming) nunca tem controller — não existe API pra tocar/pausar/buscar um iframe
+opaco de outro domínio — então `activeController` é `null` e a barra inteira, botão de tela cheia
+incluso, simplesmente não renderizava. Resultado: pra essa fonte não havia nenhum caminho até tela
+cheia e, por consequência, nenhum até o modo teatro/botão de teatro da 9.2 — o "abrir chat" que o
+usuário via em sites de referência (print, watch-party de terceiro) não tinha equivalente aqui.
+
+Correção: `PlayerShell` ganhou a prop `showFullscreenOnly?: boolean` (passada como `hasGeneric` por
+`RoomExperience.tsx`). Com `controller === null` e `showFullscreenOnly === true`, a barra inferior
+(mesmo container com auto-hide de `PlayerShell.tsx`) renderiza só o botão de tela cheia — sem
+play/pause/scrubber/volume, que não fazem sentido pra um iframe que a sala não controla. Uma vez em
+tela cheia, o resto já funciona sem mudança nenhuma: o botão de teatro (`RoomActions`, 9.2) é
+agnóstico de fonte de vídeo — não depende de `PlaybackController`, só do estado `isFullscreen`/
+`isTheater` de `RoomExperience`. Vídeo sem fonte nenhuma carregada (placeholder "use carregar
+vídeo...") continua sem botão de tela cheia — `showFullscreenOnly` só é `true` quando `hasGeneric`,
+não pra ausência de vídeo.
