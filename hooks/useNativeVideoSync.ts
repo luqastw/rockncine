@@ -5,7 +5,7 @@ import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@l
 import Hls from "hls.js";
 import { isHlsUrl } from "@/lib/video-source";
 import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
-import type { PlaybackController } from "@/hooks/playerController";
+import { expectedPlaybackTime, type PlaybackController } from "@/hooks/playerController";
 
 const DRIFT_THRESHOLD_S = 1.5;
 const CHECK_INTERVAL_MS = 3000;
@@ -145,15 +145,13 @@ export function useNativeVideoSync({
 
       const snapshot = playerStorageRef.current;
       if (snapshot) {
-        const expected =
-          snapshot.currentTime +
-          (snapshot.isPlaying ? (Date.now() - snapshot.updatedAt) / 1000 : 0);
+        const { time, shouldPlay } = expectedPlaybackTime(snapshot, videoEl.duration || 0);
         applyRemote(() => {
-          videoEl.currentTime = Math.max(expected, 0);
-          if (snapshot.isPlaying) videoEl.play().catch(() => {});
+          videoEl.currentTime = time;
+          if (shouldPlay) videoEl.play().catch(() => {});
           else videoEl.pause();
         });
-        setIsPlayingLocal(snapshot.isPlaying);
+        setIsPlayingLocal(shouldPlay);
       }
     };
 
@@ -276,12 +274,11 @@ export function useNativeVideoSync({
       if (isApplyingRemoteRef.current) return;
       if (snapshot.lastActorId === userId) return;
 
-      const expected =
-        snapshot.currentTime +
-        (snapshot.isPlaying ? (Date.now() - snapshot.updatedAt) / 1000 : 0);
+      const { time: expected, stale } = expectedPlaybackTime(snapshot, videoEl.duration || 0);
+      if (stale) return; // snapshot abandonado: não arrasta ninguém
       if (Math.abs(videoEl.currentTime - expected) > DRIFT_THRESHOLD_S) {
         applyRemote(() => {
-          videoEl.currentTime = Math.max(expected, 0);
+          videoEl.currentTime = expected;
         });
       }
     }, CHECK_INTERVAL_MS);

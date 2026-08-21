@@ -144,7 +144,13 @@ export function LoadVideoModal({
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="cole um link (YouTube, Vimeo, mídia direta, outro)"
-            className="min-h-11 w-full min-w-0 rounded-md border border-[var(--line)] bg-[var(--bg-void)] px-3 py-2 text-sm text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-surface)]"
+            aria-label="link do vídeo"
+            type="text"
+            inputMode="url"
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            className="min-h-11 w-full min-w-0 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-void)] px-3 py-2 text-sm text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-surface)]"
           />
           <button
             type="submit"
@@ -154,7 +160,10 @@ export function LoadVideoModal({
             {loading ? "carregando..." : "carregar"}
           </button>
           {error && (
-            <p className="rounded-md border-2 border-[var(--ink)] px-3 py-2 text-sm font-semibold text-[var(--ink)]">
+            <p
+              role="alert"
+              className="rounded-md border-2 border-[var(--ink)] px-3 py-2 text-sm font-semibold text-[var(--ink)]"
+            >
               {error}
             </p>
           )}

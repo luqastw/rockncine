@@ -6,6 +6,9 @@ export function GenericIframe({ src }: { src: string }) {
   return (
     <iframe
       src={src}
+      // iframe sem nome acessível é anunciado como "frame" sem contexto
+      // nenhum por leitor de tela (achado 18 da auditoria).
+      title="player de vídeo incorporado"
       className="h-full w-full"
       sandbox="allow-scripts allow-same-origin allow-presentation"
       allow="autoplay; fullscreen; picture-in-picture"

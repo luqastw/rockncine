@@ -51,9 +51,10 @@ export function RegisterForm() {
         nome (opcional)
         <input
           type="text"
+          autoComplete="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="min-h-11 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-3 py-2 text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+          className="min-h-11 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
         />
       </label>
       <label className="flex flex-col gap-1 text-sm text-[var(--ink-muted)]">
@@ -61,9 +62,10 @@ export function RegisterForm() {
         <input
           type="email"
           required
+          autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="min-h-11 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-3 py-2 text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+          className="min-h-11 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
         />
       </label>
       <label className="flex flex-col gap-1 text-sm text-[var(--ink-muted)]">
@@ -72,13 +74,17 @@ export function RegisterForm() {
           type="password"
           required
           minLength={8}
+          autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="min-h-11 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-3 py-2 text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+          className="min-h-11 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
         />
       </label>
       {error && (
-        <p className="rounded-md border-2 border-[var(--ink)] px-3 py-2 text-sm font-semibold text-[var(--ink)]">
+        <p
+          role="alert"
+          className="rounded-md border-2 border-[var(--ink)] px-3 py-2 text-sm font-semibold text-[var(--ink)]"
+        >
           {error}
         </p>
       )}

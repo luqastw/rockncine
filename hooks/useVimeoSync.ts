@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@liveblocks/react";
 import Player from "@vimeo/player";
 import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
-import type { PlaybackController } from "@/hooks/playerController";
+import { expectedPlaybackTime, type PlaybackController } from "@/hooks/playerController";
 
 const DRIFT_THRESHOLD_S = 1.5;
 const CHECK_INTERVAL_MS = 3000;
@@ -135,15 +135,15 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
 
       const snapshot = playerStorageRef.current;
       if (snapshot) {
-        const expected =
-          snapshot.currentTime +
-          (snapshot.isPlaying ? (Date.now() - snapshot.updatedAt) / 1000 : 0);
-        applyRemote(async () => {
-          await player.setCurrentTime(Math.max(expected, 0));
-          if (snapshot.isPlaying) await player.play();
-          else await player.pause();
+        player.getDuration().then((total) => {
+          const { time, shouldPlay } = expectedPlaybackTime(snapshot, total || 0);
+          applyRemote(async () => {
+            await player.setCurrentTime(time);
+            if (shouldPlay) await player.play();
+            else await player.pause();
+          });
+          setIsPlayingLocal(shouldPlay);
         });
-        setIsPlayingLocal(snapshot.isPlaying);
       }
     });
 
@@ -230,17 +230,16 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
       if (snapshot.lastActorId === userId) return;
 
       player.getCurrentTime().then((localTime) => {
-        const expected =
-          snapshot.currentTime +
-          (snapshot.isPlaying ? (Date.now() - snapshot.updatedAt) / 1000 : 0);
+        const { time: expected, stale } = expectedPlaybackTime(snapshot, duration);
+        if (stale) return; // snapshot abandonado: não arrasta ninguém
         if (Math.abs(localTime - expected) > DRIFT_THRESHOLD_S) {
-          applyRemote(() => player.setCurrentTime(Math.max(expected, 0)));
+          applyRemote(() => player.setCurrentTime(expected));
         }
       });
     }, CHECK_INTERVAL_MS);
 
     return () => window.clearInterval(interval);
-  }, [isReady, userId, applyRemote]);
+  }, [isReady, userId, duration, applyRemote]);
 
   // controles imperativos — chamados pela nossa própria barra (chrome nativo
   // do Vimeo fica escondido via controls:false). Os listeners 'play'/'pause'

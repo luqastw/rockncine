@@ -27,6 +27,12 @@
 
   --background: var(--bg-void);
   --foreground: var(--ink);
+
+  /* cor do ring-offset do anel de foco: normalmente o fundo da página, mas
+     painéis que trocam de superfície (o aside em modo teatro) redeclaram esta
+     variável no próprio elemento pra o halo do foco não ficar escuro sobre
+     --bg-surface (achado 24 da auditoria). */
+  --focus-offset: var(--bg-void);
 }
 
 @theme inline {
@@ -61,6 +67,47 @@ body {
 
 .animate-sync-flash {
   animation: sync-flash 350ms ease-out;
+}
+
+/* Scrubber/volume do player. O `accent-color` do Chrome pinta a parte
+   reproduzida com --ink (quase branco) e o resto com o track claro padrão —
+   sobre fundo escuro os dois ficam indistinguíveis e a barra deixa de
+   comunicar progresso (achado 13 da auditoria). Aqui o track fica
+   transparente e quem desenha o progresso é o background do próprio input,
+   via linear-gradient inline com a porcentagem tocada. */
+.range-mono {
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 9999px;
+}
+
+.range-mono::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+.range-mono::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+.range-mono::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 9999px;
+  background: var(--ink);
+}
+
+.range-mono::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--ink);
 }
 
 @media (prefers-reduced-motion: reduce) {

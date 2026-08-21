@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -12,8 +13,8 @@ export default async function RoomPage({
   const { code } = await params;
   const session = await getServerSession(authOptions);
 
-  const room = await prisma.room.findUniqueOrThrow({
-    where: { code },
+  const room = await prisma.room.findFirst({
+    where: { code: { equals: code, mode: "insensitive" } },
     select: {
       code: true,
       name: true,
@@ -22,6 +23,7 @@ export default async function RoomPage({
       videoSourceUrl: true,
     },
   });
+  if (!room) notFound();
 
   const userId = session!.user!.id;
   const userName = session!.user!.name ?? session!.user!.email ?? "sem nome";

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@liveblocks/react";
 import { loadYouTubeIframeApi } from "@/lib/youtube-iframe";
 import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
-import type { PlaybackController } from "@/hooks/playerController";
+import { expectedPlaybackTime, type PlaybackController } from "@/hooks/playerController";
 
 const DRIFT_THRESHOLD_S = 1.5;
 const CHECK_INTERVAL_MS = 3000;
@@ -113,15 +113,16 @@ export function useYouTubeSync({
             // late join: aplica o snapshot atual do storage em vez de esperar broadcast
             const snapshot = playerStorageRef.current;
             if (snapshot) {
-              const expected =
-                snapshot.currentTime +
-                (snapshot.isPlaying ? (Date.now() - snapshot.updatedAt) / 1000 : 0);
+              const { time, shouldPlay } = expectedPlaybackTime(
+                snapshot,
+                playerRef.current!.getDuration(),
+              );
               applyRemote(() => {
-                playerRef.current!.seekTo(Math.max(expected, 0), true);
-                if (snapshot.isPlaying) playerRef.current!.playVideo();
+                playerRef.current!.seekTo(time, true);
+                if (shouldPlay) playerRef.current!.playVideo();
                 else playerRef.current!.pauseVideo();
               });
-              setIsPlayingLocal(snapshot.isPlaying);
+              setIsPlayingLocal(shouldPlay);
             }
           },
           onError: (e) => {
@@ -236,9 +237,8 @@ export function useYouTubeSync({
         return;
       }
 
-      const expected =
-        snapshot.currentTime +
-        (snapshot.isPlaying ? (Date.now() - snapshot.updatedAt) / 1000 : 0);
+      const { time: expected, stale } = expectedPlaybackTime(snapshot, duration);
+      if (stale) return; // snapshot abandonado: não arrasta ninguém (ver playerController)
       const diff = localTime - expected;
       const isOwner = snapshot.lastActorId === userId;
       const isPaused = player.getPlayerState() === window.YT.PlayerState.PAUSED;
@@ -256,12 +256,12 @@ export function useYouTubeSync({
       }
 
       if (!isOwner && Math.abs(diff) > DRIFT_THRESHOLD_S) {
-        applyRemote(() => player.seekTo(Math.max(expected, 0), true));
+        applyRemote(() => player.seekTo(expected, true));
       }
     }, CHECK_INTERVAL_MS);
 
     return () => window.clearInterval(interval);
-  }, [isReady, userId, commitPlayer, broadcast, applyRemote]);
+  }, [isReady, userId, duration, commitPlayer, broadcast, applyRemote]);
 
   // controles imperativos — chamados pela nossa própria barra (chrome nativo
   // do YouTube fica escondido via controls:0/disablekb:1). Os listeners acima

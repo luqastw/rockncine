@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useStatus, useStorage } from "@liveblocks/react";
+import Link from "next/link";
+import { useMutation, useOthers, useStatus, useStorage } from "@liveblocks/react";
 import { useYouTubeSync } from "@/hooks/useYouTubeSync";
 import { useVimeoSync } from "@/hooks/useVimeoSync";
 import { useNativeVideoSync } from "@/hooks/useNativeVideoSync";
@@ -15,12 +16,23 @@ import { PlayerLoadStatus } from "@/components/room/PlayerLoadStatus";
 import { PlayerShell } from "@/components/room/player/PlayerShell";
 import { LoadVideoModal } from "@/components/room/player/LoadVideoModal";
 import { RoomActions } from "@/components/room/RoomActions";
+import { InviteCode } from "@/components/room/InviteCode";
+import { LastActionNote } from "@/components/room/LastActionNote";
 import { PlayIcon } from "@/components/room/player/icons";
 import { Chat } from "@/components/room/Chat";
 
 // respiro em tela cheia — declarado uma vez, usado no padding do stage e no
 // cálculo de altura máxima da caixa do vídeo (SPEC.md seção 9.1).
 const FULLSCREEN_PAD = "clamp(0.75rem,2.5vmin,2.5rem)";
+
+// altura ocupada pelo chrome da página fora de tela cheia (header + pt-8 +
+// gap + pb-14 reservado pro badge do Liveblocks). Entra no teto de altura da
+// caixa do vídeo: sem isso o vídeo era dimensionado só pela largura e, num
+// laptop 16:9, a barra de controles caía abaixo da dobra (achado 4).
+// PAGE_CHROME = 10rem — está escrito literalmente na classe do vídeo abaixo
+// (o Tailwind não extrai classe montada por interpolação); mudar um exige
+// mudar o outro.
+const SEEK_STEP_S = 5;
 
 const YT_CONTAINER_ID = "yt-player";
 const VIMEO_CONTAINER_ID = "vimeo-player";
@@ -46,6 +58,7 @@ export function RoomExperience({
 }) {
   const video = useStorage((root) => root.video);
   const player = useStorage((root) => root.player);
+  const othersCount = useOthers((others) => others.length);
   const lastEvent = useLastRoomEvent();
   const status = useStatus();
   const [loadModalOpen, setLoadModalOpen] = useState(false);
@@ -55,13 +68,19 @@ export function RoomExperience({
   useRoomJoinAnnouncement(userName);
 
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [nativeFullscreen, setNativeFullscreen] = useState(false);
+  // fallback pra onde a Fullscreen API não existe pra elemento comum (Safari
+  // no iPhone): o botão simplesmente não fazia nada, sem retorno nenhum
+  // (achado 19). Aqui o stage vira `fixed inset-0` e o modo teatro continua
+  // funcionando igual.
+  const [cssFullscreen, setCssFullscreen] = useState(false);
+  const isFullscreen = nativeFullscreen || cssFullscreen;
   const [isTheater, setIsTheater] = useState(false);
 
   useEffect(() => {
     const onFsChange = () => {
       const active = document.fullscreenElement === stageRef.current;
-      setIsFullscreen(active);
+      setNativeFullscreen(active);
       if (!active) setIsTheater(false); // não fica "grudado" ao reentrar depois
     };
     document.addEventListener("fullscreenchange", onFsChange);
@@ -85,10 +104,19 @@ export function RoomExperience({
   }, []);
 
   const toggleFullscreen = useCallback(() => {
+    const stage = stageRef.current;
+    const nativeSupported = !!document.fullscreenEnabled && !!stage?.requestFullscreen;
+    if (!nativeSupported) {
+      setCssFullscreen((v) => {
+        if (v) setIsTheater(false);
+        return !v;
+      });
+      return;
+    }
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     } else {
-      stageRef.current?.requestFullscreen?.().catch(() => {});
+      stage?.requestFullscreen?.().catch(() => {});
     }
   }, []);
 
@@ -97,6 +125,8 @@ export function RoomExperience({
   // inline mudaria de referência a cada um desses renders e re-disparava o
   // efeito de teclado do modal enquanto ele está aberto (SPEC.md seção 10).
   const closeLoadModal = useCallback(() => setLoadModalOpen(false), []);
+  const openLoadModal = useCallback(() => setLoadModalOpen(true), []);
+  const toggleTheater = useCallback(() => setIsTheater((v) => !v), []);
 
   const { isReady: youtubeReady, error: youtubeError, controller: youtubeController } =
     useYouTubeSync({ containerId: YT_CONTAINER_ID, userId });
@@ -106,6 +136,11 @@ export function RoomExperience({
   });
   const { isReady: nativeReady, error: nativeError, controller: nativeController } =
     useNativeVideoSync({ containerId: NATIVE_CONTAINER_ID, userId });
+
+  // `useStorage` devolve null enquanto o storage do Liveblocks não sincroniza.
+  // Sem distinguir isso de "sala sem vídeo", o primeiro frame de uma sala que
+  // JÁ tem vídeo era o estado vazio dizendo pra carregar um (achado 11).
+  const storageLoading = video === null || player === null;
 
   const hasYouTube = video?.source === "YOUTUBE" && !!video.embedUrl;
   const hasVimeo = video?.source === "VIMEO" && !!video.embedUrl;
@@ -131,34 +166,127 @@ export function RoomExperience({
         : null;
   const connectionLabel = CONNECTION_LABEL[status];
 
+  // "ao vivo" e o anel de sync saem do player local, não do snapshot cru do
+  // storage: ninguém escreve `isPlaying:false` ao fechar a aba, então uma sala
+  // reaberta exibia "AO VIVO" com o anel pulsando sobre um vídeo parado
+  // (achado 10). Com sync funcionando, estado local == estado da sala.
+  const isPlayingNow = activeController?.isPlaying ?? false;
+
+  // se eu for o último a sair, devolvo o storage pra "pausado". Só quando não
+  // há mais ninguém: zerar o flag com gente assistindo faria a correção de
+  // drift dos outros puxar o vídeo de volta.
+  const releasePlayingFlag = useMutation(({ storage }) => {
+    const snapshot = storage.get("player");
+    if (!snapshot?.isPlaying) return;
+    storage.update({ player: { ...snapshot, isPlaying: false, updatedAt: Date.now() } });
+  }, []);
+
+  useEffect(() => {
+    const onHide = () => {
+      if (othersCount > 0) return;
+      releasePlayingFlag();
+    };
+    window.addEventListener("pagehide", onHide);
+    return () => window.removeEventListener("pagehide", onHide);
+  }, [othersCount, releasePlayingFlag]);
+
+  // Atalhos de teclado do player (achado 27). Ignorados enquanto o foco está
+  // num campo de texto ou o modal está aberto — senão espaço/f/m viravam
+  // caracteres perdidos no meio de uma mensagem do chat.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        loadModalOpen ||
+        (target &&
+          (target.tagName === "INPUT" ||
+            target.tagName === "TEXTAREA" ||
+            target.isContentEditable))
+      ) {
+        return;
+      }
+
+      if (e.key === "Escape" && cssFullscreen) {
+        setCssFullscreen(false);
+        setIsTheater(false);
+        return;
+      }
+      if (e.key === "f") {
+        e.preventDefault();
+        toggleFullscreen();
+        return;
+      }
+      if (!activeController?.isReady) return;
+
+      if (e.key === " " || e.key === "k") {
+        e.preventDefault();
+        activeController.togglePlay();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        activeController.seek(Math.max(activeController.currentTime - SEEK_STEP_S, 0));
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        activeController.seek(activeController.currentTime + SEEK_STEP_S);
+      } else if (e.key === "m") {
+        e.preventDefault();
+        activeController.toggleMute();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeController, cssFullscreen, loadModalOpen, toggleFullscreen]);
+
   // YouTube não tem parâmetro oficial pra desligar a tela de sugestões que
   // desenha por cima ao pausar (ver SPEC.md seção 7) — cobrimos com um
-  // overlay nosso, que também funciona como afford ncia extra de play.
+  // overlay nosso, que também funciona como affordance extra de play.
   const showYoutubePauseOverlay = hasYouTube && youtubeController.isReady && !youtubeController.isPlaying;
 
   const showAside = !isFullscreen || isTheater;
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[1800px] flex-col gap-6 px-6 py-8">
-      <header className="flex items-baseline justify-between">
-        <div className="flex items-center gap-2">
-          <h1 className="text-sm text-[var(--ink)]">{roomName || "sala sem nome"}</h1>
-          <span className="font-mono text-xs text-[var(--ink-muted)]">{roomCode}</span>
-          {player?.isPlaying && !syncLimited && (
-            <span className="rounded-full bg-[var(--invert-bg)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--invert-fg)]">
+    // abaixo de lg a página vira uma casca de altura fixa: sem isso o vídeo
+    // (mesmo com teto de 45dvh) somado ao chat estoura o viewport, o chat
+    // nunca chega a ter altura própria pra rolar e é a PÁGINA que rola,
+    // levando o player pra fora da tela (achado 9). Em lg+ nada muda.
+    <main className="mx-auto flex min-h-dvh w-full max-w-[1800px] flex-col gap-6 px-6 pt-8 pb-14 max-lg:h-dvh max-lg:overflow-hidden max-lg:pb-4">
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link
+            href="/rooms"
+            aria-label="voltar para suas salas"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--ink-muted)] text-sm text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+          >
+            ←
+          </Link>
+          <div className="flex min-w-0 flex-col">
+            {/* papel "Display" da seção 8 do SPEC: título da sala é momento
+                grande, não texto de corpo (achado 20). */}
+            <h1 className="truncate text-lg font-semibold tracking-tight text-[var(--ink)]">
+              {roomName || "sala sem nome"}
+            </h1>
+            <LastActionNote lastEvent={lastEvent} userId={userId} />
+          </div>
+          {isPlayingNow && !syncLimited && (
+            <span className="shrink-0 rounded-full bg-[var(--invert-bg)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--invert-fg)]">
               ao vivo
             </span>
           )}
         </div>
-        {connectionLabel ? (
-          <span className="font-mono text-xs text-[var(--ink-muted)]">{connectionLabel}</span>
-        ) : (
-          player &&
-          !syncLimited &&
-          !player.isPlaying && (
-            <span className="font-mono text-xs text-[var(--ink-muted)]">○ pausado</span>
-          )
-        )}
+        <div className="flex items-center gap-4">
+          {connectionLabel ? (
+            <span role="status" aria-live="polite" className="font-mono text-xs text-[var(--ink-muted)]">
+              {connectionLabel}
+            </span>
+          ) : (
+            !syncLimited &&
+            !isPlayingNow && (
+              <span role="status" aria-live="polite" className="font-mono text-xs text-[var(--ink-muted)]">
+                ○ pausado
+              </span>
+            )
+          )}
+          <InviteCode code={roomCode} />
+        </div>
       </header>
 
       <div
@@ -168,37 +296,48 @@ export function RoomExperience({
             ? ({ padding: FULLSCREEN_PAD, "--fs-pad": FULLSCREEN_PAD } as React.CSSProperties)
             : undefined
         }
-        className={`relative flex flex-1 flex-col gap-6 bg-[var(--bg-void)] lg:flex-row ${
+        className={`relative flex min-h-0 flex-1 flex-col gap-6 bg-[var(--bg-void)] lg:flex-row ${
           isFullscreen ? "h-dvh w-dvw overflow-hidden" : ""
-        }`}
+        } ${cssFullscreen ? "fixed inset-0 z-50" : ""}`}
       >
         <div
           className={`relative flex flex-col gap-4 ${
             showAside ? "lg:basis-[80%]" : "w-full"
-          } ${isFullscreen ? "min-h-0 flex-1 justify-center" : ""}`}
+          } ${isFullscreen ? "min-h-0 flex-1 justify-center" : "max-lg:shrink-0"}`}
         >
           {isFullscreen && !isTheater && (
             <div className="absolute right-3 top-3 z-20 opacity-60 transition-opacity hover:opacity-100 focus-within:opacity-100">
               <RoomActions
-                onLoadVideo={() => setLoadModalOpen(true)}
-                onToggleTheater={() => setIsTheater((v) => !v)}
+                onLoadVideo={openLoadModal}
+                onToggleTheater={toggleTheater}
                 isTheater={isTheater}
                 showTheaterToggle
               />
             </div>
           )}
 
-          <SyncRing
-            isPlaying={player?.isPlaying ?? false}
-            source={video?.source ?? null}
-            lastEvent={lastEvent}
-            isFullscreen={isFullscreen}
+          {/* o teto de largura mora AQUI, em volta do SyncRing, e não na caixa
+              do vídeo: a moldura de sync precisa continuar colada no vídeo
+              quando o limite de altura entra em ação, senão a borda passa a
+              contornar a coluna inteira com faixas pretas dos dois lados.
+              Dois eixos, não só a largura: 38dvh no empilhado (mobile) pra
+              sobrar altura real pro chat, e o desconto do chrome da página
+              (10rem, ver PAGE_CHROME) no lado a lado — classe literal porque
+              o Tailwind não extrai string interpolada (achados 4 e 9). */}
+          <div
+            className={`w-full ${
+              isFullscreen
+                ? "mx-auto max-w-[min(100%,calc((100dvh-2*var(--fs-pad))*16/9))]"
+                : "mx-auto max-w-[min(100%,calc(38dvh*16/9))] lg:max-w-[min(100%,calc((100dvh-10rem)*16/9))]"
+            }`}
           >
-            <div
-              className={`relative aspect-video w-full overflow-hidden rounded-md bg-black ${
-                isFullscreen ? "mx-auto max-w-[min(100%,calc((100dvh-2*var(--fs-pad))*16/9))]" : ""
-              }`}
+            <SyncRing
+              isPlaying={isPlayingNow}
+              source={video?.source ?? null}
+              lastEvent={lastEvent}
+              isFullscreen={isFullscreen}
             >
+              <div className="relative aspect-video w-full overflow-hidden rounded-md bg-black">
               <PlayerShell
                 controller={activeController}
                 isFullscreen={isFullscreen}
@@ -213,7 +352,16 @@ export function RoomExperience({
                         type="button"
                         onClick={() => youtubeController.play()}
                         aria-label="tocar"
-                        className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--bg-void)] focus:outline-none"
+                        // z-20: acima da camada que captura ponteiro sobre o
+                        // iframe (z-10 em PlayerShell) e ABAIXO da barra de
+                        // controles (z-30) — antes era z-10 e cobria a barra
+                        // inteira sempre que o vídeo estava pausado, deixando
+                        // tela cheia/scrubber/volume inclicáveis (achado 2).
+                        // anel de foco: era `focus:outline-none` sem anel
+                        // nenhum, num alvo que ocupa a tela inteira do player
+                        // (achado 17). `ring-inset` porque o botão sangra até
+                        // a borda da caixa.
+                        className="absolute inset-0 z-20 flex items-center justify-center bg-[var(--bg-void)] focus:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-[var(--outline-strong)]"
                       >
                         <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--invert-bg)] text-[var(--invert-fg)]">
                           <PlayIcon className="h-7 w-7" />
@@ -227,6 +375,14 @@ export function RoomExperience({
                   <NativeVideoPlayer containerId={NATIVE_CONTAINER_ID} />
                 ) : hasGeneric ? (
                   <GenericIframe src={video.embedUrl!} />
+                ) : storageLoading ? (
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6">
+                    <span className="h-2 w-40 rounded-full bg-[var(--line)]" aria-hidden />
+                    <span className="h-2 w-24 rounded-full bg-[var(--line)]" aria-hidden />
+                    <span className="sr-only" role="status">
+                      carregando a sala
+                    </span>
+                  </div>
                 ) : (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-6 text-center">
                     <p className="text-xl font-semibold tracking-tight text-[var(--ink)]">
@@ -238,14 +394,15 @@ export function RoomExperience({
                   </div>
                 )}
               </PlayerShell>
-              <PlayerLoadStatus
-                key={`${video?.embedUrl}-${video?.loadedAt}`}
-                loading={playerLoading}
-                error={playerError}
-                sourceUrl={video?.sourceUrl ?? null}
-              />
-            </div>
-          </SyncRing>
+                <PlayerLoadStatus
+                  key={`${video?.embedUrl}-${video?.loadedAt}`}
+                  loading={playerLoading}
+                  error={playerError}
+                  sourceUrl={video?.sourceUrl ?? null}
+                />
+              </div>
+            </SyncRing>
+          </div>
 
           {hasGeneric && (
             <p className="text-xs text-[var(--ink-muted)]">
@@ -268,7 +425,12 @@ export function RoomExperience({
             cada toggle de fullscreen/teatro zerava as mensagens (bug real,
             ver SPEC.md seção 9.6). Visibilidade agora é só CSS (`hidden`). */}
         <aside
-          className={`w-full min-h-0 flex-col gap-6 lg:min-w-72 lg:basis-[20%] ${
+          style={
+            isFullscreen && isTheater
+              ? ({ "--focus-offset": "var(--bg-surface)" } as React.CSSProperties)
+              : undefined
+          }
+          className={`w-full min-h-0 flex-col gap-6 max-lg:flex-1 lg:min-w-72 lg:basis-[20%] ${
             showAside ? "flex" : "hidden"
           } ${
             isFullscreen && isTheater
@@ -282,8 +444,8 @@ export function RoomExperience({
                 presença
               </h2>
               <RoomActions
-                onLoadVideo={() => setLoadModalOpen(true)}
-                onToggleTheater={() => setIsTheater((v) => !v)}
+                onLoadVideo={openLoadModal}
+                onToggleTheater={toggleTheater}
                 isTheater={isTheater}
                 showTheaterToggle={isFullscreen}
               />

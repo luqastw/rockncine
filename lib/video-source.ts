@@ -94,13 +94,30 @@ async function resolveVimeo(rawUrl: string, idFromUrl: string): Promise<string> 
   }
 }
 
-export async function resolveVideoUrl(rawUrl: string): Promise<ResolvedVideo | null> {
-  let url: URL;
+// Colar da barra de endereço do Chrome ou de uma mensagem costuma vir sem
+// esquema ("youtu.be/xyz", "www.youtube.com/watch?v=xyz") — `new URL` rejeita
+// e o usuário recebia "link inválido." pra um link perfeitamente válido
+// (achado 5 da auditoria). Tenta https:// antes de desistir; qualquer coisa
+// que não vire URL nem assim continua sendo recusada.
+function parseUrl(rawUrl: string): URL | null {
   try {
-    url = new URL(rawUrl);
+    return new URL(rawUrl);
   } catch {
-    return null;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(rawUrl)) return null; // tinha esquema e mesmo assim falhou
+    try {
+      const guessed = new URL(`https://${rawUrl}`);
+      // sem ponto no host não é domínio, é texto solto ("filme legal") — sem
+      // isso qualquer palavra digitada viraria um iframe genérico quebrado.
+      return guessed.hostname.includes(".") ? guessed : null;
+    } catch {
+      return null;
+    }
   }
+}
+
+export async function resolveVideoUrl(rawUrl: string): Promise<ResolvedVideo | null> {
+  const url = parseUrl(rawUrl);
+  if (!url) return null;
   if (url.protocol !== "https:" && url.protocol !== "http:") return null;
 
   const normalized = url.toString();

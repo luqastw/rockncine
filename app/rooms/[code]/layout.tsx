@@ -14,7 +14,12 @@ export default async function RoomLayout({
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) redirect("/login");
 
-  const room = await prisma.room.findUnique({ where: { code } });
+  // busca insensível a caixa: o código curto (lib/room-code.ts) existe pra ser
+  // ditado, e quem digita raramente acerta a caixa. O `Room.code` do banco
+  // continua sendo a forma canônica usada no link e no id do Liveblocks.
+  const room = await prisma.room.findFirst({
+    where: { code: { equals: code, mode: "insensitive" } },
+  });
   if (!room) notFound();
 
   await prisma.roomMember.upsert({
