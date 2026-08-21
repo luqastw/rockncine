@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RockNCine
 
-## Getting Started
+Synchronized watch-party rooms. Paste a video link, share the room code, and everyone's player stays in sync. Live chat runs alongside.
 
-First, run the development server:
+Live at [rockncine.vercel.app](https://rockncine.vercel.app).
+
+## Features
+
+- **Rooms** — create a room, get a short 8-character code (no `0/O`, `1/I/L`, `U` — easy to read aloud), share the link or code
+- **Synchronized playback** — play, pause, and seek propagate to every participant in real time via Liveblocks, with drift correction against clock skew
+- **Multiple video sources** — YouTube and Vimeo (full sync via their player SDKs), direct media (`.mp4`/`.webm`/`.m3u8`, `.m3u8` via `hls.js`), Google Drive previews, and a generic iframe fallback for anything else (load-only, no sync — the source doesn't expose a control API)
+- **Live chat** — ephemeral, scoped to the room session, not persisted to the database
+- **Presence** — see who else is in the room in real time
+- **Custom player chrome** — native player controls are hidden in favor of a consistent overlay bar (play/pause, seek, volume, fullscreen)
+- **Theater mode** — in fullscreen, shrink the video to make room for chat and presence alongside it
+- **Auth** — email/password only, no OAuth
+
+## Stack
+
+| Component | Tool |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript, React 19 |
+| Database | PostgreSQL |
+| ORM | Prisma |
+| Auth | NextAuth (Credentials provider, JWT sessions) |
+| Real-time | Liveblocks (storage, broadcast events, presence) |
+| Styling | Tailwind CSS 4 |
+| Direct media playback | hls.js |
+| Vimeo playback | @vimeo/player |
+| Tests | Vitest |
+| Deployment | Vercel + Neon Postgres + Liveblocks |
+
+## Data model
+
+- `User` — email, password hash, name
+- `Room` — invite code, owner, last-loaded video (source/URL/embed URL, so reopening a room shows the last video even though Liveblocks storage is ephemeral between active sessions)
+- `RoomMember` — join table between users and rooms
+
+No `Message` model — chat is not persisted.
+
+## Running locally
+
+Requires Node.js, a PostgreSQL instance, and a [Liveblocks](https://liveblocks.io) project (free tier works).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/luqastw/rockncine.git
+cd rockncine
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Start a local Postgres if you don't have one:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+docker run --name rockncine-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:16-alpine
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy the env file and fill it in:
 
-## Learn More
+```bash
+cp .env.example .env
+```
 
-To learn more about Next.js, take a look at the following resources:
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `NEXTAUTH_SECRET` | random secret, e.g. `openssl rand -base64 32` |
+| `NEXTAUTH_URL` | `http://localhost:3000` in development |
+| `LIVEBLOCKS_SECRET_KEY` | from your Liveblocks project (server-side only, never exposed to the client) |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Apply migrations and start the dev server:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npx prisma migrate deploy
+npm run dev
+```
 
-## Deploy on Vercel
+The app runs at `http://localhost:3000`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Testing
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm test
+```
+
+Vitest, covering video source detection, room code generation, and the playback controller abstraction.
+
+## License
+
+MIT
