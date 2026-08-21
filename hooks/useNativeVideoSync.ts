@@ -79,8 +79,13 @@ export function useNativeVideoSync({
     videoElRef.current = videoEl;
 
     // loadedAt nas deps força este efeito a rodar de novo mesmo pra URL
-    // idêntica (retry) — sem isso, recarregar o mesmo link é no-op.
-    if (loadedUrlRef.current === url && videoEl.src) {
+    // idêntica (retry) — sem isso, recarregar o mesmo link é no-op. Mas esse
+    // atalho só é seguro quando o load anterior tinha dado certo: `src` fica
+    // truthy mesmo depois de um manifest HLS 404 ou de um mp4 que nunca
+    // carregou (achado 2 do code review), então sem checar `isReady && !error`
+    // o "tentar carregar de novo" clicava em play() num elemento sem fonte
+    // válida — mensagem de erro sumia, tela ficava preta, nada era rebuscado.
+    if (loadedUrlRef.current === url && videoEl.src && isReady && !error) {
       setError(null);
       videoEl.currentTime = 0;
       videoEl.play().catch(() => {});
@@ -130,6 +135,12 @@ export function useNativeVideoSync({
     return () => {
       cancelled = true;
     };
+    // `isReady`/`error` são lidos só pra decidir o atalho de retry acima, com
+    // o valor de antes deste load começar — de propósito fora das deps: se
+    // entrassem, o efeito rodaria de novo quando `isReady` vira `true` no
+    // load bem-sucedido, caindo no próprio atalho e reiniciando o vídeo do
+    // zero (currentTime = 0) logo depois de carregar normalmente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [video?.embedUrl, video?.source, video?.loadedAt, containerId]);
 
   // eventos nativos de <video> — play/pause/seeked/timeupdate/durationchange/error
@@ -157,6 +168,7 @@ export function useNativeVideoSync({
 
     const onPlay = () => {
       setIsPlayingLocal(true);
+      setError(null);
       if (isApplyingRemoteRef.current) return;
       const evt: PlayerEvent = {
         type: "PLAY",
@@ -286,14 +298,24 @@ export function useNativeVideoSync({
     return () => window.clearInterval(interval);
   }, [isReady, userId, applyRemote]);
 
+  // Rejeitar a promise de play() por `AbortError` é o comportamento normal
+  // quando outra chamada (pause()/mudar currentTime) interrompe um play()
+  // ainda pendente — acontece o tempo todo com sync remoto (PAUSE de outro
+  // participante, correção de drift a cada 3s) e não é falha de playback:
+  // reportar como erro real deixava o overlay preso pra sempre por cima de
+  // um vídeo que continuava tocando normalmente (achado 1 do code review,
+  // regressão da correção que fez o overlay parar de sumir sozinho).
+  const reportPlayFailure = useCallback((err: unknown) => {
+    if (err instanceof DOMException && err.name === "AbortError") return;
+    setError("não foi possível iniciar a reprodução. tente de novo.");
+  }, []);
+
   // play() pode ser rejeitado (política de autoplay do browser, mídia ainda
   // não pronta) — sem tratar isso o clique em play parece não fazer nada,
   // sem nenhum feedback (mesma classe de falha silenciosa da seção 7).
   const play = useCallback(() => {
-    videoElRef.current
-      ?.play()
-      .catch(() => setError("não foi possível iniciar a reprodução. tente de novo."));
-  }, []);
+    videoElRef.current?.play().catch(reportPlayFailure);
+  }, [reportPlayFailure]);
   const pause = useCallback(() => {
     videoElRef.current?.pause();
   }, []);
@@ -301,13 +323,11 @@ export function useNativeVideoSync({
     const videoEl = videoElRef.current;
     if (!videoEl) return;
     if (videoEl.paused) {
-      videoEl
-        .play()
-        .catch(() => setError("não foi possível iniciar a reprodução. tente de novo."));
+      videoEl.play().catch(reportPlayFailure);
     } else {
       videoEl.pause();
     }
-  }, []);
+  }, [reportPlayFailure]);
   const seek = useCallback((seconds: number) => {
     const videoEl = videoElRef.current;
     if (!videoEl) return;

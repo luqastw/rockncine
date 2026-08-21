@@ -245,8 +245,7 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
   // do Vimeo fica escondido via controls:false). Os listeners 'play'/'pause'
   // já cuidam de commit+broadcast; seek() aqui dispara commit+broadcast
   // explícito porque um seek isolado durante playback não passa por
-  // 'play'/'pause' — só o evento 'seeked', que já é tratado por remoto acima,
-  // não por ação local (esse listener só reage a eventos vindos de fora).
+  // 'play'/'pause'.
   const play = useCallback(() => {
     playerRef.current?.play();
   }, []);
@@ -262,7 +261,13 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
     (seconds: number) => {
       const player = playerRef.current;
       if (!player) return;
-      player.setCurrentTime(seconds);
+      // `setCurrentTime` envolto em `applyRemote`: sem isso o listener
+      // 'seeked' (acima) via `isApplyingRemoteRef.current === false` num seek
+      // que na verdade era local, e mandava um segundo commit+broadcast
+      // idêntico pra cada arraste do scrubber (achado 3 do code review —
+      // duplicava o evento pra todo participante e o flash do SyncRing
+      // piscava duas vezes).
+      applyRemote(() => player.setCurrentTime(seconds));
       setCurrentTime(seconds);
       const evt: PlayerEvent = { type: "SEEK", time: seconds, actorId: userId, ts: Date.now() };
       commitPlayer({
@@ -273,7 +278,7 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
       });
       broadcast(evt);
     },
-    [userId, commitPlayer, broadcast, isPlayingLocal],
+    [userId, commitPlayer, broadcast, isPlayingLocal, applyRemote],
   );
 
   const setVolume = useCallback((v: number) => {
