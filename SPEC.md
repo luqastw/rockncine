@@ -1178,3 +1178,158 @@ em dispositivo real de 390px — a verificação emulou as regras CSS numa janel
 mecânica de layout mas não o toque real nem a barra de endereço dinâmica de browser mobile. Fica
 como pendência explícita pra próxima rodada, junto com os itens 3, 4 e 6 da 9.3 (drift, cooldown e
 `overflow-hidden` na caixa do vídeo), que continuam sem medição e sem correção.
+
+---
+
+## 12. Code review — bypass de autorização, injeção de conteúdo e bugs funcionais
+
+Pedido do usuário: revisão de código completa do projeto (`code-reviewer`, não só o diff), depois
+do commit da seção 11. Duas rodadas — a segunda pra verificar se a primeira rodada de correções não
+introduziu regressão, e pra cobrir o que a primeira não pegou. Todos os achados foram corrigidos.
+
+### 12.1 Primeira rodada
+
+**1. Bypass de autorização real — CONFIRMADO, corrigido.** `app/rooms/[code]/layout.tsx` e
+`page.tsx` buscavam a sala com `mode: "insensitive"` do Prisma — vira `ILIKE` no Postgres, e o
+segmento de URL cru virava padrão: `GET /rooms/%` casava uma sala arbitrária, criava
+`RoomMember` pra quem nunca soube o código dela, e `/api/liveblocks-auth` concedia acesso completo
+(chat, presença, controle do player) a partir dessa membership recém-criada. Confirmado com query
+real contra o Postgres de dev antes da correção. Corrigido pra duas igualdades exatas —
+`OR: [{ code }, { code: code.toUpperCase() }] ` — cobrindo o mesmo caso de uso (código de 8
+caracteres ditado em qualquer caixa, cuid antigo digitado como está) sem interpretar `%`/`_` como
+curinga. Reverificado depois da correção: `%`, `A%` e `_` não casam mais nenhuma sala.
+
+**2. Injeção de `embedUrl` — CONFIRMADO, corrigido em dois pontos.** `PATCH /rooms/[code]/video`
+aceitava `source`/`embedUrl` do client sem validar (`resolveVideoUrl`, a única função que exige
+protocolo `http(s)`, era importada só como tipo, nunca chamada). Um membro da sala — ou, antes do
+achado 1 ser corrigido, nem precisava ser membro de verdade — podia gravar
+`embedUrl: "data:text/html,<form>…"`, persistido no Postgres e injetado direto em `<iframe src>`
+(`GenericIframe.tsx`) e `<a href>` (`RoomExperience.tsx`) pra todo mundo que abrisse a sala depois.
+Corrigido em duas camadas: (a) o PATCH só aceita `sourceUrl` e re-deriva `source`/`embedUrl`
+via `resolveVideoUrl` no servidor; (b) `isSafeEmbedUrl()` (novo, `lib/video-source.ts`) guarda
+protocolo `http(s)` em todo ponto de renderização — `GenericIframe.tsx`, `RoomExperience.tsx` (link
+"abrir em nova aba") e `PlayerLoadStatus.tsx` (link "abrir o link original") — como defesa em
+profundidade pro caso de alguém escrever direto no storage do Liveblocks contornando a rota (a
+mesma classe de escrita usada por `useLoadVideo.ts` no fluxo legítimo).
+
+**3. Overlay de erro do player inalcançável depois de `isReady` — CONFIRMADO, corrigido (ver 12.2.A
+pra regressão introduzida por esta correção).** `PlayerLoadStatus` só renderizava com `loading`
+`true`; erros emitidos depois de `isReady` (autoplay bloqueado, embed restrito reportado só após
+`onReady`) nunca apareciam. Trocado pra `if (!loading && !error) return null`.
+
+**4. "entrou na sala" nunca era entregue — CONFIRMADO, corrigido.** `useRoomJoinAnnouncement`
+broadcastava no `mount`, antes de o socket do Liveblocks terminar de conectar (a conexão só fecha
+depois do roundtrip pra `/api/liveblocks-auth`) — `broadcastEvent` descarta em silêncio quando não
+está `connected`. 0% de entrega, não intermitente; confirmado contra o código do SDK instalado.
+Corrigido com `{ shouldQueueEventIfNotReady: true }`.
+
+**5. Atalho de teclado sequestrava Ctrl+F/Cmd+F/Ctrl+K/Cmd+M — CONFIRMADO, corrigido.** O handler de
+`keydown` (achado 27, seção 11) não checava `ctrlKey`/`metaKey`/`altKey` antes de `preventDefault()`
+em `f`/`k`/espaço — Ctrl+F matava a busca do browser e entrava em tela cheia; Cmd+M tentava minimizar
+a janela no macOS. Corrigido com `if (e.ctrlKey || e.metaKey || e.altKey) return;` no topo do
+handler.
+
+**6. Zero cobertura de teste no repositório — CONFIRMADO, corrigido.** Não havia runner nem arquivo
+de teste. Instalado Vitest (`npm test`), com testes pra exatamente as três categorias de risco que
+motivaram o achado: parsing de URL de terceiro e o próprio vetor do achado 2
+(`lib/video-source.test.ts`), aritmética de late-join/drift (`hooks/playerController.test.ts`,
+cobre clamp por duração e staleness do achado 10) e o formato do código de convite do achado 6
+(`lib/room-code.test.ts`). 22 testes.
+
+### 12.2 Segunda rodada — verificação da 12.1 + achados novos
+
+Confirmou as 6 correções da 12.1 como sólidas, sem regressão de autorização/injeção. Achou três
+bugs novos, nenhum de segurança:
+
+**A. Overlay de erro virou permanente — regressão da correção do item 3.** `if (!loading && !error)
+return null` mantém o overlay vivo enquanto `error` for não-nulo, mas nenhum backend limpava `error`
+na recuperação. Em `DIRECT_MEDIA`: `play()` interrompido por um `pause()` remoto chegando enquanto a
+promise ainda está pendente rejeita com `AbortError` — comportamento normal do
+`HTMLMediaElement`, não falha real —, e o `.catch` gravava a mesma mensagem de erro real. O vídeo
+seguia tocando atrás de um overlay preso pro resto da sessão. Corrigido em
+`hooks/useNativeVideoSync.ts`: `reportPlayFailure()` ignora `err.name === "AbortError"`, e
+`onPlay` limpa `error` sempre que a reprodução volta a acontecer de verdade.
+
+**B. "Tentar carregar de novo" virou no-op silencioso.** O atalho de retry
+(`loadedUrlRef.current === url && videoEl.src`) não checava se o load anterior tinha dado certo —
+`videoEl.src` fica truthy mesmo depois de um manifest HLS 404 ou de um `.mp4` que nunca carregou.
+Colar de novo o mesmo link depois de um erro caía nesse atalho, a mensagem de erro sumia, a tela
+ficava preta e nada era rebuscado. Corrigido acrescentando `isReady && !error` à condição do atalho
+(`hooks/useNativeVideoSync.ts`), com `eslint-disable-next-line` explicado inline — de propósito
+fora das deps do efeito, senão o load bem-sucedido reentraria no mesmo atalho e reiniciaria o vídeo
+do zero.
+
+**C. Listener `seeked` do Vimeo duplicava o broadcast de todo seek local.** O comentário em
+`useVimeoSync.ts` afirmava que o listener `seeked` só reagia a eventos remotos — falso: `seek()`
+chamava `player.setCurrentTime()` fora de `applyRemote`, então `isApplyingRemoteRef.current` estava
+`false` durante um seek local, e o listener mandava um segundo `commit`+`broadcast` idêntico pra
+cada arraste do scrubber. Sem corrupção de estado, mas dobrava o tráfego de sync e piscava o flash
+do `SyncRing` duas vezes. Corrigido envolvendo `player.setCurrentTime()` em `applyRemote()` dentro
+de `seek()`; o comentário desatualizado foi removido.
+
+Verificação desta seção inteira: `npm test` (22/22), `npx tsc --noEmit` e `npx eslint` limpos depois
+de cada rodada; achado 1 reverificado com query real contra o Postgres de dev.
+
+---
+
+## 13. Revisão de consistência de design
+
+Pedido do usuário depois da seção 12: não uma nova auditoria de achados isolados, mas verificar se o
+design ficou padronizado depois de várias rodadas de correções pontuais (seções 10, 11, 12) escritas
+por agentes diferentes em momentos diferentes. Rodou `ui-ux-frontend` com leitura do SPEC.md inteiro
+(seção 8 como tokens canônicos) mais medição no navegador (`getComputedStyle`) contra o build de
+produção com uma sessão logada. Catorze achados; todos corrigidos. Os quatro componentes que o
+pedido citava como suspeitos por terem sido escritos na mesma rodada sob pressão de outra tarefa —
+`InviteCode`, `LastActionNote`, `CreateRoomForm`, `SignOutButton` — não eram o problema; a
+divergência real estava nas telas de auth/404 e no card de sala novo de `app/rooms/page.tsx`.
+
+**1. `app/rooms/[code]/not-found.tsx` nunca renderizava — bug de roteamento real, corrigido.**
+`notFound()` lançado dentro de um `layout.tsx` borbulha pro not-found do segmento **pai**, não pro
+arquivo colocalizado no mesmo segmento — `layout.tsx` chamava `notFound()` depois de não achar a
+sala, então `/rooms/ZZZZZZZZ` sempre caía no 404 genérico (`app/not-found.tsx`), nunca no específico
+de sala. Confirmado no navegador antes e depois da correção, com sessão real. Corrigido: `layout.tsx`
+só pula o `upsert` de `RoomMember` quando a sala não existe, sem chamar `notFound()`; `page.tsx` (que
+já fazia a mesma busca) é quem chama `notFound()`, e por estar no mesmo segmento do arquivo
+colocalizado, `app/rooms/[code]/not-found.tsx` passou a renderizar de verdade — reverificado logado
+via browser real (não só `curl`, que não é confiável aqui: o HTML de streaming SSR embute os dois
+textos possíveis serializados no payload RSC, então grep no HTML bruto não diz qual foi de fato
+montado no DOM).
+
+**2. Papel "Display" aplicado em metade dos `h1` — corrigido.** `font-semibold tracking-tight`
+existia em `/rooms`, `app/error.tsx` e nos dois estados do player, mas não em `/login`, `/register`
+nem nos dois `not-found`. Medido: mesma palavra ("rockncine"), mesmo tamanho, duas espessuras em
+telas consecutivas do fluxo de entrada. Aplicado nos quatro arquivos restantes.
+
+**3. Card de sala em `app/rooms/page.tsx` com borda abaixo do piso de contraste — corrigido.** A
+seção 10 (item 7) e a seção 11 (item 12) já tinham trocado `--line` por `--ink-muted` em todo
+botão/input; o `<Link>` do card de "suas salas", escrito na mesma rodada P0-P2, ficou de fora —
+`border-[var(--line)]` mede 1,36:1 sobre `--bg-void`, e o hover ia pra `--ink-muted` em vez de
+`--ink` como todo outro controle. Corrigido pra `border-[var(--ink-muted)] hover:border-[var(--ink)]`.
+
+**4. Dois links inline sem anel de foco do projeto — corrigido.** "abrir em nova aba"
+(`RoomExperience.tsx`) e "abrir o link original" (`PlayerLoadStatus.tsx`) eram só
+`text-[var(--ink)] underline`, caindo no outline default do navegador; os links equivalentes de
+`/login`/`/register` já tinham `focus:ring-2 focus:ring-[var(--outline-strong)]`. Igualados.
+
+**5–14. Polimento — todos corrigidos.** Token `--scrim` (`app/globals.css`) substituindo dois
+overlays com opacidades diferentes (`bg-black/70` no modal, `bg-black/60` no `PlayerLoadStatus`) pra
+mesma função — `bg-black` literal ficou só na letterbox do vídeo, com comentário explicando que ali
+é preto real, não `--bg-void`; bloco de erro de `PlayerLoadStatus` ganhou `role="alert"` e padding
+igualado aos outros três blocos de erro do app; código de convite (papel "utilitária mono", seção 8)
+padronizado pra `font-mono text-sm tracking-wider` nos três lugares que o exibem (`InviteCode`,
+"suas salas", `JoinRoomForm`); gap entre título e conteúdo do `Chat` subiu de `gap-2` pra `gap-3`
+pra bater com o resto do `aside`; token `--focus-offset` (criado no achado 24 da seção 11, usado só
+em 3 de 14 arquivos) generalizado pra todo `ring-offset-[var(--bg-void)]` hardcoded do projeto (15
+arquivos); anel de foco do overlay de pausa do YouTube igualado ao resto (`ring-4 focus-visible` →
+`ring-2 focus`, mantendo `ring-inset`); quatro mensagens de erro capitalizadas
+(`app/api/register/route.ts` ×3, `LoginForm.tsx`) baixadas pra minúsculo, único padrão usado no
+resto da UI; `text-[10px]` do badge "ao vivo" subiu pra `text-xs` (única fonte fora da escala
+xs/sm/base/lg/xl/2xl em uso); comentário desatualizado corrigido (`RoomExperience.tsx`, "45dvh" →
+"38dvh", divergia do valor real desde a seção 11 item 9). Diferença de `text-xs`/`text-sm` entre
+botões-fantasma de dentro e fora da sala (`InviteCode`/`RoomActions` vs. `SignOutButton`/
+`JoinRoomForm`) ficou registrada no relatório da revisão como defensável (densidade de chrome de
+sala) mas não decidida — não alterada nesta rodada por exigir julgamento visual, não é bug.
+
+Verificação: `npm test` (22/22), `npx tsc --noEmit`, `npx eslint` e `npx next build` limpos; achado 1
+reverificado logado via browser real, os demais por leitura de código (as classes Tailwind mudadas
+não têm ambiguidade de efeito).
