@@ -23,6 +23,20 @@ export function LoadVideoModal({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  // guarda quem tinha foco antes de abrir (o botão "carregar vídeo" que
+  // disparou o modal) — devolve o foco pra lá ao fechar, senão ele some pra
+  // o topo do documento (SPEC.md seção 10).
+  const triggerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      triggerRef.current = document.activeElement as HTMLElement | null;
+    } else if (triggerRef.current) {
+      triggerRef.current.focus();
+      triggerRef.current = null;
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -30,8 +44,30 @@ export function LoadVideoModal({
       setError(null);
       inputRef.current?.focus();
     }, 0);
+    // Escape fecha; Tab/Shift+Tab fica preso no painel (trap de foco simples
+    // — só o painel tem elementos focáveis nesta tela, então basta ciclar
+    // entre o primeiro e o último).
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const focusables = Array.from(
+        panelRef.current.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled), [href], [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
@@ -49,16 +85,25 @@ export function LoadVideoModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-md border border-[var(--line)] bg-[var(--bg-surface)] p-5">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="load-video-modal-title"
+        className="w-full max-w-md rounded-md border border-[var(--line)] bg-[var(--bg-surface)] p-5"
+      >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
+          <h2
+            id="load-video-modal-title"
+            className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]"
+          >
             carregar vídeo
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="fechar"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-[var(--ink-muted)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-surface)]"
+            className="flex h-11 w-11 items-center justify-center rounded-md text-[var(--ink-muted)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-surface)]"
           >
             <CloseIcon className="h-4 w-4" />
           </button>

@@ -27,6 +27,9 @@ export function Chat({ userId, userName }: { userId: string; userName: string })
 
       <ul
         ref={listRef}
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
         className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-md border border-[var(--line)] bg-[var(--bg-surface)] p-3"
       >
         {messages.length === 0 && (
@@ -55,7 +58,7 @@ export function Chat({ userId, userName }: { userId: string; userName: string })
         )}
       </ul>
 
-      <div className="flex gap-1">
+      <div className="flex flex-wrap gap-1">
         {REACTION_EMOJIS.map((emoji) => (
           <button
             key={emoji}
@@ -65,7 +68,7 @@ export function Chat({ userId, userName }: { userId: string; userName: string })
               inputRef.current?.focus();
             }}
             aria-label={`inserir ${emoji} na mensagem`}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-base hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+            className="flex h-11 w-11 items-center justify-center rounded-md text-base hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
           >
             {emoji}
           </button>

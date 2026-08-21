@@ -6,7 +6,10 @@
   --gray-950: #0a0a0a;
   --gray-900: #141414;
   --gray-700: #2a2a2a;
-  --gray-500: #7a7a7a;
+  /* #7a7a7a dava 4,29:1 sobre --bg-surface (#141414), abaixo do piso AA de
+     4,5:1 que a seção 8 do SPEC.md exige — #828282 sobe pra ~4,8:1 mantendo
+     a mesma função de "cinza neutro discreto" (ver SPEC.md seção 10). */
+  --gray-500: #828282;
   --gray-100: #f2f2f2;
   --pure-black: #000000;
   --pure-white: #ffffff;

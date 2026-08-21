@@ -39,13 +39,13 @@ export function PlayerControls({
   const displayTime = dragTime ?? controller.currentTime;
 
   return (
-    <div className="flex items-center gap-3 rounded-md border border-[var(--line)] bg-[var(--bg-void)]/90 px-3 py-2">
+    <div className="flex items-center gap-3 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-void)]/90 px-3 py-2">
       <button
         type="button"
         onClick={controller.togglePlay}
         disabled={!controller.isReady}
         aria-label={controller.isPlaying ? "pausar" : "tocar"}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--invert-bg)] text-[var(--invert-fg)] disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--invert-bg)] text-[var(--invert-fg)] disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
       >
         {controller.isPlaying ? (
           <PauseIcon className="h-4 w-4" />
@@ -75,14 +75,18 @@ export function PlayerControls({
           setDragTime(null);
         }}
         aria-label="progresso do vídeo"
-        className="h-1 min-w-0 flex-1 cursor-pointer accent-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-40"
+        // box-sizing: content-box só aqui — h-1 vira a barra visível (4px) e o
+        // py-5 soma como área de toque em volta (44px), sem herdar o
+        // border-box padrão do Tailwind, que faria o padding comer a altura.
+        style={{ boxSizing: "content-box" }}
+        className="h-1 min-w-0 flex-1 cursor-pointer accent-[var(--ink)] py-5 disabled:cursor-not-allowed disabled:opacity-40"
       />
 
       <button
         type="button"
         onClick={controller.toggleMute}
         aria-label={controller.isMuted ? "reativar áudio" : "mutar"}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
       >
         {controller.isMuted ? (
           <VolumeMutedIcon className="h-4 w-4" />
@@ -99,14 +103,15 @@ export function PlayerControls({
         value={controller.isMuted ? 0 : controller.volume}
         onChange={(e) => controller.setVolume(Number(e.target.value))}
         aria-label="volume"
-        className="h-1 w-16 shrink-0 cursor-pointer accent-[var(--ink)]"
+        style={{ boxSizing: "content-box" }}
+        className="h-1 w-16 shrink-0 cursor-pointer accent-[var(--ink)] py-5"
       />
 
       <button
         type="button"
         onClick={onToggleFullscreen}
         aria-label={isFullscreen ? "sair da tela cheia" : "tela cheia"}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
       >
         {isFullscreen ? (
           <FullscreenExitIcon className="h-4 w-4" />

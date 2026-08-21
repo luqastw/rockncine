@@ -206,8 +206,13 @@ export function RoomExperience({
                 ) : hasGeneric ? (
                   <GenericIframe src={video.embedUrl!} />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-sm text-[var(--ink-muted)]">
-                    use &quot;carregar vídeo&quot; ao lado da presença pra começar
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-6 text-center">
+                    <p className="text-xl font-semibold tracking-tight text-[var(--ink)]">
+                      nenhum vídeo carregado
+                    </p>
+                    <p className="text-sm text-[var(--ink-muted)]">
+                      use &quot;carregar vídeo&quot; ao lado da presença pra começar
+                    </p>
                   </div>
                 )}
               </PlayerShell>

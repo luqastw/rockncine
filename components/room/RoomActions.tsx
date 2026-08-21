@@ -22,7 +22,7 @@ export function RoomActions({
       <button
         type="button"
         onClick={onLoadVideo}
-        className="flex items-center gap-1 rounded-md border border-[var(--line)] px-2 py-1 text-xs text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+        className="flex min-h-11 items-center gap-1 rounded-md border border-[var(--ink-muted)] px-3 py-2 text-xs text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
       >
         <PlusIcon className="h-3 w-3" />
         carregar vídeo
@@ -33,9 +33,12 @@ export function RoomActions({
           onClick={onToggleTheater}
           aria-label={isTheater ? "expandir vídeo" : "abrir chat ao lado"}
           aria-pressed={isTheater}
-          className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--line)] text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+          // escondido abaixo de lg: teatro pressupõe as duas colunas lado a
+          // lado (SPEC.md seção 9.1/10) — empilhado, o cálculo de altura do
+          // vídeo não desconta o aside, e o chat fica espremido/cortado.
+          className="hidden h-11 w-11 items-center justify-center rounded-md border border-[var(--ink-muted)] text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)] lg:flex"
         >
-          <TheaterIcon className="h-3.5 w-3.5" />
+          <TheaterIcon className="h-4 w-4" />
         </button>
       )}
     </div>
