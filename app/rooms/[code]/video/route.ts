@@ -4,7 +4,16 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { VideoSourceKind } from "@/lib/video-source";
 
-const VALID_SOURCES: VideoSourceKind[] = ["YOUTUBE", "VIMEO", "GENERIC_IFRAME"];
+// Record<VideoSourceKind, true> em vez de array solto — se VideoSourceKind
+// ganhar um membro novo e este objeto não for atualizado, o TS acusa erro de
+// propriedade faltando em vez de deixar passar silenciosamente (era assim
+// que DIRECT_MEDIA ficou de fora e o PATCH rejeitava 400 sem avisar).
+const VALID_SOURCES: Record<VideoSourceKind, true> = {
+  YOUTUBE: true,
+  VIMEO: true,
+  GENERIC_IFRAME: true,
+  DIRECT_MEDIA: true,
+};
 
 export async function PATCH(
   req: Request,
@@ -21,7 +30,7 @@ export async function PATCH(
   const embedUrl = typeof body?.embedUrl === "string" ? body.embedUrl : null;
   const sourceUrl = typeof body?.sourceUrl === "string" ? body.sourceUrl : null;
 
-  if (!VALID_SOURCES.includes(source) || !embedUrl || !sourceUrl) {
+  if (typeof source !== "string" || !VALID_SOURCES[source as VideoSourceKind] || !embedUrl || !sourceUrl) {
     return NextResponse.json({ error: "payload inválido." }, { status: 400 });
   }
 
@@ -39,7 +48,7 @@ export async function PATCH(
 
   await prisma.room.update({
     where: { id: room.id },
-    data: { videoSource: source, embedUrl, videoSourceUrl: sourceUrl },
+    data: { videoSource: source as VideoSourceKind, embedUrl, videoSourceUrl: sourceUrl },
   });
 
   return NextResponse.json({ ok: true });

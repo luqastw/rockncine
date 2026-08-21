@@ -6,6 +6,7 @@ import { useYouTubeSync } from "@/hooks/useYouTubeSync";
 import { useVimeoSync } from "@/hooks/useVimeoSync";
 import { useNativeVideoSync } from "@/hooks/useNativeVideoSync";
 import { useLastRoomEvent } from "@/hooks/useLastRoomEvent";
+import { useRoomJoinAnnouncement } from "@/hooks/useRoomJoinAnnouncement";
 import { SyncRing } from "@/components/room/SyncRing";
 import { PresenceList } from "@/components/room/PresenceList";
 import { GenericIframe } from "@/components/room/GenericIframe";
@@ -13,8 +14,13 @@ import { NativeVideoPlayer } from "@/components/room/NativeVideoPlayer";
 import { PlayerLoadStatus } from "@/components/room/PlayerLoadStatus";
 import { PlayerShell } from "@/components/room/player/PlayerShell";
 import { LoadVideoModal } from "@/components/room/player/LoadVideoModal";
-import { PlayIcon, PlusIcon, TheaterIcon } from "@/components/room/player/icons";
+import { RoomActions } from "@/components/room/RoomActions";
+import { PlayIcon } from "@/components/room/player/icons";
 import { Chat } from "@/components/room/Chat";
+
+// respiro em tela cheia — declarado uma vez, usado no padding do stage e no
+// cálculo de altura máxima da caixa do vídeo (SPEC.md seção 9.1).
+const FULLSCREEN_PAD = "clamp(0.75rem,2.5vmin,2.5rem)";
 
 const YT_CONTAINER_ID = "yt-player";
 const VIMEO_CONTAINER_ID = "vimeo-player";
@@ -43,6 +49,10 @@ export function RoomExperience({
   const lastEvent = useLastRoomEvent();
   const status = useStatus();
   const [loadModalOpen, setLoadModalOpen] = useState(false);
+  // fica aqui (nível de sala, sempre montado) e não dentro de <Chat> — o
+  // aside com o Chat desmonta/remonta ao entrar em fullscreen ou alternar
+  // teatro, o que reenviava "entrou na sala" a cada toggle (bug real).
+  useRoomJoinAnnouncement(userName);
 
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -131,27 +141,41 @@ export function RoomExperience({
 
       <div
         ref={stageRef}
-        className="relative flex flex-1 flex-col gap-6 bg-[var(--bg-void)] lg:flex-row"
+        style={
+          isFullscreen
+            ? ({ padding: FULLSCREEN_PAD, "--fs-pad": FULLSCREEN_PAD } as React.CSSProperties)
+            : undefined
+        }
+        className={`relative flex flex-1 flex-col gap-6 bg-[var(--bg-void)] lg:flex-row ${
+          isFullscreen ? "h-dvh w-dvw overflow-hidden" : ""
+        }`}
       >
-        {isFullscreen && (
-          <button
-            type="button"
-            onClick={() => setIsTheater((v) => !v)}
-            aria-label={isTheater ? "expandir vídeo" : "abrir chat ao lado"}
-            aria-pressed={isTheater}
-            className="absolute right-2 top-2 z-20 flex h-9 w-9 items-center justify-center rounded-md border border-[var(--line)] bg-[var(--bg-void)]/90 text-[var(--ink)] backdrop-blur-sm hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
-          >
-            <TheaterIcon className="h-4 w-4" />
-          </button>
-        )}
+        <div
+          className={`relative flex flex-col gap-4 ${
+            showAside ? "lg:basis-[80%]" : "w-full"
+          } ${isFullscreen ? "min-h-0 flex-1 justify-center" : ""}`}
+        >
+          {isFullscreen && !isTheater && (
+            <div className="absolute right-3 top-3 z-20 opacity-60 transition-opacity hover:opacity-100 focus-within:opacity-100">
+              <RoomActions
+                onLoadVideo={() => setLoadModalOpen(true)}
+                onToggleTheater={() => setIsTheater((v) => !v)}
+                isTheater={isTheater}
+                showTheaterToggle
+              />
+            </div>
+          )}
 
-        <div className={`flex flex-col gap-4 ${showAside ? "lg:basis-[80%]" : "w-full"}`}>
           <SyncRing
             isPlaying={player?.isPlaying ?? false}
             source={video?.source ?? null}
             lastEvent={lastEvent}
           >
-            <div className="relative aspect-video w-full overflow-hidden rounded-md bg-black">
+            <div
+              className={`relative aspect-video w-full overflow-hidden rounded-md bg-black ${
+                isFullscreen ? "mx-auto max-w-[min(100%,calc((100dvh-2*var(--fs-pad))*16/9))]" : ""
+              }`}
+            >
               <PlayerShell
                 controller={activeController}
                 isFullscreen={isFullscreen}
@@ -211,20 +235,24 @@ export function RoomExperience({
         </div>
 
         {showAside && (
-          <aside className="flex w-full min-h-0 flex-col gap-6 lg:min-w-72 lg:basis-[20%]">
+          <aside
+            className={`flex w-full min-h-0 flex-col gap-6 lg:min-w-72 lg:basis-[20%] ${
+              isFullscreen && isTheater
+                ? "rounded-lg border border-[var(--line)] bg-[var(--bg-surface)] p-4"
+                : ""
+            }`}
+          >
             <section className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
                   presença
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => setLoadModalOpen(true)}
-                  className="flex items-center gap-1 rounded-md border border-[var(--line)] px-2 py-1 text-xs text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
-                >
-                  <PlusIcon className="h-3 w-3" />
-                  carregar vídeo
-                </button>
+                <RoomActions
+                  onLoadVideo={() => setLoadModalOpen(true)}
+                  onToggleTheater={() => setIsTheater((v) => !v)}
+                  isTheater={isTheater}
+                  showTheaterToggle={isFullscreen}
+                />
               </div>
               <PresenceList myName={userName} />
             </section>

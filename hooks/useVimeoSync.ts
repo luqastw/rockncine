@@ -8,6 +8,26 @@ import type { PlaybackController } from "@/hooks/playerController";
 
 const DRIFT_THRESHOLD_S = 1.5;
 const CHECK_INTERVAL_MS = 3000;
+const MAX_QUALITY_HEIGHT = 720;
+
+// Reforço best-effort do teto de 720p além da opção de embed do construtor
+// (SPEC.md seção 9.4) — não está garantido que max_quality sobrevive a um
+// loadVideo(), então reaplica aqui. Silencioso de propósito: rejeitar é o
+// caso comum em vídeo de conta free, não um erro real pro usuário.
+function capQuality(player: Player) {
+  player
+    .getQualities()
+    .then((qualities) => {
+      const capped = qualities
+        .filter((q) => {
+          const height = Number.parseInt(q.id, 10);
+          return Number.isFinite(height) ? height <= MAX_QUALITY_HEIGHT : q.id !== "auto";
+        })
+        .sort((a, b) => Number.parseInt(b.id, 10) - Number.parseInt(a.id, 10))[0];
+      if (capped) return player.setQuality(capped.id);
+    })
+    .catch(() => {});
+}
 
 // Vimeo Player SDK expõe eventos nativos de play/pause/seeked — ao contrário do
 // YouTube, não precisa de heurística de BUFFERING pra detectar seek manual.
@@ -77,7 +97,10 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
       setError(null);
       applyRemote(() =>
         playerRef.current!.loadVideo(videoId).then(
-          () => setError(null),
+          () => {
+            setError(null);
+            capQuality(playerRef.current!);
+          },
           (err) => setError(err?.message || "não foi possível reproduzir este vídeo."),
         ),
       );
@@ -88,7 +111,13 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const player = new Player(container, { id: videoId, controls: false });
+    const player = new Player(container, {
+      id: videoId,
+      controls: false,
+      // teto de 720p (SPEC.md seção 9.4) — best-effort: o gate real é o
+      // plano de quem subiu o vídeo, não o nosso. Não é contrato garantido.
+      max_quality: "720p",
+    });
     playerRef.current = player;
 
     player.on("error", (data) => {
@@ -102,6 +131,7 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
       player.getDuration().then(setDuration);
       player.getVolume().then(setVolumeLocal);
       player.getMuted().then(setIsMutedLocal);
+      capQuality(player);
 
       const snapshot = playerStorageRef.current;
       if (snapshot) {

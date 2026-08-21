@@ -57,7 +57,7 @@ export function PlayerShell({
       {controller && (
         <div
           className={`absolute inset-x-0 bottom-0 p-2 transition-opacity duration-200 ${
-            showControls ? "opacity-100" : "pointer-events-none opacity-0"
+            showControls ? "opacity-100" : "invisible pointer-events-none opacity-0"
           }`}
         >
           <PlayerControls

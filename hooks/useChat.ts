@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useBroadcastEvent, useEventListener } from "@liveblocks/react";
 import type { ChatEvent, SystemEvent } from "@/liveblocks.config";
 
@@ -26,18 +26,6 @@ export function useChat({ userId, userName }: { userId: string; userName: string
     if (event.type !== "CHAT_MESSAGE" && event.type !== "SYSTEM_MESSAGE") return;
     appendUnique(event);
   });
-
-  // avisa os outros participantes já na sala que alguém entrou — broadcast
-  // só, não é setState direto no corpo do efeito (chamada a sistema externo).
-  useEffect(() => {
-    broadcast({
-      type: "SYSTEM_MESSAGE",
-      id: crypto.randomUUID(),
-      text: `${userName} entrou na sala`,
-      ts: Date.now(),
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const sendMessage = useCallback(
     (text: string) => {

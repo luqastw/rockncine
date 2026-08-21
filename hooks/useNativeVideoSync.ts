@@ -104,6 +104,19 @@ export function useNativeVideoSync({
           setError("falha ao carregar o stream (manifest/rede). tente carregar de novo.");
         }
       });
+      // teto de 720p (SPEC.md seção 9.4) — autoLevelCapping mantém o ABR
+      // vivo abaixo do limite, ao contrário de currentLevel/loadLevel (que
+      // fixam o nível e cortam a capacidade de cair de qualidade em rede
+      // ruim). Registrado antes de loadSource: MANIFEST_PARSED dispara antes
+      // da escolha do primeiro fragmento, então o teto já vale de cara.
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        const cap = hls.levels.reduce(
+          (best, lvl, i) =>
+            lvl.height <= 720 && (best < 0 || lvl.height > hls.levels[best].height) ? i : best,
+          -1,
+        );
+        hls.autoLevelCapping = cap;
+      });
       hls.loadSource(url);
       hls.attachMedia(videoEl);
     } else {

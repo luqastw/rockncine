@@ -39,7 +39,7 @@ export function PlayerControls({
   const displayTime = dragTime ?? controller.currentTime;
 
   return (
-    <div className="flex items-center gap-3 rounded-md border border-[var(--line)] bg-[var(--bg-void)]/90 px-3 py-2 backdrop-blur-sm">
+    <div className="flex items-center gap-3 rounded-md border border-[var(--line)] bg-[var(--bg-void)]/90 px-3 py-2">
       <button
         type="button"
         onClick={controller.togglePlay}
