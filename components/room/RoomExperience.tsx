@@ -8,6 +8,7 @@ import { SyncRing } from "@/components/room/SyncRing";
 import { PresenceList } from "@/components/room/PresenceList";
 import { LoadVideoForm } from "@/components/room/LoadVideoForm";
 import { GenericIframe } from "@/components/room/GenericIframe";
+import { PlayerLoadStatus } from "@/components/room/PlayerLoadStatus";
 import { Chat } from "@/components/room/Chat";
 
 const YT_CONTAINER_ID = "yt-player";
@@ -79,11 +80,11 @@ export function RoomExperience({
                 cole um link (YouTube, Vimeo, Google Drive ou outro) abaixo pra começar
               </div>
             )}
-            {playerLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-sm text-[var(--ink-muted)]">
-                carregando player...
-              </div>
-            )}
+            <PlayerLoadStatus
+              key={video?.embedUrl}
+              loading={playerLoading}
+              sourceUrl={video?.sourceUrl ?? null}
+            />
           </div>
         </SyncRing>
 
