@@ -6,7 +6,7 @@ import { CloseIcon } from "@/components/room/player/icons";
 
 // Dialog próprio, sem dependência nova — overlay + painel, Escape/clique-fora
 // fecha, foco vai pro input ao abrir. Absorve o form que antes ficava fixo
-// embaixo do vídeo (ver SPEC.md seção 3/8).
+// embaixo do vídeo (ver docs/specs/01-fundacao-mvp/spec.md, seção 3/8).
 export function LoadVideoModal({
   roomCode,
   userId,
@@ -26,7 +26,7 @@ export function LoadVideoModal({
   const panelRef = useRef<HTMLDivElement | null>(null);
   // guarda quem tinha foco antes de abrir (o botão "carregar vídeo" que
   // disparou o modal) — devolve o foco pra lá ao fechar, senão ele some pra
-  // o topo do documento (SPEC.md seção 10).
+  // o topo do documento (docs/specs/03-auditoria-ui-ux/spec.md, seção 10).
   const triggerRef = useRef<HTMLElement | null>(null);
   // guarda o `onClose` mais recente sem entrar como dep do efeito de
   // teclado abaixo — se o chamador passar uma função inline não-memoizada

@@ -13,7 +13,7 @@ const PLAYER_EVENT_TYPES = new Set<RoomEvent["type"]>([
 
 // Só pra alimentar o flash visual do SyncRing — desacoplado dos hooks de sync
 // de player, que cuidam de aplicar PLAY/PAUSE/SEEK no player de verdade.
-// Filtra pra só LOAD_VIDEO/PLAY/PAUSE/SEEK (SPEC.md seção 8): sem isso, todo
+// Filtra pra só LOAD_VIDEO/PLAY/PAUSE/SEEK (docs/specs/01-fundacao-mvp/spec.md, seção 8): sem isso, todo
 // CHAT_MESSAGE/SYSTEM_MESSAGE também fazia o anel piscar, lido como eco de
 // sync mesmo sem nenhuma ação de player ter acontecido.
 export function useLastRoomEvent(): PlayerEvent | null {

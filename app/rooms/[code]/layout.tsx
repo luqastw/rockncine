@@ -16,7 +16,7 @@ export default async function RoomLayout({
 
   // busca tolerante a caixa sem ILIKE: `mode: "insensitive"` vira ILIKE no
   // Postgres e trata `%`/`_` no segmento de URL cru como curinga — bypass de
-  // autorização real (achado 1, seção 11 do SPEC.md). Duas comparações de
+  // autorização real (achado 1, docs/specs/04-auditoria-ui-ux-rodada-2/spec.md). Duas comparações de
   // igualdade exata cobrem o mesmo caso de uso (código curto ditado em
   // qualquer caixa, `lib/room-code.ts`, e cuid antigo digitado como está).
   const room = await prisma.room.findFirst({

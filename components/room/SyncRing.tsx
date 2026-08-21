@@ -22,7 +22,7 @@ export function SyncRing({
   // de flash — sem precisar de useEffect+setState pra "ecoar" o broadcast.
   const flashKey = lastEvent ? `${lastEvent.type}-${lastEvent.ts}` : "idle";
 
-  // em tela cheia o vídeo já tem respiro próprio (SPEC.md seção 9.1) — a
+  // em tela cheia o vídeo já tem respiro próprio (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.1) — a
   // moldura de sync (borda + brilho + flash) é sinalização de contexto de
   // sala, sem função em tela cheia, e some por pedido do usuário (9.6). O
   // badge "sync limitado" continua: é informação, não chrome decorativo.

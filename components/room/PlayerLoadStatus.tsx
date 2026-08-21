@@ -6,7 +6,7 @@ import { isSafeEmbedUrl } from "@/lib/video-source";
 const TIMEOUT_MS = 8000;
 
 // Cobre o caso "embed bloqueado" quando a fonte tem player controlável
-// (YouTube/Vimeo) — ver SPEC.md seção 7. Quando o SDK reporta um erro
+// (YouTube/Vimeo) — ver docs/specs/01-fundacao-mvp/spec.md, seção 7. Quando o SDK reporta um erro
 // explícito (ex.: vídeo com restrição de idade) mostramos na hora; senão,
 // timeout genérico cobre falhas silenciosas (bloqueador de anúncio/rede).
 export function PlayerLoadStatus({
@@ -29,7 +29,7 @@ export function PlayerLoadStatus({
   // `!loading` sozinho escondia o overlay assim que o backend reportava
   // `isReady` — erro emitido depois disso (autoplay bloqueado, embed
   // restrito reportado só após `onReady`) nunca chegava a aparecer (achado 3,
-  // seção 11 do SPEC.md). `error` mantém o overlay vivo independente do
+  // docs/specs/04-auditoria-ui-ux-rodada-2/spec.md). `error` mantém o overlay vivo independente do
   // estado de `loading`.
   if (!loading && !error) return null;
 

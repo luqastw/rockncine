@@ -1,7 +1,7 @@
 // Código de convite curto e ditável. `Room.code` já existe no schema (String
 // @unique) com `@default(cuid())` — um cuid de 25 caracteres aleatórios é
 // impossível de ditar pro amigo entrar na sala, que é exatamente o uso que a
-// seção 8 do SPEC.md atribui a ele. Aqui o valor é gerado na aplicação e
+// seção 8 de docs/specs/01-fundacao-mvp/spec.md atribui a ele. Aqui o valor é gerado na aplicação e
 // passado explicitamente no `create`, sem mudança de schema/migração; salas
 // antigas continuam válidas com o código longo que já têm.
 //

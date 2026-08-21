@@ -3,7 +3,7 @@
 import { PlusIcon, TheaterIcon } from "@/components/room/player/icons";
 
 // Par de botões renderizado sempre com a mesma ordem/estilo — só a âncora
-// muda conforme o estado de tela cheia (ver SPEC.md seção 9.2). Pode existir
+// muda conforme o estado de tela cheia (ver docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.2). Pode existir
 // em duas instâncias no DOM ao mesmo tempo (aside sempre montado desde a
 // seção 9.6), mas nunca mais de uma visível — a outra fica `hidden`.
 export function RoomActions({
@@ -34,7 +34,7 @@ export function RoomActions({
           aria-label={isTheater ? "expandir vídeo" : "abrir chat ao lado"}
           aria-pressed={isTheater}
           // escondido abaixo de lg: teatro pressupõe as duas colunas lado a
-          // lado (SPEC.md seção 9.1/10) — empilhado, o cálculo de altura do
+          // lado (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.1 / docs/specs/03-auditoria-ui-ux/spec.md, seção 10) — empilhado, o cálculo de altura do
           // vídeo não desconta o aside, e o chat fica espremido/cortado.
           className="hidden h-11 w-11 items-center justify-center rounded-md border border-[var(--ink-muted)] text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)] lg:flex"
         >

@@ -3,11 +3,11 @@
 import { isSafeEmbedUrl } from "@/lib/video-source";
 
 // Fonte sem API de controle exposta via postMessage — carrega o link como
-// iframe puro, sem sync de play/pause/seek (ver SPEC.md seção 7).
+// iframe puro, sem sync de play/pause/seek (ver docs/specs/01-fundacao-mvp/spec.md, seção 7).
 export function GenericIframe({ src }: { src: string }) {
   // `video.embedUrl` no storage do Liveblocks é escrito por qualquer membro
   // da sala (controle compartilhado — decisão travada) e pode chegar aqui
-  // sem ter passado por `resolveVideoUrl` (achado 5, seção 11 do SPEC.md).
+  // sem ter passado por `resolveVideoUrl` (achado 5, docs/specs/04-auditoria-ui-ux-rodada-2/spec.md).
   // Recusar aqui, no ponto de renderização, é a única defesa que cobre todo
   // caminho de escrita, não só o PATCH server-side.
   if (!isSafeEmbedUrl(src)) {

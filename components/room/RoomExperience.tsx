@@ -23,7 +23,7 @@ import { PlayIcon } from "@/components/room/player/icons";
 import { Chat } from "@/components/room/Chat";
 
 // respiro em tela cheia — declarado uma vez, usado no padding do stage e no
-// cálculo de altura máxima da caixa do vídeo (SPEC.md seção 9.1).
+// cálculo de altura máxima da caixa do vídeo (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.1).
 const FULLSCREEN_PAD = "clamp(0.75rem,2.5vmin,2.5rem)";
 
 // altura ocupada pelo chrome da página fora de tela cheia (header + pt-8 +
@@ -89,7 +89,7 @@ export function RoomExperience({
   }, []);
 
   useEffect(() => {
-    // o botão de teatro só existe (clicável) em lg+ (SPEC.md seção 10, item
+    // o botão de teatro só existe (clicável) em lg+ (docs/specs/03-auditoria-ui-ux/spec.md, seção 10, item
     // 4) — mas isso só fecha a porta de ENTRAR nesse estado por clique. Sem
     // isso aqui, redimensionar a janela pra baixo de lg com teatro já ligado
     // deixava `isTheater` grudado em `true`, reproduzindo o mesmo layout
@@ -124,7 +124,7 @@ export function RoomExperience({
   // identidade estável — RoomExperience re-renderiza a cada evento do
   // Liveblocks (chat, presença, sync); um `() => setLoadModalOpen(false)`
   // inline mudaria de referência a cada um desses renders e re-disparava o
-  // efeito de teclado do modal enquanto ele está aberto (SPEC.md seção 10).
+  // efeito de teclado do modal enquanto ele está aberto (docs/specs/03-auditoria-ui-ux/spec.md, seção 10).
   const closeLoadModal = useCallback(() => setLoadModalOpen(false), []);
   const openLoadModal = useCallback(() => setLoadModalOpen(true), []);
   const toggleTheater = useCallback(() => setIsTheater((v) => !v), []);
@@ -211,7 +211,7 @@ export function RoomExperience({
       // do browser), Ctrl+K (barra de endereço em alguns browsers) e Cmd+M
       // (minimizar no macOS) — nenhum atalho deste handler tem combinação
       // com modificador, então qualquer tecla com Ctrl/Cmd/Alt não é dele
-      // (achado 5, seção 11 do SPEC.md).
+      // (achado 5, docs/specs/04-auditoria-ui-ux-rodada-2/spec.md).
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       if (e.key === "Escape" && cssFullscreen) {
@@ -245,7 +245,7 @@ export function RoomExperience({
   }, [activeController, cssFullscreen, loadModalOpen, toggleFullscreen]);
 
   // YouTube não tem parâmetro oficial pra desligar a tela de sugestões que
-  // desenha por cima ao pausar (ver SPEC.md seção 7) — cobrimos com um
+  // desenha por cima ao pausar (ver docs/specs/01-fundacao-mvp/spec.md, seção 7) — cobrimos com um
   // overlay nosso, que também funciona como affordance extra de play.
   const showYoutubePauseOverlay = hasYouTube && youtubeController.isReady && !youtubeController.isPlaying;
 
@@ -347,7 +347,7 @@ export function RoomExperience({
             >
               {/* bg-black literal de propósito (não --bg-void): é a letterbox
                   atrás do vídeo, não uma superfície da UI — ver revisão de
-                  consistência, achado 5 do SPEC.md seção 11. */}
+                  consistência, achado 5 de docs/specs/04-auditoria-ui-ux-rodada-2/spec.md. */}
               <div className="relative aspect-video w-full overflow-hidden rounded-md bg-black">
               <PlayerShell
                 controller={activeController}
@@ -434,7 +434,7 @@ export function RoomExperience({
         {/* sempre montado, nunca condicionalmente renderizado — `<Chat>` guarda
             histórico em estado React local (useChat), e um unmount/remount a
             cada toggle de fullscreen/teatro zerava as mensagens (bug real,
-            ver SPEC.md seção 9.6). Visibilidade agora é só CSS (`hidden`). */}
+            ver docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.6). Visibilidade agora é só CSS (`hidden`). */}
         <aside
           style={
             isFullscreen && isTheater

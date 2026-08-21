@@ -11,7 +11,7 @@ const CHECK_INTERVAL_MS = 3000;
 const MAX_QUALITY_HEIGHT = 720;
 
 // Reforço best-effort do teto de 720p além da opção de embed do construtor
-// (SPEC.md seção 9.4) — não está garantido que max_quality sobrevive a um
+// (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.4) — não está garantido que max_quality sobrevive a um
 // loadVideo(), então reaplica aqui. Silencioso de propósito: rejeitar é o
 // caso comum em vídeo de conta free, não um erro real pro usuário.
 function capQuality(player: Player) {
@@ -114,7 +114,7 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
     const player = new Player(container, {
       id: videoId,
       controls: false,
-      // teto de 720p (SPEC.md seção 9.4) — best-effort: o gate real é o
+      // teto de 720p (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.4) — best-effort: o gate real é o
       // plano de quem subiu o vídeo, não o nosso. Não é contrato garantido.
       max_quality: "720p",
     });

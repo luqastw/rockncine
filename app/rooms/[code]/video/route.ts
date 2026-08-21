@@ -33,7 +33,7 @@ export async function PATCH(
   }
 
   // `source`/`embedUrl` nunca são aceitos do client — eram gravados sem
-  // nenhuma validação de conteúdo (achado 5, seção 11 do SPEC.md), permitindo
+  // nenhuma validação de conteúdo (achado 5, docs/specs/04-auditoria-ui-ux-rodada-2/spec.md), permitindo
   // persistir um `embedUrl` arbitrário (ex. `data:text/html,...`) que depois
   // ia direto pro `iframe src`/`a href` de todo mundo que reabrisse a sala.
   // Só `sourceUrl` é aceito; `source`/`embedUrl` são sempre re-derivados

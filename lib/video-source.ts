@@ -5,7 +5,7 @@ const HLS_RE = /\.m3u8(\?|$)/i;
 
 // sniff de extensão só — sem HEAD/Content-Type (consistente com a regra de não
 // fazer proxy/scraping de terceiro). URL assinada sem extensão visível cai no
-// fallback GENERIC_IFRAME — limitação conhecida, ver SPEC.md seção 7.
+// fallback GENERIC_IFRAME — limitação conhecida, ver docs/specs/01-fundacao-mvp/spec.md, seção 7.
 export function isHlsUrl(url: string): boolean {
   return HLS_RE.test(url);
 }
@@ -79,7 +79,7 @@ function extractDriveId(url: string): string | null {
 }
 
 // Resolve via oEmbed público do Vimeo — extrai o videoId do iframe src retornado
-// (ver SPEC.md seção 7, item 2). Sem chave de API, só o endpoint público.
+// (ver docs/specs/01-fundacao-mvp/spec.md, seção 7, item 2). Sem chave de API, só o endpoint público.
 async function resolveVimeo(rawUrl: string, idFromUrl: string): Promise<string> {
   try {
     const res = await fetch(
@@ -120,7 +120,7 @@ function parseUrl(rawUrl: string): URL | null {
 // vetor de injeção mesmo quando o valor chega tainted por um caminho que não
 // passou por `resolveVideoUrl` — ex. escrita direta no storage do Liveblocks
 // por um client malicioso, que nenhuma validação de rota server-side alcança
-// (achado 5, seção 11 do SPEC.md).
+// (achado 5, docs/specs/04-auditoria-ui-ux-rodada-2/spec.md).
 export function isSafeEmbedUrl(value: string): boolean {
   try {
     const u = new URL(value);
@@ -162,6 +162,6 @@ export async function resolveVideoUrl(rawUrl: string): Promise<ResolvedVideo | n
   }
 
   // fallback universal: qualquer outro link https/http vira iframe genérico
-  // (load-only, sem sync de play/pause/seek — ver SPEC.md seção 7).
+  // (load-only, sem sync de play/pause/seek — ver docs/specs/01-fundacao-mvp/spec.md, seção 7).
   return { source: "GENERIC_IFRAME", embedUrl: normalized, sourceUrl: normalized };
 }

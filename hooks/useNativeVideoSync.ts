@@ -13,7 +13,7 @@ const REMOTE_APPLY_COOLDOWN_MS = 400;
 
 // Mesmo esqueleto de useYouTubeSync/useVimeoSync (constantes de drift/cooldown,
 // applyRemote, commitPlayer/broadcast, destruir+zerar ref na troca de fonte,
-// loadedAt nas deps pra forçar reload em retry — ver SPEC.md seção 7) aplicado
+// loadedAt nas deps pra forçar reload em retry — ver docs/specs/01-fundacao-mvp/spec.md, seção 7) aplicado
 // a mídia direta (.mp4/.webm) e HLS (.m3u8) via <video> nativo + hls.js.
 export function useNativeVideoSync({
   containerId,
@@ -109,7 +109,7 @@ export function useNativeVideoSync({
           setError("falha ao carregar o stream (manifest/rede). tente carregar de novo.");
         }
       });
-      // teto de 720p (SPEC.md seção 9.4) — autoLevelCapping mantém o ABR
+      // teto de 720p (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.4) — autoLevelCapping mantém o ABR
       // vivo abaixo do limite, ao contrário de currentLevel/loadLevel (que
       // fixam o nível e cortam a capacidade de cair de qualidade em rede
       // ruim). Registrado antes de loadSource: MANIFEST_PARSED dispara antes

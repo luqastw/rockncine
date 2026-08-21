@@ -9,7 +9,7 @@ const MAX_MESSAGES = 200;
 export type ChatFeedItem = ChatEvent | SystemEvent;
 
 // Chat não persiste (decisão travada) — histórico vive só neste estado React,
-// reconstituído a zero pra quem entra depois (ver SPEC.md seção 2). Mensagens
+// reconstituído a zero pra quem entra depois (ver docs/specs/01-fundacao-mvp/spec.md, seção 2). Mensagens
 // de sistema (entrada na sala) entram no mesmo feed, distinguidas por `type`.
 export function useChat({ userId, userName }: { userId: string; userName: string }) {
   const [messages, setMessages] = useState<ChatFeedItem[]>([]);
