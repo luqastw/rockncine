@@ -13,7 +13,10 @@ export default function LoginPage() {
 
       <p className="text-sm text-[var(--ink-muted)]">
         sem conta?{" "}
-        <Link href="/register" className="text-[var(--ember)] hover:underline">
+        <Link
+          href="/register"
+          className="rounded-sm text-[var(--ember)] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--ember)]"
+        >
           cadastrar
         </Link>
       </p>

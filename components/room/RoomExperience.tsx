@@ -1,6 +1,6 @@
 "use client";
 
-import { useStorage } from "@liveblocks/react";
+import { useStatus, useStorage } from "@liveblocks/react";
 import { useYouTubeSync } from "@/hooks/useYouTubeSync";
 import { useVimeoSync } from "@/hooks/useVimeoSync";
 import { useLastRoomEvent } from "@/hooks/useLastRoomEvent";
@@ -12,6 +12,13 @@ import { Chat } from "@/components/room/Chat";
 
 const YT_CONTAINER_ID = "yt-player";
 const VIMEO_CONTAINER_ID = "vimeo-player";
+
+const CONNECTION_LABEL: Partial<Record<ReturnType<typeof useStatus>, string>> = {
+  initial: "conectando...",
+  connecting: "conectando...",
+  reconnecting: "reconectando...",
+  disconnected: "desconectado — tentando religar...",
+};
 
 export function RoomExperience({
   roomCode,
@@ -25,24 +32,33 @@ export function RoomExperience({
   const video = useStorage((root) => root.video);
   const player = useStorage((root) => root.player);
   const lastEvent = useLastRoomEvent();
+  const status = useStatus();
 
-  useYouTubeSync({ containerId: YT_CONTAINER_ID, userId });
-  useVimeoSync({ containerId: VIMEO_CONTAINER_ID, userId });
+  const { isReady: youtubeReady } = useYouTubeSync({ containerId: YT_CONTAINER_ID, userId });
+  const { isReady: vimeoReady } = useVimeoSync({ containerId: VIMEO_CONTAINER_ID, userId });
 
   const hasYouTube = video?.source === "YOUTUBE" && !!video.embedUrl;
   const hasVimeo = video?.source === "VIMEO" && !!video.embedUrl;
   const hasGeneric = video?.source === "GENERIC_IFRAME" && !!video.embedUrl;
   const syncLimited = video?.source === "GENERIC_IFRAME";
 
+  const playerLoading = (hasYouTube && !youtubeReady) || (hasVimeo && !vimeoReady);
+  const connectionLabel = CONNECTION_LABEL[status];
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-6 px-6 py-8 lg:flex-row">
       <div className="flex flex-1 flex-col gap-4">
         <header className="flex items-baseline justify-between">
           <h1 className="font-mono text-sm text-[var(--ink-muted)]">sala {roomCode}</h1>
-          {player && !syncLimited && (
-            <span className="font-mono text-xs text-[var(--ink-muted)]">
-              {player.isPlaying ? "● ao vivo · sincronizado" : "○ pausado"}
-            </span>
+          {connectionLabel ? (
+            <span className="font-mono text-xs text-[var(--ink-muted)]">{connectionLabel}</span>
+          ) : (
+            player &&
+            !syncLimited && (
+              <span className="font-mono text-xs text-[var(--ink-muted)]">
+                {player.isPlaying ? "● ao vivo · sincronizado" : "○ pausado"}
+              </span>
+            )
           )}
         </header>
 
@@ -51,7 +67,7 @@ export function RoomExperience({
           source={video?.source ?? null}
           lastEvent={lastEvent}
         >
-          <div className="aspect-video w-full overflow-hidden rounded-md bg-black">
+          <div className="relative aspect-video w-full overflow-hidden rounded-md bg-black">
             {hasYouTube ? (
               <div id={YT_CONTAINER_ID} className="h-full w-full" />
             ) : hasVimeo ? (
@@ -63,10 +79,30 @@ export function RoomExperience({
                 cole um link (YouTube, Vimeo, Google Drive ou outro) abaixo pra começar
               </div>
             )}
+            {playerLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-sm text-[var(--ink-muted)]">
+                carregando player...
+              </div>
+            )}
           </div>
         </SyncRing>
 
         <LoadVideoForm roomCode={roomCode} userId={userId} />
+
+        {hasGeneric && (
+          <p className="text-xs text-[var(--ink-muted)]">
+            se a prévia não aparecer, o site pode não permitir incorporação —{" "}
+            <a
+              href={video!.embedUrl!}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-[var(--ember)] hover:underline"
+            >
+              abrir em nova aba
+            </a>
+            .
+          </p>
+        )}
       </div>
 
       <aside className="flex w-full min-h-0 flex-col gap-6 lg:w-72">

@@ -13,7 +13,10 @@ export default function RegisterPage() {
 
       <p className="text-sm text-[var(--ink-muted)]">
         já tem conta?{" "}
-        <Link href="/login" className="text-[var(--ember)] hover:underline">
+        <Link
+          href="/login"
+          className="rounded-sm text-[var(--ember)] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--ember)]"
+        >
           entrar
         </Link>
       </p>

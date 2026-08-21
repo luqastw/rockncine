@@ -6,23 +6,58 @@ export type ResolvedVideo = {
   sourceUrl: string;
 };
 
-const YOUTUBE_PATTERNS = [
-  /(?:youtube\.com\/watch\?v=|youtube\.com\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-];
+const YT_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
 
-const VIMEO_PATTERN = /vimeo\.com\/(?:video\/)?(\d+)/;
+// Parsing baseado em URL (hostname/pathname/searchParams) em vez de regex na
+// string inteira — robusto a ordem de query params, domínios alternativos
+// (m., music., -nocookie) e timestamps/params extras colados junto do link.
+function parseYouTubeId(url: URL): string | null {
+  const host = url.hostname.replace(/^m\.|^music\./, "");
+
+  if (host === "youtu.be") {
+    const id = url.pathname.split("/").filter(Boolean)[0];
+    return id && YT_ID_RE.test(id) ? id : null;
+  }
+
+  if (host !== "youtube.com" && host !== "www.youtube.com" && host !== "youtube-nocookie.com") {
+    return null;
+  }
+
+  if (url.pathname === "/watch") {
+    const v = url.searchParams.get("v");
+    return v && YT_ID_RE.test(v) ? v : null;
+  }
+
+  const shorts = url.pathname.match(/^\/shorts\/([a-zA-Z0-9_-]{11})/);
+  if (shorts) return shorts[1];
+
+  const embed = url.pathname.match(/^\/embed\/([a-zA-Z0-9_-]{11})/);
+  if (embed) return embed[1];
+
+  return null;
+}
+
+function parseVimeoIdFromUrl(url: URL): string | null {
+  const host = url.hostname.replace(/^www\.|^player\./, "");
+  if (host !== "vimeo.com") return null;
+
+  // pega o último grupo numérico longo do path — cobre vimeo.com/ID,
+  // player.vimeo.com/video/ID e vimeo.com/channels/x/ID, vimeo.com/groups/x/videos/ID
+  const matches = url.pathname.match(/\d{5,}/g);
+  return matches ? matches[matches.length - 1] : null;
+}
 
 const DRIVE_PATTERNS = [
   /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/,
   /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/,
 ];
 
-export function extractYouTubeId(url: string): string | null {
-  for (const pattern of YOUTUBE_PATTERNS) {
-    const match = url.match(pattern);
-    if (match) return match[1];
+export function extractYouTubeId(rawUrl: string): string | null {
+  try {
+    return parseYouTubeId(new URL(rawUrl));
+  } catch {
+    return null;
   }
-  return null;
 }
 
 function extractDriveId(url: string): string | null {
@@ -35,20 +70,17 @@ function extractDriveId(url: string): string | null {
 
 // Resolve via oEmbed público do Vimeo — extrai o videoId do iframe src retornado
 // (ver SPEC.md seção 7, item 2). Sem chave de API, só o endpoint público.
-async function resolveVimeo(rawUrl: string): Promise<string | null> {
-  const match = rawUrl.match(VIMEO_PATTERN);
-  if (!match) return null;
-
+async function resolveVimeo(rawUrl: string, idFromUrl: string): Promise<string> {
   try {
     const res = await fetch(
       `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(rawUrl)}`,
     );
-    if (!res.ok) return match[1]; // fallback: usa o id já extraído da URL
+    if (!res.ok) return idFromUrl; // fallback: usa o id já extraído da URL
     const data: { html?: string } = await res.json();
     const idFromHtml = data.html?.match(/player\.vimeo\.com\/video\/(\d+)/)?.[1];
-    return idFromHtml ?? match[1];
+    return idFromHtml ?? idFromUrl;
   } catch {
-    return match[1];
+    return idFromUrl;
   }
 }
 
@@ -63,16 +95,15 @@ export async function resolveVideoUrl(rawUrl: string): Promise<ResolvedVideo | n
 
   const normalized = url.toString();
 
-  const youtubeId = extractYouTubeId(normalized);
+  const youtubeId = parseYouTubeId(url);
   if (youtubeId) {
     return { source: "YOUTUBE", embedUrl: youtubeId, sourceUrl: normalized };
   }
 
-  if (VIMEO_PATTERN.test(normalized)) {
-    const vimeoId = await resolveVimeo(normalized);
-    if (vimeoId) {
-      return { source: "VIMEO", embedUrl: vimeoId, sourceUrl: normalized };
-    }
+  const vimeoIdFromUrl = parseVimeoIdFromUrl(url);
+  if (vimeoIdFromUrl) {
+    const vimeoId = await resolveVimeo(normalized, vimeoIdFromUrl);
+    return { source: "VIMEO", embedUrl: vimeoId, sourceUrl: normalized };
   }
 
   const driveId = extractDriveId(normalized);
