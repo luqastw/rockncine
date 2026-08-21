@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   const password = typeof body?.password === "string" ? body.password : "";
   const name = typeof body?.name === "string" && body.name.trim() ? body.name.trim() : null;
 
-  if (!email || !email.includes("@")) {
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "email inválido." }, { status: 400 });
   }
   if (password.length < 8) {

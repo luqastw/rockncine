@@ -8,9 +8,9 @@ Live at [rockncine.vercel.app](https://rockncine.vercel.app).
 
 - **Rooms** — create a room, get a short 8-character code (no `0/O`, `1/I/L`, `U` — easy to read aloud), share the link or code
 - **Synchronized playback** — play, pause, and seek propagate to every participant in real time via Liveblocks, with drift correction against clock skew
-- **Multiple video sources** — YouTube and Vimeo (full sync via their player SDKs), direct media (`.mp4`/`.webm`/`.m3u8`, `.m3u8` via `hls.js`), Google Drive previews, and a generic iframe fallback for anything else (load-only, no sync — the source doesn't expose a control API)
-- **Live chat** — ephemeral, scoped to the room session, not persisted to the database
-- **Presence** — see who else is in the room in real time
+- **Multiple video sources** — YouTube (full sync via the player SDK, closed captions off by default regardless of viewer language/account preference) and Vimeo (full sync via their player SDK), direct media (`.mp4`/`.webm`/`.m3u8`, `.m3u8` via `hls.js`), Google Drive previews, and a generic iframe fallback for anything else (load-only, no sync — the source doesn't expose a control API)
+- **Live chat** — ephemeral, scoped to the room session, not persisted to the database; system messages announce when someone joins or leaves (debounced against reconnects/refreshes)
+- **Presence** — see who else is in the room in real time, collapsed to a count by default with the full list one click away
 - **Custom player chrome** — native player controls are hidden in favor of a consistent overlay bar (play/pause, seek, volume, fullscreen)
 - **Theater mode** — in fullscreen, shrink the video to make room for chat and presence alongside it
 - **Auth** — email/password only, no OAuth
@@ -81,9 +81,12 @@ The app runs at `http://localhost:3000`.
 
 ```bash
 npm test
+npx tsc --noEmit
+npx eslint .
+npx next build
 ```
 
-Vitest, covering video source detection, room code generation, and the playback controller abstraction.
+Vitest, covering video source detection, room code generation, and the playback controller abstraction. All four are expected to pass clean before any change is considered done.
 
 ## License
 

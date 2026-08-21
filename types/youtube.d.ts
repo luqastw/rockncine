@@ -34,6 +34,7 @@ declare global {
       onReady?: (event: { target: Player }) => void;
       onStateChange?: (event: OnStateChangeEvent) => void;
       onError?: (event: OnErrorEvent) => void;
+      onApiChange?: (event: { target: Player }) => void;
     }
 
     interface PlayerOptions {
@@ -58,6 +59,8 @@ declare global {
       mute(): void;
       unMute(): void;
       isMuted(): boolean;
+      unloadModule(module: string): void;
+      setOption(module: string, option: string, value: unknown): void;
       destroy(): void;
     }
   }

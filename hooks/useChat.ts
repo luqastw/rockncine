@@ -47,5 +47,8 @@ export function useChat({ userId, userName }: { userId: string; userName: string
     [appendUnique, broadcast, userId, userName],
   );
 
-  return { messages, sendMessage };
+  // exposto pra fora do feed de chat próprio — useRoomLeaveAnnouncement
+  // (montado em RoomExperience, fora de <Chat>) usa isso pra colocar
+  // "fulano saiu da sala" no mesmo feed sem duplicar o estado de mensagens.
+  return { messages, sendMessage, appendMessage: appendUnique };
 }

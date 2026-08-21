@@ -65,6 +65,20 @@ export function useYouTubeSync({
     }, REMOTE_APPLY_COOLDOWN_MS);
   }, []);
 
+  // unloadModule sozinho não é suficiente: a API pode recarregar o módulo
+  // "captions" com uma faixa auto-selecionada (ASR, pelo idioma do
+  // navegador) depois do unload, sem disparar `onApiChange` de novo —
+  // confirmado via `getOption('captions', 'track')` no console mostrando
+  // uma faixa ativa mesmo após o unload (achado pós-deploy, 14.7). Limpar a
+  // faixa explicitamente com `setOption('captions', 'track', {})` é o que
+  // de fato zera a exibição.
+  const disableCaptions = useCallback(() => {
+    const player = playerRef.current;
+    if (!player) return;
+    player.unloadModule("captions");
+    player.setOption("captions", "track", {});
+  }, []);
+
   // cria/atualiza o player quando o video.embedUrl (videoId) ou loadedAt do
   // storage muda. loadedAt muda a cada "carregar" mesmo pra URL idêntica —
   // sem isso, recarregar o mesmo link não reexecutava este efeito (deps
@@ -94,6 +108,11 @@ export function useYouTubeSync({
       if (playerRef.current) {
         applyRemote(() => playerRef.current!.loadVideoById(videoId));
         loadedVideoIdRef.current = videoId;
+        // NÃO chamar unloadModule("captions") aqui: o módulo de legenda só
+        // fica disponível depois que a API dispara `onApiChange` (registrado
+        // abaixo, uma vez, na criação do player — o handler sobrevive a
+        // loadVideoById porque é o mesmo objeto Player). Chamar antes disso
+        // é no-op — o módulo ainda nem carregou.
         return;
       }
 
@@ -101,8 +120,19 @@ export function useYouTubeSync({
         videoId,
         width: "100%",
         height: "100%",
-        playerVars: { autoplay: 0, playsinline: 1, rel: 0, controls: 0, disablekb: 1 },
+        // cc_load_policy: 0 NÃO desliga legenda — a IFrame Player API só
+        // documenta efeito pro valor 1 (força legenda ligada); omitido ou 0
+        // caem em "preferência do usuário", que é justo o comportamento
+        // relatado como bug. Mantido por documentar a intenção, mas a
+        // correção real é descarregar o módulo "captions" via onApiChange
+        // abaixo, que dispara de novo a cada troca de vídeo (loadVideoById).
+        playerVars: { autoplay: 0, playsinline: 1, rel: 0, controls: 0, disablekb: 1, cc_load_policy: 0 },
         events: {
+          onApiChange: () => {
+            // dispara sempre que um módulo com API exposta (ex. "captions")
+            // fica disponível — inclusive de novo a cada loadVideoById.
+            disableCaptions();
+          },
           onReady: () => {
             loadedVideoIdRef.current = videoId;
             setIsReady(true);
@@ -123,14 +153,28 @@ export function useYouTubeSync({
                 else playerRef.current!.pauseVideo();
               });
               setIsPlayingLocal(shouldPlay);
+              // seekTo/playVideo pode fazer a API reselecionar uma faixa de
+              // legenda (achado real: funcionava pra quem cria a sala, sem
+              // snapshot/seek; falhava pra quem entra depois com o vídeo já
+              // tocando — achado pós-deploy, 14.7). Reforça logo após o seek
+              // e de novo com atraso, pro caso do reload ser assíncrono.
+              disableCaptions();
+              window.setTimeout(disableCaptions, 500);
             }
           },
           onError: (e) => {
             setError(youtubeErrorMessage(e.data));
           },
           onStateChange: (e) => {
-            if (e.data === window.YT.PlayerState.PLAYING) setIsPlayingLocal(true);
-            else if (e.data === window.YT.PlayerState.PAUSED) setIsPlayingLocal(false);
+            if (e.data === window.YT.PlayerState.PLAYING) {
+              setIsPlayingLocal(true);
+              // reforço final: a faixa de legenda pareceu ser reselecionada
+              // em pontos não previstos pelos dois reforços acima (achado
+              // pós-deploy, 14.7) — chamada idempotente, sem custo real.
+              disableCaptions();
+            } else if (e.data === window.YT.PlayerState.PAUSED) {
+              setIsPlayingLocal(false);
+            }
 
             if (isApplyingRemoteRef.current) return;
             const player = playerRef.current;

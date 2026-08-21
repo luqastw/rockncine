@@ -8,6 +8,8 @@ import { useVimeoSync } from "@/hooks/useVimeoSync";
 import { useNativeVideoSync } from "@/hooks/useNativeVideoSync";
 import { useLastRoomEvent } from "@/hooks/useLastRoomEvent";
 import { useRoomJoinAnnouncement } from "@/hooks/useRoomJoinAnnouncement";
+import { useRoomLeaveAnnouncement } from "@/hooks/useRoomLeaveAnnouncement";
+import { useChat } from "@/hooks/useChat";
 import { SyncRing } from "@/components/room/SyncRing";
 import { PresenceList } from "@/components/room/PresenceList";
 import { GenericIframe } from "@/components/room/GenericIframe";
@@ -67,6 +69,16 @@ export function RoomExperience({
   // aside com o Chat desmonta/remonta ao entrar em fullscreen ou alternar
   // teatro, o que reenviava "entrou na sala" a cada toggle (bug real).
   useRoomJoinAnnouncement(userName);
+  // useChat sobe pra este nível (em vez de instanciado dentro de <Chat>)
+  // pra existir uma única fonte de mensagens: useRoomLeaveAnnouncement
+  // também precisa injetar mensagens de sistema no mesmo feed, e mora aqui
+  // pela mesma razão do join acima — instanciar duas vezes duplicaria
+  // estado (e o dedup de `appendMessage` é por instância).
+  const { messages: chatMessages, sendMessage: sendChatMessage, appendMessage } = useChat({
+    userId,
+    userName,
+  });
+  useRoomLeaveAnnouncement(appendMessage, userId);
 
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [nativeFullscreen, setNativeFullscreen] = useState(false);
@@ -252,11 +264,15 @@ export function RoomExperience({
   const showAside = !isFullscreen || isTheater;
 
   return (
-    // abaixo de lg a página vira uma casca de altura fixa: sem isso o vídeo
-    // (mesmo com teto de 38dvh) somado ao chat estoura o viewport, o chat
-    // nunca chega a ter altura própria pra rolar e é a PÁGINA que rola,
-    // levando o player pra fora da tela (achado 9). Em lg+ nada muda.
-    <main className="mx-auto flex min-h-dvh w-full max-w-[1800px] flex-col gap-6 px-6 pt-8 pb-14 max-lg:h-dvh max-lg:overflow-hidden max-lg:pb-4">
+    // a página é uma casca de altura fixa em todos os breakpoints: sem isso
+    // o vídeo (mesmo com teto de altura) somado ao chat estoura o viewport,
+    // o chat nunca chega a ter altura própria pra rolar (o `overflow-y-auto`
+    // do `<ul>` em Chat.tsx depende de um ancestral com altura *definida*,
+    // não só `min-height`) e é a PÁGINA que rola, levando o player pra fora
+    // da tela (achado 9, também reproduzível em lg+ — achado 14).
+    // pb-14/max-lg:pb-4 divergem de propósito: respiro pro badge do
+    // Liveblocks fixo no canto (docs/specs/01-fundacao-mvp/spec.md, seção 6).
+    <main className="mx-auto flex h-dvh w-full max-w-[1800px] flex-col gap-6 overflow-hidden px-6 pt-8 pb-14 max-lg:pb-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link
@@ -309,9 +325,16 @@ export function RoomExperience({
         } ${cssFullscreen ? "fixed inset-0 z-50" : ""}`}
       >
         <div
-          className={`relative flex flex-col gap-4 ${
+          // p-4 -m-4: overflow-y-auto (necessário pro fallback de iframe
+          // genérico não ficar inacessível, ver item 14.1) força overflow-x
+          // pra "auto" também (regra do spec de CSS quando só um eixo é
+          // "auto") — sem esse respiro, o glow do SyncRing "ao vivo"
+          // (box-shadow que sangra ~15px pra fora da caixa) era recortado
+          // nos três lados em vez de vazar pro gap. A margem negativa
+          // cancela o respiro na largura ocupada pelos irmãos flex.
+          className={`relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4 -m-4 ${
             showAside ? "lg:basis-[80%]" : "w-full"
-          } ${isFullscreen ? "min-h-0 flex-1 justify-center" : "max-lg:shrink-0"}`}
+          } ${isFullscreen ? "flex-1 justify-center" : "max-lg:shrink-0"}`}
         >
           {isFullscreen && !isTheater && (
             <div className="absolute right-3 top-3 z-20 opacity-60 transition-opacity hover:opacity-100 focus-within:opacity-100">
@@ -449,7 +472,7 @@ export function RoomExperience({
               : ""
           }`}
         >
-          <section className="flex flex-col gap-3">
+          <section className="flex min-h-0 shrink-0 flex-col gap-3">
             <div className="flex items-center justify-between">
               <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
                 presença
@@ -464,17 +487,22 @@ export function RoomExperience({
             <PresenceList myName={userName} />
           </section>
           <section className="flex min-h-0 flex-1 flex-col gap-3">
-            <Chat userId={userId} userName={userName} />
+            <Chat userId={userId} messages={chatMessages} sendMessage={sendChatMessage} />
           </section>
         </aside>
-      </div>
 
-      <LoadVideoModal
-        roomCode={roomCode}
-        userId={userId}
-        open={loadModalOpen}
-        onClose={closeLoadModal}
-      />
+        {/* dentro da árvore do stageRef, não irmão dela — em tela cheia
+            nativa só a subárvore de `document.fullscreenElement` é pintada;
+            como filho de `<main>` o modal ficava fora da árvore renderizada
+            e nunca aparecia (achado pós-deploy, item 14.6). `fixed inset-0`
+            continua resolvendo contra o viewport normalmente aninhado aqui. */}
+        <LoadVideoModal
+          roomCode={roomCode}
+          userId={userId}
+          open={loadModalOpen}
+          onClose={closeLoadModal}
+        />
+      </div>
     </main>
   );
 }

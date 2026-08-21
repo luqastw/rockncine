@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useChat } from "@/hooks/useChat";
+import type { ChatFeedItem } from "@/hooks/useChat";
 import { REACTION_EMOJIS } from "@/liveblocks.config";
 
 function formatTime(ts: number) {
@@ -13,8 +13,15 @@ function formatTime(ts: number) {
 // arrastado pra baixo a cada mensagem nova (achado 14 da auditoria).
 const PIN_THRESHOLD_PX = 48;
 
-export function Chat({ userId, userName }: { userId: string; userName: string }) {
-  const { messages, sendMessage } = useChat({ userId, userName });
+export function Chat({
+  userId,
+  messages,
+  sendMessage,
+}: {
+  userId: string;
+  messages: ChatFeedItem[];
+  sendMessage: (text: string) => void;
+}) {
   const [draft, setDraft] = useState("");
   const [hasNew, setHasNew] = useState(false);
   const listRef = useRef<HTMLUListElement | null>(null);
