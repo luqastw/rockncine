@@ -18,7 +18,14 @@ export default async function RoomsPage() {
         <h2 className="text-xs uppercase tracking-wide text-[var(--ink-muted)]">
           criar sala
         </h2>
-        <form action="/rooms/new" method="POST">
+        <form action="/rooms/new" method="POST" className="flex flex-col gap-2">
+          <input
+            type="text"
+            name="name"
+            maxLength={60}
+            placeholder="nome da sala (opcional)"
+            className="min-h-11 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+          />
           <button
             type="submit"
             className="min-h-11 w-full rounded-md bg-[var(--invert-bg)] px-4 py-2 text-sm font-medium text-[var(--invert-fg)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"

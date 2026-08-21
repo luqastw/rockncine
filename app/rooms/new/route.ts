@@ -10,8 +10,12 @@ export async function POST(req: Request) {
     return NextResponse.redirect(new URL("/login", req.url), 303);
   }
 
+  const form = await req.formData().catch(() => null);
+  const rawName = form?.get("name");
+  const name = typeof rawName === "string" && rawName.trim() ? rawName.trim().slice(0, 60) : null;
+
   const room = await prisma.room.create({
-    data: { ownerId: session.user.id },
+    data: { ownerId: session.user.id, name },
   });
 
   return NextResponse.redirect(new URL(`/rooms/${room.code}`, req.url), 303);

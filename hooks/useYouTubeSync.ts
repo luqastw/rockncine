@@ -183,7 +183,7 @@ export function useYouTubeSync({
 
   // aplica PLAY/PAUSE/SEEK vindos de outros participantes
   useEventListener(({ event }) => {
-    if (event.type === "CHAT_MESSAGE" || event.type === "LOAD_VIDEO") return;
+    if (event.type !== "PLAY" && event.type !== "PAUSE" && event.type !== "SEEK") return;
     if (event.actorId === userId) return; // origem já aplicou localmente
 
     const player = playerRef.current;

@@ -16,6 +16,7 @@ export default async function RoomPage({
     where: { code },
     select: {
       code: true,
+      name: true,
       videoSource: true,
       embedUrl: true,
       videoSourceUrl: true,
@@ -36,7 +37,12 @@ export default async function RoomPage({
         sourceUrl: room.videoSourceUrl,
       }}
     >
-      <RoomExperience roomCode={room.code} userId={userId} userName={userName} />
+      <RoomExperience
+        roomCode={room.code}
+        roomName={room.name}
+        userId={userId}
+        userName={userName}
+      />
     </RoomLiveblocksProvider>
   );
 }

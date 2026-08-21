@@ -1,28 +1,43 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useBroadcastEvent, useEventListener } from "@liveblocks/react";
-import type { ChatEvent } from "@/liveblocks.config";
+import type { ChatEvent, SystemEvent } from "@/liveblocks.config";
 
 const MAX_MESSAGES = 200;
 
+export type ChatFeedItem = ChatEvent | SystemEvent;
+
 // Chat não persiste (decisão travada) — histórico vive só neste estado React,
-// reconstituído a zero pra quem entra depois (ver SPEC.md seção 2).
+// reconstituído a zero pra quem entra depois (ver SPEC.md seção 2). Mensagens
+// de sistema (entrada na sala) entram no mesmo feed, distinguidas por `type`.
 export function useChat({ userId, userName }: { userId: string; userName: string }) {
-  const [messages, setMessages] = useState<ChatEvent[]>([]);
+  const [messages, setMessages] = useState<ChatFeedItem[]>([]);
   const seenIdsRef = useRef<Set<string>>(new Set());
   const broadcast = useBroadcastEvent();
 
-  const appendUnique = useCallback((event: ChatEvent) => {
+  const appendUnique = useCallback((event: ChatFeedItem) => {
     if (seenIdsRef.current.has(event.id)) return;
     seenIdsRef.current.add(event.id);
     setMessages((prev) => [...prev, event].slice(-MAX_MESSAGES));
   }, []);
 
   useEventListener(({ event }) => {
-    if (event.type !== "CHAT_MESSAGE") return;
+    if (event.type !== "CHAT_MESSAGE" && event.type !== "SYSTEM_MESSAGE") return;
     appendUnique(event);
   });
+
+  // avisa os outros participantes já na sala que alguém entrou — broadcast
+  // só, não é setState direto no corpo do efeito (chamada a sistema externo).
+  useEffect(() => {
+    broadcast({
+      type: "SYSTEM_MESSAGE",
+      id: crypto.randomUUID(),
+      text: `${userName} entrou na sala`,
+      ts: Date.now(),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const sendMessage = useCallback(
     (text: string) => {

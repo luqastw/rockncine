@@ -44,7 +44,18 @@ export type ChatEvent = {
   ts: number;
 };
 
-export type RoomEvent = PlayerEvent | ChatEvent;
+export type SystemEvent = {
+  type: "SYSTEM_MESSAGE";
+  id: string;
+  text: string;
+  ts: number;
+};
+
+// atalho de emoji no campo de mensagem do chat — não é um evento de
+// broadcast próprio, só insere no draft (ver components/room/Chat.tsx).
+export const REACTION_EMOJIS = ["❤️", "💔", "🔥", "😢", "🐔", "🍲"] as const;
+
+export type RoomEvent = PlayerEvent | ChatEvent | SystemEvent;
 
 declare global {
   interface Liveblocks {

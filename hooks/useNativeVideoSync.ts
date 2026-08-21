@@ -235,7 +235,7 @@ export function useNativeVideoSync({
   }, []);
 
   useEventListener(({ event }) => {
-    if (event.type === "CHAT_MESSAGE" || event.type === "LOAD_VIDEO") return;
+    if (event.type !== "PLAY" && event.type !== "PAUSE" && event.type !== "SEEK") return;
     if (event.actorId === userId) return;
 
     const videoEl = videoElRef.current;

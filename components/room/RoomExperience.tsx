@@ -29,10 +29,12 @@ const CONNECTION_LABEL: Partial<Record<ReturnType<typeof useStatus>, string>> = 
 
 export function RoomExperience({
   roomCode,
+  roomName,
   userId,
   userName,
 }: {
   roomCode: string;
+  roomName: string | null;
   userId: string;
   userName: string;
 }) {
@@ -107,15 +109,22 @@ export function RoomExperience({
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-[1800px] flex-col gap-6 px-6 py-8">
       <header className="flex items-baseline justify-between">
-        <h1 className="font-mono text-sm text-[var(--ink-muted)]">sala {roomCode}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-sm text-[var(--ink)]">{roomName || "sala sem nome"}</h1>
+          <span className="font-mono text-xs text-[var(--ink-muted)]">{roomCode}</span>
+          {player?.isPlaying && !syncLimited && (
+            <span className="rounded-full bg-[var(--invert-bg)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--invert-fg)]">
+              ao vivo
+            </span>
+          )}
+        </div>
         {connectionLabel ? (
           <span className="font-mono text-xs text-[var(--ink-muted)]">{connectionLabel}</span>
         ) : (
           player &&
-          !syncLimited && (
-            <span className="font-mono text-xs text-[var(--ink-muted)]">
-              {player.isPlaying ? "● ao vivo · sincronizado" : "○ pausado"}
-            </span>
+          !syncLimited &&
+          !player.isPlaying && (
+            <span className="font-mono text-xs text-[var(--ink-muted)]">○ pausado</span>
           )
         )}
       </header>

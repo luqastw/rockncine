@@ -39,20 +39,12 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
-@keyframes sync-pulse {
-  0%,
-  100% {
-    border-width: 2px;
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.15);
-  }
-  50% {
-    border-width: 3px;
-    box-shadow: 0 0 18px 1px rgba(255, 255, 255, 0.3);
-  }
-}
-
+/* estático, sem keyframe — animar border-width force reflow a cada frame
+   (era a provável causa real do "video lagando", não só da borda piscando:
+   3s de layout thrash contínuo em cima do próprio elemento do vídeo). Só
+   box-shadow (compositor, não dispara reflow), fixo, brilho fraco. */
 .animate-sync-pulse {
-  animation: sync-pulse 3s ease-in-out infinite;
+  box-shadow: 0 0 14px 1px rgba(255, 255, 255, 0.22);
 }
 
 @keyframes sync-flash {
