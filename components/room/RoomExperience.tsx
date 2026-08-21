@@ -68,6 +68,22 @@ export function RoomExperience({
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
 
+  useEffect(() => {
+    // o botão de teatro só existe (clicável) em lg+ (SPEC.md seção 10, item
+    // 4) — mas isso só fecha a porta de ENTRAR nesse estado por clique. Sem
+    // isso aqui, redimensionar a janela pra baixo de lg com teatro já ligado
+    // deixava `isTheater` grudado em `true`, reproduzindo o mesmo layout
+    // quebrado (aside disputando altura com o vídeo empilhado) por resize
+    // em vez de clique.
+    const mql = window.matchMedia("(min-width: 1024px)");
+    const onChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (!e.matches) setIsTheater(false);
+    };
+    onChange(mql);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
   const toggleFullscreen = useCallback(() => {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
@@ -75,6 +91,12 @@ export function RoomExperience({
       stageRef.current?.requestFullscreen?.().catch(() => {});
     }
   }, []);
+
+  // identidade estável — RoomExperience re-renderiza a cada evento do
+  // Liveblocks (chat, presença, sync); um `() => setLoadModalOpen(false)`
+  // inline mudaria de referência a cada um desses renders e re-disparava o
+  // efeito de teclado do modal enquanto ele está aberto (SPEC.md seção 10).
+  const closeLoadModal = useCallback(() => setLoadModalOpen(false), []);
 
   const { isReady: youtubeReady, error: youtubeError, controller: youtubeController } =
     useYouTubeSync({ containerId: YT_CONTAINER_ID, userId });
@@ -278,7 +300,7 @@ export function RoomExperience({
         roomCode={roomCode}
         userId={userId}
         open={loadModalOpen}
-        onClose={() => setLoadModalOpen(false)}
+        onClose={closeLoadModal}
       />
     </main>
   );

@@ -830,3 +830,35 @@ usuário numa rodada anterior desta mesma sessão (referência de watch-party de
 "Decisões travadas" / histórico da sala). A auditoria sinalizou como possível ruído de affordance,
 mas mudar exigiria contradizer uma escolha explícita já feita — fica registrado aqui como
 avaliado-e-mantido, não como pendência.
+
+### 10.1 Addendum: dois bugs reais achados pelo code-reviewer em cima desta correção
+
+Segunda rodada de review (`feature-dev:code-reviewer`) sobre o commit dos itens 1–8 achou dois bugs
+de verdade, não cobertos pela auditoria original.
+
+**A. `onClose` inline em `RoomExperience.tsx` re-disparava o efeito de teclado do `LoadVideoModal` a
+cada re-render alheio — CONFIRMADO, corrigido.** `RoomExperience` re-renderiza com alta frequência
+enquanto o modal está aberto (assina `useStorage` de `video`/`player`, `useStatus`,
+`useLastRoomEvent`, `useRoomJoinAnnouncement` — todo tráfego do Liveblocks: chat, presença, sync).
+O efeito de Escape/Tab-trap do modal tinha `onClose` no array de deps; como
+`onClose={() => setLoadModalOpen(false)}` era recriado a cada render do pai, o efeito
+desmontava/remontava a cada evento não-relacionado enquanto `open` continuava `true` — limpando
+`error` e roubando o foco de volta pro input da URL no meio de qualquer coisa que o usuário
+estivesse fazendo (ex. digitando, focado no botão de fechar). Corrigido em dois lugares:
+`RoomExperience.tsx` ganhou `closeLoadModal = useCallback(() => setLoadModalOpen(false), [])`
+(identidade estável) passado como `onClose`; e, defesa em profundidade, `LoadVideoModal.tsx` parou
+de depender de `onClose` no efeito de teclado — guarda a versão mais recente num `onCloseRef`
+atualizado por um efeito próprio, e o listener de `keydown` agora depende só de `open`. Efeito
+colateral: o "limpar erro + focar input" também saiu do mesmo efeito pra um efeito próprio, com a
+mesma dependência única (`open`) — não é mais re-executado por causa do `onClose`.
+
+**B. Redimensionar a janela pra abaixo de `lg` com teatro já ligado reproduzia o mesmo layout
+quebrado do item 4 — CONFIRMADO, corrigido.** O `hidden lg:flex` do item 4 fecha só a porta de
+**entrar** no estado `isFullscreen && isTheater` abaixo de `lg` por clique — não existia nenhum
+listener de redimensionamento, então quem já estava em tela cheia + teatro numa janela larga e
+encolhia ela pra menos de 1024px (redimensionar janela de desktop, não só girar celular) ficava
+preso no mesmo bug: `isTheater` continuava `true`, o stage caía pra `flex-col`, e o `aside` voltava
+a disputar altura com o vídeo. Corrigido com um efeito novo em `RoomExperience.tsx`, ao lado do de
+`fullscreenchange`: `matchMedia("(min-width: 1024px)")` com listener de `change` que força
+`setIsTheater(false)` sempre que a viewport cruza pra baixo de `lg` — independente de estar ou não
+em tela cheia no momento (inofensivo quando já é `false`).

@@ -28,6 +28,16 @@ export function LoadVideoModal({
   // disparou o modal) — devolve o foco pra lá ao fechar, senão ele some pra
   // o topo do documento (SPEC.md seção 10).
   const triggerRef = useRef<HTMLElement | null>(null);
+  // guarda o `onClose` mais recente sem entrar como dep do efeito de
+  // teclado abaixo — se o chamador passar uma função inline não-memoizada
+  // (como `RoomExperience` fazia antes), cada um dos re-renders dele durante
+  // o modal aberto NÃO deve re-montar o listener/limpar o erro/roubar o foco
+  // de novo (bug real: reviewer achou isso em cima da spec 10, corrigido
+  // aqui e não só no chamador — defesa em profundidade).
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (open) {
@@ -44,12 +54,18 @@ export function LoadVideoModal({
       setError(null);
       inputRef.current?.focus();
     }, 0);
+    return () => window.clearTimeout(t);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     // Escape fecha; Tab/Shift+Tab fica preso no painel (trap de foco simples
     // — só o painel tem elementos focáveis nesta tela, então basta ciclar
-    // entre o primeiro e o último).
+    // entre o primeiro e o último). Depende só de `open`: não recria o
+    // listener a cada re-render do pai enquanto o modal segue aberto.
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab" || !panelRef.current) return;
@@ -70,11 +86,8 @@ export function LoadVideoModal({
       }
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.clearTimeout(t);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open, onClose]);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
 
   if (!open) return null;
 
