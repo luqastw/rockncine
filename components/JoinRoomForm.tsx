@@ -24,11 +24,11 @@ export function JoinRoomForm() {
         autoComplete="off"
         autoCapitalize="characters"
         spellCheck={false}
-        className="min-h-11 min-w-0 flex-1 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 font-mono text-sm text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+        className="min-h-11 min-w-0 flex-1 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 font-mono text-sm tracking-wider text-[var(--ink)] placeholder:text-[var(--ink-muted)] placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       />
       <button
         type="submit"
-        className="min-h-11 shrink-0 rounded-md border border-[var(--ink-muted)] px-4 text-sm text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+        className="min-h-11 shrink-0 rounded-md border border-[var(--ink-muted)] px-4 text-sm text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
         entrar
       </button>

@@ -42,7 +42,7 @@ export function Chat({ userId, userName }: { userId: string; userName: string })
   }, [messages]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2">
+    <div className="flex h-full min-h-0 flex-col gap-3">
       <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
         chat
       </h2>

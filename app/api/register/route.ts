@@ -9,18 +9,18 @@ export async function POST(req: Request) {
   const name = typeof body?.name === "string" && body.name.trim() ? body.name.trim() : null;
 
   if (!email || !email.includes("@")) {
-    return NextResponse.json({ error: "Email inválido." }, { status: 400 });
+    return NextResponse.json({ error: "email inválido." }, { status: 400 });
   }
   if (password.length < 8) {
     return NextResponse.json(
-      { error: "Senha precisa de ao menos 8 caracteres." },
+      { error: "senha precisa de ao menos 8 caracteres." },
       { status: 400 },
     );
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    return NextResponse.json({ error: "Email já cadastrado." }, { status: 409 });
+    return NextResponse.json({ error: "email já cadastrado." }, { status: 409 });
   }
 
   const passwordHash = await bcrypt.hash(password, 12);

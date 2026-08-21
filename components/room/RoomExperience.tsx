@@ -253,7 +253,7 @@ export function RoomExperience({
 
   return (
     // abaixo de lg a página vira uma casca de altura fixa: sem isso o vídeo
-    // (mesmo com teto de 45dvh) somado ao chat estoura o viewport, o chat
+    // (mesmo com teto de 38dvh) somado ao chat estoura o viewport, o chat
     // nunca chega a ter altura própria pra rolar e é a PÁGINA que rola,
     // levando o player pra fora da tela (achado 9). Em lg+ nada muda.
     <main className="mx-auto flex min-h-dvh w-full max-w-[1800px] flex-col gap-6 px-6 pt-8 pb-14 max-lg:h-dvh max-lg:overflow-hidden max-lg:pb-4">
@@ -262,7 +262,7 @@ export function RoomExperience({
           <Link
             href="/rooms"
             aria-label="voltar para suas salas"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--ink-muted)] text-sm text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--ink-muted)] text-sm text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
           >
             ←
           </Link>
@@ -275,7 +275,7 @@ export function RoomExperience({
             <LastActionNote lastEvent={lastEvent} userId={userId} />
           </div>
           {isPlayingNow && !syncLimited && (
-            <span className="shrink-0 rounded-full bg-[var(--invert-bg)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--invert-fg)]">
+            <span className="shrink-0 rounded-full bg-[var(--invert-bg)] px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-[var(--invert-fg)]">
               ao vivo
             </span>
           )}
@@ -345,6 +345,9 @@ export function RoomExperience({
               lastEvent={lastEvent}
               isFullscreen={isFullscreen}
             >
+              {/* bg-black literal de propósito (não --bg-void): é a letterbox
+                  atrás do vídeo, não uma superfície da UI — ver revisão de
+                  consistência, achado 5 do SPEC.md seção 11. */}
               <div className="relative aspect-video w-full overflow-hidden rounded-md bg-black">
               <PlayerShell
                 controller={activeController}
@@ -369,7 +372,7 @@ export function RoomExperience({
                         // nenhum, num alvo que ocupa a tela inteira do player
                         // (achado 17). `ring-inset` porque o botão sangra até
                         // a borda da caixa.
-                        className="absolute inset-0 z-20 flex items-center justify-center bg-[var(--bg-void)] focus:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-[var(--outline-strong)]"
+                        className="absolute inset-0 z-20 flex items-center justify-center bg-[var(--bg-void)] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[var(--outline-strong)]"
                       >
                         <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--invert-bg)] text-[var(--invert-fg)]">
                           <PlayIcon className="h-7 w-7" />
@@ -419,7 +422,7 @@ export function RoomExperience({
                 href={video!.embedUrl!}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="text-[var(--ink)] underline"
+                className="rounded-sm text-[var(--ink)] underline focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
               >
                 abrir em nova aba
               </a>

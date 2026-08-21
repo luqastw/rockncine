@@ -70,13 +70,13 @@ export default async function RoomsPage() {
               <li key={room.code}>
                 <Link
                   href={`/rooms/${room.code}`}
-                  className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-3 py-2 hover:border-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+                  className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
                 >
                   <span className="flex min-w-0 flex-col">
                     <span className="truncate text-sm text-[var(--ink)]">
                       {room.name || "sala sem nome"}
                     </span>
-                    <span className="font-mono text-xs text-[var(--ink-muted)]">{room.code}</span>
+                    <span className="font-mono text-sm tracking-wider text-[var(--ink-muted)]">{room.code}</span>
                   </span>
                   <span className="shrink-0 text-xs text-[var(--ink-muted)]">
                     {room.ownerId === userId ? "sua · " : ""}

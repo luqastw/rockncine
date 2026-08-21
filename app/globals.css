@@ -33,6 +33,13 @@
      variável no próprio elemento pra o halo do foco não ficar escuro sobre
      --bg-surface (achado 24 da auditoria). */
   --focus-offset: var(--bg-void);
+
+  /* scrim de overlay (modal, mensagem de carregamento/erro do player) — antes
+     dois valores de opacidade diferentes (bg-black/70, bg-black/60) pra
+     mesma função de "escurecer o que está atrás" (revisão de consistência,
+     achado 5, SPEC.md seção 11). Não usar em cima do vídeo: ali "preto" é
+     letterbox real, não scrim de UI — ver comentário em RoomExperience.tsx. */
+  --scrim: rgb(0 0 0 / 0.7);
 }
 
 @theme inline {

@@ -67,7 +67,7 @@ export function PlayerControls({
         onClick={controller.togglePlay}
         disabled={!controller.isReady}
         aria-label={controller.isPlaying ? "pausar" : "tocar"}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--invert-bg)] text-[var(--invert-fg)] disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--invert-bg)] text-[var(--invert-fg)] disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
         {controller.isPlaying ? (
           <PauseIcon className="h-4 w-4" />
@@ -110,7 +110,7 @@ export function PlayerControls({
         type="button"
         onClick={controller.toggleMute}
         aria-label={controller.isMuted ? "reativar áudio" : "mutar"}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
         {controller.isMuted ? (
           <VolumeMutedIcon className="h-4 w-4" />
@@ -135,7 +135,7 @@ export function PlayerControls({
         type="button"
         onClick={onToggleFullscreen}
         aria-label={isFullscreen ? "sair da tela cheia" : "tela cheia"}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-void)]"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
         {isFullscreen ? (
           <FullscreenExitIcon className="h-4 w-4" />

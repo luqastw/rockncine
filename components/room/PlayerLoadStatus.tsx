@@ -36,9 +36,12 @@ export function PlayerLoadStatus({
   const message = error ?? (timedOut ? "não foi possível carregar o player." : null);
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-black/60 px-4 text-center text-sm text-[var(--ink-muted)]">
+    <div className="absolute inset-0 flex items-center justify-center bg-[var(--scrim)] px-4 text-center text-sm text-[var(--ink-muted)]">
       {message ? (
-        <div className="flex flex-col items-center gap-2 rounded-md border-2 border-[var(--ink)] bg-[var(--bg-void)] px-4 py-3">
+        <div
+          role="alert"
+          className="flex flex-col items-center gap-2 rounded-md border-2 border-[var(--ink)] bg-[var(--bg-void)] px-3 py-2"
+        >
           <span className="font-semibold text-[var(--ink)]">{message}</span>
           {!error && (
             <span className="text-xs text-[var(--ink-muted)]">
@@ -50,7 +53,7 @@ export function PlayerLoadStatus({
               href={sourceUrl}
               target="_blank"
               rel="noreferrer noopener"
-              className="text-[var(--ink)] underline"
+              className="rounded-sm text-[var(--ink)] underline focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
             >
               abrir o link original
             </a>
