@@ -170,6 +170,7 @@ export function RoomExperience({
             isPlaying={player?.isPlaying ?? false}
             source={video?.source ?? null}
             lastEvent={lastEvent}
+            isFullscreen={isFullscreen}
           >
             <div
               className={`relative aspect-video w-full overflow-hidden rounded-md bg-black ${
@@ -234,33 +235,37 @@ export function RoomExperience({
           )}
         </div>
 
-        {showAside && (
-          <aside
-            className={`flex w-full min-h-0 flex-col gap-6 lg:min-w-72 lg:basis-[20%] ${
-              isFullscreen && isTheater
-                ? "rounded-lg border border-[var(--line)] bg-[var(--bg-surface)] p-4"
-                : ""
-            }`}
-          >
-            <section className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
-                  presença
-                </h2>
-                <RoomActions
-                  onLoadVideo={() => setLoadModalOpen(true)}
-                  onToggleTheater={() => setIsTheater((v) => !v)}
-                  isTheater={isTheater}
-                  showTheaterToggle={isFullscreen}
-                />
-              </div>
-              <PresenceList myName={userName} />
-            </section>
-            <section className="flex min-h-0 flex-1 flex-col gap-3">
-              <Chat userId={userId} userName={userName} />
-            </section>
-          </aside>
-        )}
+        {/* sempre montado, nunca condicionalmente renderizado — `<Chat>` guarda
+            histórico em estado React local (useChat), e um unmount/remount a
+            cada toggle de fullscreen/teatro zerava as mensagens (bug real,
+            ver SPEC.md seção 9.6). Visibilidade agora é só CSS (`hidden`). */}
+        <aside
+          className={`w-full min-h-0 flex-col gap-6 lg:min-w-72 lg:basis-[20%] ${
+            showAside ? "flex" : "hidden"
+          } ${
+            isFullscreen && isTheater
+              ? "rounded-lg border border-[var(--line)] bg-[var(--bg-surface)] p-4"
+              : ""
+          }`}
+        >
+          <section className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
+                presença
+              </h2>
+              <RoomActions
+                onLoadVideo={() => setLoadModalOpen(true)}
+                onToggleTheater={() => setIsTheater((v) => !v)}
+                isTheater={isTheater}
+                showTheaterToggle={isFullscreen}
+              />
+            </div>
+            <PresenceList myName={userName} />
+          </section>
+          <section className="flex min-h-0 flex-1 flex-col gap-3">
+            <Chat userId={userId} userName={userName} />
+          </section>
+        </aside>
       </div>
 
       <LoadVideoModal

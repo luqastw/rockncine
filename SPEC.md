@@ -681,3 +681,47 @@ isso na UI, não fingir um controle que não existe.
 5. 9.3 itens 3 e 4 (drift/cooldown) — só depois de instrumentar e confirmar com log real quantas
    correções por minuto acontecem numa sessão que "laga". Mexer em sync sem medição é trocar um bug
    por outro.
+
+### 9.6 Addendum pós-implementação: moldura em tela cheia e chat que zerava
+
+Rodada de ajuste depois de 9.1–9.5 estarem no ar, motivada por dois prints do usuário em tela cheia
+e um relato de bug funcional.
+
+**Moldura de sync (`SyncRing`) desligada em tela cheia.** Fora de tela cheia a borda/brilho/flash de
+`SyncRing.tsx` sinaliza estado da sala num contexto onde o vídeo divide tela com chat/presença. Em
+tela cheia esse contexto já não existe — o vídeo *é* a tela, com o respiro próprio da 9.1 — e a
+moldura passa a ser só chrome supérfluo ao redor da imagem. `SyncRing` ganhou a prop `isFullscreen`
+(passada de `RoomExperience.tsx`); com ela `true`, a borda, o `animate-sync-pulse` e o flash de
+`animate-sync-flash` não são aplicados — só o `<div>` estrutural (`relative rounded-lg`) permanece,
+sem nenhuma cor/brilho. O badge "sync limitado" (`GENERIC_IFRAME`) continua aparecendo mesmo em tela
+cheia: é informação (controle manual necessário), não decoração.
+
+**Brilho tênue nos cantos fora de tela cheia — comportamento esperado do `box-shadow`, não bug.**
+`.animate-sync-pulse` (`app/globals.css:46`) é `box-shadow: 0 0 14px 1px rgba(255,255,255,0.22)`
+sem spread negativo nem segunda camada. Um `box-shadow` acompanha o `border-radius` do próprio
+elemento (`rounded-lg`), então nas bordas retas o brilho se espalha uniformemente perpendicular à
+aresta; no arco do canto, a mesma quantidade de luz se distribui ao longo de uma curva mais curta,
+lida visualmente como mais fraca ali — é falloff gaussiano padrão do algoritmo de blur do
+`box-shadow`, replicável em qualquer elemento com `border-radius` + `box-shadow`, não uma
+particularidade deste componente. Não é regressão dos ajustes da seção 9 nem do fix do
+`border-width` animado (item 1 da 9.3). Se um dia quiser corrigir cosmeticamente, o caminho é
+reforçar especificamente os cantos (segunda camada de `box-shadow` com spread maior, ou
+`filter: drop-shadow` num pseudo-elemento) — não feito nesta rodada por ser puramente estético, sem
+pedido explícito de mudança visual, só a dúvida sobre normalidade.
+
+**Bug real: mensagens de chat zeravam ao alternar fullscreen/teatro — CONFIRMADO e corrigido.**
+`useChat.ts` guarda o histórico só em `useState` local (decisão travada: chat não persiste — seção
+2). Antes desta rodada, `RoomExperience.tsx` renderizava o `<aside>` (e portanto `<Chat>`, e portanto
+`useChat`) condicionalmente: `{showAside && (<aside>...)}`. Toda vez que `showAside` virava `false`
+— entrar em tela cheia sem teatro — React desmontava `<Chat>` de verdade, destruindo o estado do
+hook; ao `showAside` voltar a `true` — ligar o teatro dentro da tela cheia, ou sair da tela cheia —
+`<Chat>` remontava do zero, com `useChat` reinicializando `messages` em `[]`. Sintoma relatado:
+histórico sumindo tanto ao abrir o chat lateral dentro da tela cheia quanto ao digitar em tela cheia
+e sair dela.
+
+Correção: `<aside>` agora é **sempre montado**; a visibilidade que antes era renderização
+condicional virou só troca de classe (`showAside ? "flex" : "hidden"`, `display:none` via Tailwind
+`hidden`). `Chat`/`useChat` nunca mais desmontam por causa de fullscreen ou teatro — só o layout
+(`lg:basis-[80%]`/`w-full` na coluna do vídeo, que já era baseado na mesma variável `showAside`)
+continua reagindo normalmente. Efeito colateral positivo: o rascunho não-enviado no campo de
+mensagem também deixa de ser perdido nesses toggles, pelo mesmo motivo.
