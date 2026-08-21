@@ -105,7 +105,7 @@ export function RoomExperience({
   const showAside = !isFullscreen || isTheater;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[1800px] flex-col gap-6 px-6 py-8">
+    <main className="mx-auto flex min-h-dvh w-full max-w-[1800px] flex-col gap-6 px-6 py-8">
       <header className="flex items-baseline justify-between">
         <h1 className="font-mono text-sm text-[var(--ink-muted)]">sala {roomCode}</h1>
         {connectionLabel ? (
