@@ -117,6 +117,17 @@ body {
   background: var(--ink);
 }
 
+/* Esconde a barra de scroll visual mantendo a capacidade de scroll
+   (mouse wheel, trackpad, teclado). Firefox: scrollbar-width; Chrome/Safari:
+   ::-webkit-scrollbar. Aplicar só onde a barra visual destoa do design
+   (spec 08, CA2.1). */
+.scrollbar-hidden {
+  scrollbar-width: none; /* Firefox */
+}
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

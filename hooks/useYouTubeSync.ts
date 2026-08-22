@@ -4,12 +4,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@liveblocks/react";
 import { loadYouTubeIframeApi } from "@/lib/youtube-iframe";
 import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
-import { expectedPlaybackTime, type PlaybackController } from "@/hooks/playerController";
+import {
+  expectedPlaybackTime,
+  DRIFT_THRESHOLD_YOUTUBE_S,
+  CHECK_INTERVAL_MS,
+  SEEK_WHILE_PAUSED_THRESHOLD_S,
+  REMOTE_APPLY_COOLDOWN_MS,
+  type PlaybackController,
+} from "@/hooks/playerController";
 
-const DRIFT_THRESHOLD_S = 1.5;
-const CHECK_INTERVAL_MS = 3000;
-const SEEK_WHILE_PAUSED_THRESHOLD_S = 2;
-const REMOTE_APPLY_COOLDOWN_MS = 400;
 const TIME_POLL_MS = 400; // YT API não emite timeupdate — só leitura pra UI do scrubber
 
 function youtubeErrorMessage(code: YT.PlayerError): string {
@@ -57,6 +60,8 @@ export function useYouTubeSync({
   const [volume, setVolumeLocal] = useState(1);
   const [isMutedLocal, setIsMutedLocal] = useState(false);
 
+  // YouTube IFrame API não retorna Promise — timeout de fallback (1500ms)
+  // garante que o flag não fica preso se onStateChange não disparar (spec 08, CA1.2).
   const applyRemote = useCallback((fn: () => void) => {
     isApplyingRemoteRef.current = true;
     fn();
@@ -299,7 +304,7 @@ export function useYouTubeSync({
         return;
       }
 
-      if (!isOwner && Math.abs(diff) > DRIFT_THRESHOLD_S) {
+      if (!isOwner && Math.abs(diff) > DRIFT_THRESHOLD_YOUTUBE_S) {
         applyRemote(() => player.seekTo(expected, true));
       }
     }, CHECK_INTERVAL_MS);

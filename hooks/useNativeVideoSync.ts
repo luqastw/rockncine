@@ -5,11 +5,13 @@ import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@l
 import Hls from "hls.js";
 import { isHlsUrl } from "@/lib/video-source";
 import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
-import { expectedPlaybackTime, type PlaybackController } from "@/hooks/playerController";
-
-const DRIFT_THRESHOLD_S = 1.5;
-const CHECK_INTERVAL_MS = 3000;
-const REMOTE_APPLY_COOLDOWN_MS = 400;
+import {
+  expectedPlaybackTime,
+  DRIFT_THRESHOLD_NATIVE_S,
+  CHECK_INTERVAL_MS,
+  REMOTE_APPLY_COOLDOWN_MS,
+  type PlaybackController,
+} from "@/hooks/playerController";
 
 // Mesmo esqueleto de useYouTubeSync/useVimeoSync (constantes de drift/cooldown,
 // applyRemote, commitPlayer/broadcast, destruir+zerar ref na troca de fonte,
@@ -288,7 +290,7 @@ export function useNativeVideoSync({
 
       const { time: expected, stale } = expectedPlaybackTime(snapshot, videoEl.duration || 0);
       if (stale) return; // snapshot abandonado: não arrasta ninguém
-      if (Math.abs(videoEl.currentTime - expected) > DRIFT_THRESHOLD_S) {
+      if (Math.abs(videoEl.currentTime - expected) > DRIFT_THRESHOLD_NATIVE_S) {
         applyRemote(() => {
           videoEl.currentTime = expected;
         });

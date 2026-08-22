@@ -17,6 +17,7 @@ de redirecionamento; histórico completo do monolito continua disponível no git
 | 05 | [Code review — bypass de autorização, injeção de conteúdo e bugs funcionais](05-code-review-seguranca/spec.md) | implementado |
 | 06 | [Revisão de consistência de design](06-consistencia-design/spec.md) | implementado |
 | 07 | [Achados pós-deploy](07-achados-pos-deploy/spec.md) — teste real do usuário em produção, sete pedidos | **pendente** |
+| 08 | [Otimização de sync de vídeo e scroll do chat](08-otimizacao-sync-video-scroll-chat/spec.md) — redução de rollback e remoção da barra de scroll | rascunho |
 
 A pasta é numerada, não datada — as rodadas 02 a 14 do arquivo original foram todas escritas em
 2026-08-20/21, então uma data não separaria a ordem real de nada.

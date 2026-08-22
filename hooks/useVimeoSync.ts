@@ -4,10 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@liveblocks/react";
 import Player from "@vimeo/player";
 import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
-import { expectedPlaybackTime, type PlaybackController } from "@/hooks/playerController";
+import {
+  expectedPlaybackTime,
+  DRIFT_THRESHOLD_NATIVE_S,
+  CHECK_INTERVAL_MS,
+  type PlaybackController,
+} from "@/hooks/playerController";
 
-const DRIFT_THRESHOLD_S = 1.5;
-const CHECK_INTERVAL_MS = 3000;
 const MAX_QUALITY_HEIGHT = 720;
 
 // Reforço best-effort do teto de 720p além da opção de embed do construtor
@@ -232,7 +235,7 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
       player.getCurrentTime().then((localTime) => {
         const { time: expected, stale } = expectedPlaybackTime(snapshot, duration);
         if (stale) return; // snapshot abandonado: não arrasta ninguém
-        if (Math.abs(localTime - expected) > DRIFT_THRESHOLD_S) {
+        if (Math.abs(localTime - expected) > DRIFT_THRESHOLD_NATIVE_S) {
           applyRemote(() => player.setCurrentTime(expected));
         }
       });

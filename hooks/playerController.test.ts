@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { expectedPlaybackTime, STALE_SNAPSHOT_MS } from "./playerController";
+import {
+  expectedPlaybackTime,
+  STALE_SNAPSHOT_MS,
+  DRIFT_THRESHOLD_NATIVE_S,
+  DRIFT_THRESHOLD_YOUTUBE_S,
+  CHECK_INTERVAL_MS,
+  SEEK_WHILE_PAUSED_THRESHOLD_S,
+  REMOTE_APPLY_COOLDOWN_MS,
+} from "./playerController";
 
 const NOW = new Date("2026-01-01T00:00:00.000Z").getTime();
 
@@ -64,5 +72,31 @@ describe("expectedPlaybackTime", () => {
       0,
     );
     expect(result.time).toBeCloseTo(15, 1);
+  });
+});
+
+describe("sync constants (spec 08)", () => {
+  it("YouTube drift threshold é 2x maior que o nativo", () => {
+    expect(DRIFT_THRESHOLD_YOUTUBE_S).toBeGreaterThanOrEqual(DRIFT_THRESHOLD_NATIVE_S * 2);
+  });
+
+  it("native drift threshold é 1.5s", () => {
+    expect(DRIFT_THRESHOLD_NATIVE_S).toBe(1.5);
+  });
+
+  it("YouTube drift threshold é 3.0s", () => {
+    expect(DRIFT_THRESHOLD_YOUTUBE_S).toBe(3.0);
+  });
+
+  it("check interval é 3s", () => {
+    expect(CHECK_INTERVAL_MS).toBe(3000);
+  });
+
+  it("seek-while-pausado threshold é 2s", () => {
+    expect(SEEK_WHILE_PAUSED_THRESHOLD_S).toBe(2);
+  });
+
+  it("remote apply cooldown é 1500ms (timeout de fallback)", () => {
+    expect(REMOTE_APPLY_COOLDOWN_MS).toBe(1500);
   });
 });
