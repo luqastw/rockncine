@@ -9,12 +9,14 @@ export function SyncRing({
   source,
   lastEvent,
   isFullscreen,
+  economyMode = false,
   children,
 }: {
   isPlaying: boolean;
   source: VideoSourceKind | null;
   lastEvent: RoomEvent | null;
   isFullscreen: boolean;
+  economyMode?: boolean;
   children: ReactNode;
 }) {
   const syncLimited = source === "GENERIC_IFRAME";
@@ -41,7 +43,9 @@ export function SyncRing({
             : isPlaying
               ? "border-2 border-[var(--outline-strong)]"
               : "border-2 border-[var(--line)]"),
-        showChrome && !syncLimited && isPlaying ? "animate-sync-pulse" : "",
+        showChrome && !syncLimited && isPlaying && !economyMode
+          ? "animate-sync-pulse"
+          : "",
       ]
         .filter(Boolean)
         .join(" ")}

@@ -20,9 +20,13 @@ import {
 export function useNativeVideoSync({
   containerId,
   userId,
+  targetResolution = "720p",
+  fpsLimit = "auto",
 }: {
   containerId: string;
   userId: string;
+  targetResolution?: "720p" | "480p";
+  fpsLimit?: "auto" | "30" | "60";
 }) {
   const video = useStorage((root) => root.video);
   const playerStorage = useStorage((root) => root.player);
@@ -43,6 +47,8 @@ export function useNativeVideoSync({
   const [error, setError] = useState<string | null>(null);
   const isApplyingRemoteRef = useRef(false);
   const loadedUrlRef = useRef<string | null>(null);
+  const targetResolutionRef = useRef(targetResolution);
+  const fpsLimitRef = useRef(fpsLimit);
 
   const [isPlayingLocal, setIsPlayingLocal] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -57,6 +63,11 @@ export function useNativeVideoSync({
       isApplyingRemoteRef.current = false;
     }, REMOTE_APPLY_COOLDOWN_MS);
   }, []);
+
+  // Manter refs atualizados com os valores atuais para usar dentro dos
+  // handlers do hls.js sem recriar a instância.
+  useEffect(() => { targetResolutionRef.current = targetResolution; }, [targetResolution]);
+  useEffect(() => { fpsLimitRef.current = fpsLimit; }, [fpsLimit]);
 
   useEffect(() => {
     if (!video?.embedUrl || video.source !== "DIRECT_MEDIA") {
@@ -111,18 +122,30 @@ export function useNativeVideoSync({
           setError("falha ao carregar o stream (manifest/rede). tente carregar de novo.");
         }
       });
-      // teto de 720p (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.4) — autoLevelCapping mantém o ABR
+      // teto de resolução (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.4) — autoLevelCapping mantém o ABR
       // vivo abaixo do limite, ao contrário de currentLevel/loadLevel (que
       // fixam o nível e cortam a capacidade de cair de qualidade em rede
       // ruim). Registrado antes de loadSource: MANIFEST_PARSED dispara antes
       // da escolha do primeiro fragmento, então o teto já vale de cara.
+      const heightForTarget = (t: "720p" | "480p") => (t === "480p" ? 480 : 720);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        const maxHeight = heightForTarget(targetResolutionRef.current);
         const cap = hls.levels.reduce(
           (best, lvl, i) =>
-            lvl.height <= 720 && (best < 0 || lvl.height > hls.levels[best].height) ? i : best,
+            lvl.height <= maxHeight && (best < 0 || lvl.height > hls.levels[best].height) ? i : best,
           -1,
         );
         hls.autoLevelCapping = cap;
+        if (fpsLimitRef.current === "30") {
+          // RISCO: maxMaxBufferLength é propriedade interna do config do hls.js, não API pública.
+          // Funciona em hls.js 1.7.x (o config é objeto mutável lido pelo stream controller a
+          // cada ciclo), mas pode quebrar em updates. Monitorar mudanças em:
+          // https://github.com/video-dev/hls.js/blob/master/src/config.ts
+          // Fallback: se removida, a limitação de FPS via buffer deixa de funcionar (sem impacto
+          // na resolução ou no ABR — apenas mais frames processados).
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (hls.config as any).maxMaxBufferLength = 2;
+        }
       });
       hls.loadSource(url);
       hls.attachMedia(videoEl);
@@ -259,6 +282,45 @@ export function useNativeVideoSync({
     };
   }, []);
 
+  // Recalcular cap de resolução quando targetResolution muda em runtime
+  useEffect(() => {
+    const hls = hlsRef.current;
+    if (!hls || !hls.levels.length) return;
+
+    const maxHeight = targetResolution === "480p" ? 480 : 720;
+    const cap = hls.levels.reduce(
+      (best, lvl, i) =>
+        lvl.height <= maxHeight && (best < 0 || lvl.height > hls.levels[best].height) ? i : best,
+      -1,
+    );
+    hls.autoLevelCapping = cap;
+    if (hls.currentLevel > cap) {
+      hls.currentLevel = cap;
+    }
+  }, [targetResolution]);
+
+  // FPS limit: reduzir buffer quando limitado a 30fps — maxMaxBufferLength
+  // é config interno do hls.js (não exposto como setter público), mas o objeto
+  // config é mutável em runtime e o stream controller lê dele a cada ciclo.
+  // RISCO: maxMaxBufferLength é propriedade interna do config do hls.js, não API pública.
+  // Funciona em hls.js 1.7.x (o config é objeto mutável lido pelo stream controller a
+  // cada ciclo), mas pode quebrar em updates. Monitorar mudanças em:
+  // https://github.com/video-dev/hls.js/blob/master/src/config.ts
+  // Fallback: se removida, a limitação de FPS via buffer deixa de funcionar (sem impacto
+  // na resolução ou no ABR — apenas mais frames processados).
+  useEffect(() => {
+    const hls = hlsRef.current;
+    if (!hls) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cfg = hls.config as any;
+    if (fpsLimit === "30") {
+      cfg.maxMaxBufferLength = 2;
+    } else {
+      cfg.maxMaxBufferLength = undefined;
+    }
+  }, [fpsLimit]);
+
   useEventListener(({ event }) => {
     if (event.type !== "PLAY" && event.type !== "PAUSE" && event.type !== "SEEK") return;
     if (event.actorId === userId) return;
@@ -348,6 +410,7 @@ export function useNativeVideoSync({
     videoEl.muted = !videoEl.muted;
   }, []);
 
+  const isHlsSupported = Hls.isSupported();
   const controller: PlaybackController = {
     isReady,
     isPlaying: isPlayingLocal,
@@ -356,6 +419,10 @@ export function useNativeVideoSync({
     volume,
     isMuted: isMutedLocal,
     error,
+    resolution: isHlsSupported ? targetResolution : null,
+    setResolution: undefined,
+    fpsLimit,
+    setFpsLimit: undefined,
     play,
     pause,
     togglePlay,

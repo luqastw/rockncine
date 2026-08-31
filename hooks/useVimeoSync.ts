@@ -11,20 +11,24 @@ import {
   type PlaybackController,
 } from "@/hooks/playerController";
 
-const MAX_QUALITY_HEIGHT = 720;
+const RESOLUTION_MAX_HEIGHT: Record<"720p" | "480p", number> = {
+  "720p": 720,
+  "480p": 480,
+};
 
-// Reforço best-effort do teto de 720p além da opção de embed do construtor
+// Reforço best-effort do teto de resolução além da opção de embed do construtor
 // (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.4) — não está garantido que max_quality sobrevive a um
 // loadVideo(), então reaplica aqui. Silencioso de propósito: rejeitar é o
 // caso comum em vídeo de conta free, não um erro real pro usuário.
-function capQuality(player: Player) {
+function capQuality(player: Player, resolution: "720p" | "480p" = "720p") {
+  const maxHeight = RESOLUTION_MAX_HEIGHT[resolution];
   player
     .getQualities()
     .then((qualities) => {
       const capped = qualities
         .filter((q) => {
           const height = Number.parseInt(q.id, 10);
-          return Number.isFinite(height) ? height <= MAX_QUALITY_HEIGHT : q.id !== "auto";
+          return Number.isFinite(height) ? height <= maxHeight : q.id !== "auto";
         })
         .sort((a, b) => Number.parseInt(b.id, 10) - Number.parseInt(a.id, 10))[0];
       if (capped) return player.setQuality(capped.id);
@@ -34,7 +38,15 @@ function capQuality(player: Player) {
 
 // Vimeo Player SDK expõe eventos nativos de play/pause/seeked — ao contrário do
 // YouTube, não precisa de heurística de BUFFERING pra detectar seek manual.
-export function useVimeoSync({ containerId, userId }: { containerId: string; userId: string }) {
+export function useVimeoSync({
+  containerId,
+  userId,
+  targetResolution = "720p",
+}: {
+  containerId: string;
+  userId: string;
+  targetResolution?: "720p" | "480p";
+}) {
   const video = useStorage((root) => root.video);
   const playerStorage = useStorage((root) => root.player);
   const playerStorageRef = useRef(playerStorage);
@@ -102,7 +114,7 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
         playerRef.current!.loadVideo(videoId).then(
           () => {
             setError(null);
-            capQuality(playerRef.current!);
+            capQuality(playerRef.current!, targetResolution);
           },
           (err) => setError(err?.message || "não foi possível reproduzir este vídeo."),
         ),
@@ -134,7 +146,7 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
       player.getDuration().then(setDuration);
       player.getVolume().then(setVolumeLocal);
       player.getMuted().then(setIsMutedLocal);
-      capQuality(player);
+      capQuality(player, targetResolution);
 
       const snapshot = playerStorageRef.current;
       if (snapshot) {
@@ -188,7 +200,7 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [video?.embedUrl, video?.source, video?.loadedAt, containerId, userId]);
+  }, [video?.embedUrl, video?.source, video?.loadedAt, containerId, userId, targetResolution]);
 
   useEffect(() => {
     return () => {
@@ -196,6 +208,12 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
       playerRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (playerRef.current) {
+      capQuality(playerRef.current, targetResolution);
+    }
+  }, [targetResolution]);
 
   useEventListener(({ event }) => {
     if (event.type !== "PLAY" && event.type !== "PAUSE" && event.type !== "SEEK") return;
@@ -309,6 +327,10 @@ export function useVimeoSync({ containerId, userId }: { containerId: string; use
     volume,
     isMuted: isMutedLocal,
     error,
+    resolution: targetResolution,
+    setResolution: undefined,
+    fpsLimit: "auto",
+    setFpsLimit: undefined,
     play,
     pause,
     togglePlay,

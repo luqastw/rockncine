@@ -17,6 +17,10 @@ export function PlayerShell({
   isFullscreen,
   onToggleFullscreen,
   showFullscreenOnly = false,
+  sourceType,
+  isSafari,
+  fpsLimit,
+  onToggleFps,
   children,
 }: {
   controller: PlaybackController | null;
@@ -27,6 +31,10 @@ export function PlayerShell({
   // porta pro modo teatro (chat ao lado, ver RoomActions/9.2), então precisa
   // de um botão mesmo sem barra de controles completa.
   showFullscreenOnly?: boolean;
+  sourceType?: "YOUTUBE" | "VIMEO" | "DIRECT_MEDIA" | "GENERIC_IFRAME" | null;
+  isSafari?: boolean;
+  fpsLimit?: "auto" | "30" | "60";
+  onToggleFps?: () => void;
   children: ReactNode;
 }) {
   const hideTimerRef = useRef<number | null>(null);
@@ -106,6 +114,19 @@ export function PlayerShell({
               controller={controller}
               isFullscreen={isFullscreen}
               onToggleFullscreen={onToggleFullscreen}
+              resolution={controller.resolution}
+              onToggleResolution={
+                controller.setResolution
+                  ? () =>
+                      controller.setResolution!(
+                        controller.resolution === "720p" ? "480p" : "720p",
+                      )
+                  : undefined
+              }
+              fpsLimit={fpsLimit}
+              onToggleFps={onToggleFps}
+              sourceType={sourceType}
+              isSafari={isSafari}
             />
           ) : (
             <div

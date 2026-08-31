@@ -27,7 +27,6 @@ export function RoomLiveblocksProvider({
   return (
     <LiveblocksProvider
       authEndpoint="/api/liveblocks-auth"
-      throttle={80}
       badgeLocation="bottom-left"
     >
       <RoomProvider

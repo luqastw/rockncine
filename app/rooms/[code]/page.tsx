@@ -2,8 +2,7 @@ import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { RoomLiveblocksProvider } from "@/components/RoomLiveblocksProvider";
-import { RoomExperience } from "@/components/room/RoomExperience";
+import { RoomClient } from "@/components/room/RoomClient";
 
 export default async function RoomPage({
   params,
@@ -30,8 +29,9 @@ export default async function RoomPage({
   const userName = session!.user!.name ?? session!.user!.email ?? "sem nome";
 
   return (
-    <RoomLiveblocksProvider
+    <RoomClient
       roomCode={room.code}
+      roomName={room.name}
       userId={userId}
       userName={userName}
       initialVideo={{
@@ -39,13 +39,6 @@ export default async function RoomPage({
         embedUrl: room.embedUrl,
         sourceUrl: room.videoSourceUrl,
       }}
-    >
-      <RoomExperience
-        roomCode={room.code}
-        roomName={room.name}
-        userId={userId}
-        userName={userName}
-      />
-    </RoomLiveblocksProvider>
+    />
   );
 }

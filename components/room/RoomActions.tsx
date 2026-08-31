@@ -2,6 +2,17 @@
 
 import { PlusIcon, TheaterIcon } from "@/components/room/player/icons";
 
+function EconomyIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 2L6 8l6-1 6 1-6-6z" />
+      <path d="M12 22V8" />
+      <path d="M6 8c0 0 0 8 6 14" />
+      <path d="M18 8c0 0 0 8-6 14" />
+    </svg>
+  );
+}
+
 // Par de botões renderizado sempre com a mesma ordem/estilo — só a âncora
 // muda conforme o estado de tela cheia (ver docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.2). Pode existir
 // em duas instâncias no DOM ao mesmo tempo (aside sempre montado desde a
@@ -11,11 +22,15 @@ export function RoomActions({
   onToggleTheater,
   isTheater,
   showTheaterToggle,
+  onToggleEconomy,
+  isEconomy,
 }: {
   onLoadVideo: () => void;
   onToggleTheater: () => void;
   isTheater: boolean;
   showTheaterToggle: boolean;
+  onToggleEconomy: () => void;
+  isEconomy: boolean;
 }) {
   return (
     <div className="flex items-center gap-2">
@@ -26,6 +41,20 @@ export function RoomActions({
       >
         <PlusIcon className="h-3 w-3" />
         carregar vídeo
+      </button>
+      <button
+        type="button"
+        onClick={onToggleEconomy}
+        aria-label={isEconomy ? "desativar modo economy" : "ativar modo economy"}
+        aria-pressed={isEconomy}
+        className={`flex min-h-11 items-center gap-1 rounded-md border px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)] ${
+          isEconomy
+            ? "border-[var(--ink)] text-[var(--ink)] bg-[var(--bg-surface)]"
+            : "border-[var(--ink-muted)] text-[var(--ink-muted)] hover:border-[var(--ink)] hover:text-[var(--ink)]"
+        }`}
+      >
+        <EconomyIcon className="h-3 w-3" />
+        economy
       </button>
       {showTheaterToggle && (
         <button

@@ -28,10 +28,22 @@ export function PlayerControls({
   controller,
   isFullscreen,
   onToggleFullscreen,
+  resolution,
+  onToggleResolution,
+  fpsLimit,
+  onToggleFps,
+  sourceType,
+  isSafari,
 }: {
   controller: PlaybackController;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
+  resolution?: "720p" | "480p" | null;
+  onToggleResolution?: () => void;
+  fpsLimit?: "auto" | "30" | "60";
+  onToggleFps?: () => void;
+  sourceType?: "YOUTUBE" | "VIMEO" | "DIRECT_MEDIA" | "GENERIC_IFRAME" | null;
+  isSafari?: boolean;
 }) {
   // valor local do scrubber durante o arraste — só chama seek() no soltar,
   // não a cada tick, pra não gerar um broadcast por pixel arrastado.
@@ -130,6 +142,44 @@ export function PlayerControls({
         style={trackStyle(volumePct)}
         className="range-mono hidden h-1 w-16 shrink-0 cursor-pointer py-5 sm:block"
       />
+
+      {sourceType && sourceType !== "GENERIC_IFRAME" && (
+        <button
+          type="button"
+          onClick={resolution !== null ? onToggleResolution : undefined}
+          disabled={resolution === null}
+          title={
+            resolution === null
+              ? sourceType === "YOUTUBE"
+                ? "O YouTube controla a qualidade automaticamente"
+                : isSafari
+                  ? "Safari controla a qualidade automaticamente"
+                  : "Esta fonte não suporta mudança de resolução"
+              : undefined
+          }
+          aria-label={`resolução: ${resolution ?? "indisponível"}`}
+          className={`flex h-8 shrink-0 items-center justify-center rounded-md border border-[var(--line)] px-2 font-mono text-xs text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]${resolution === null ? " cursor-not-allowed opacity-50" : ""}`}
+        >
+          {resolution ?? "—"}
+        </button>
+      )}
+
+      {sourceType && sourceType !== "GENERIC_IFRAME" && (
+        <button
+          type="button"
+          onClick={onToggleFps}
+          disabled={!onToggleFps}
+          title={
+            !onToggleFps
+              ? "Esta fonte não suporta limite de FPS"
+              : undefined
+          }
+          aria-label={`fps: ${fpsLimit ?? "auto"}`}
+          className={`hidden sm:flex h-8 shrink-0 items-center justify-center rounded-md border border-[var(--line)] px-2 font-mono text-xs text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]${!onToggleFps ? " cursor-not-allowed opacity-50" : ""}`}
+        >
+          {fpsLimit === "auto" ? "Auto" : `${fpsLimit}fps`}
+        </button>
+      )}
 
       <button
         type="button"

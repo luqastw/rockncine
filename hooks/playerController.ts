@@ -50,6 +50,10 @@ export type PlaybackController = {
   volume: number; // 0–1, só local, nunca sincroniza (mesma regra de Presence.isMuted)
   isMuted: boolean; // só local
   error: string | null;
+  resolution: "720p" | "480p" | null;
+  setResolution?: (r: "720p" | "480p") => void;
+  fpsLimit: "auto" | "30" | "60";
+  setFpsLimit?: (f: "auto" | "30" | "60") => void;
   play: () => void;
   pause: () => void;
   togglePlay: () => void;

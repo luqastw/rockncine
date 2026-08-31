@@ -377,6 +377,10 @@ export function useYouTubeSync({
     seek,
     setVolume,
     toggleMute,
+    resolution: null,
+    setResolution: undefined,
+    fpsLimit: "auto",
+    setFpsLimit: undefined,
   };
 
   return { isReady, error, controller };

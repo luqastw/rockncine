@@ -23,6 +23,10 @@ import { InviteCode } from "@/components/room/InviteCode";
 import { LastActionNote } from "@/components/room/LastActionNote";
 import { PlayIcon } from "@/components/room/player/icons";
 import { Chat } from "@/components/room/Chat";
+import { useVideoQuality } from "@/hooks/useVideoQuality";
+import { EconomySuggestion } from "@/components/room/EconomySuggestion";
+
+type VideoQuality = ReturnType<typeof useVideoQuality>;
 
 // respiro em tela cheia — declarado uma vez, usado no padding do stage e no
 // cálculo de altura máxima da caixa do vídeo (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.1).
@@ -53,11 +57,13 @@ export function RoomExperience({
   roomName,
   userId,
   userName,
+  videoQuality,
 }: {
   roomCode: string;
   roomName: string | null;
   userId: string;
   userName: string;
+  videoQuality: VideoQuality;
 }) {
   const video = useStorage((root) => root.video);
   const player = useStorage((root) => root.player);
@@ -79,6 +85,19 @@ export function RoomExperience({
     userName,
   });
   useRoomLeaveAnnouncement(appendMessage, userId);
+
+  const { resolution, fpsLimit, economyMode, setResolution, setEconomyMode, setFpsLimit, isLowEnd, isSafari, hasSeenSuggestion, dismissSuggestion } =
+    videoQuality;
+  const effectiveResolution = economyMode && resolution === "720p" ? "480p" : resolution;
+
+  useEffect(() => {
+    if (economyMode) {
+      document.documentElement.classList.add("reduce-motion");
+    } else {
+      document.documentElement.classList.remove("reduce-motion");
+    }
+    return () => document.documentElement.classList.remove("reduce-motion");
+  }, [economyMode]);
 
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [nativeFullscreen, setNativeFullscreen] = useState(false);
@@ -140,15 +159,21 @@ export function RoomExperience({
   const closeLoadModal = useCallback(() => setLoadModalOpen(false), []);
   const openLoadModal = useCallback(() => setLoadModalOpen(true), []);
   const toggleTheater = useCallback(() => setIsTheater((v) => !v), []);
+  const toggleFps = useCallback(() => {
+    const next = fpsLimit === "auto" ? "30" : fpsLimit === "30" ? "60" : "auto";
+    setFpsLimit(next);
+  }, [fpsLimit, setFpsLimit]);
+  const toggleEconomy = useCallback(() => setEconomyMode(!economyMode), [economyMode, setEconomyMode]);
 
   const { isReady: youtubeReady, error: youtubeError, controller: youtubeController } =
     useYouTubeSync({ containerId: YT_CONTAINER_ID, userId });
   const { isReady: vimeoReady, error: vimeoError, controller: vimeoController } = useVimeoSync({
     containerId: VIMEO_CONTAINER_ID,
     userId,
+    targetResolution: effectiveResolution,
   });
   const { isReady: nativeReady, error: nativeError, controller: nativeController } =
-    useNativeVideoSync({ containerId: NATIVE_CONTAINER_ID, userId });
+    useNativeVideoSync({ containerId: NATIVE_CONTAINER_ID, userId, targetResolution: effectiveResolution, fpsLimit });
 
   // `useStorage` devolve null enquanto o storage do Liveblocks não sincroniza.
   // Sem distinguir isso de "sala sem vídeo", o primeiro frame de uma sala que
@@ -295,6 +320,16 @@ export function RoomExperience({
               ao vivo
             </span>
           )}
+          {economyMode && (
+            <button
+              type="button"
+              onClick={toggleEconomy}
+              aria-label="desativar modo economy"
+              className="shrink-0 cursor-pointer rounded-full bg-[var(--bg-surface)] px-2 py-0.5 text-xs text-[var(--ink-muted)] border border-[var(--line)] transition-colors hover:border-[var(--ink-muted)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+            >
+              economy
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-4">
           {connectionLabel ? (
@@ -343,6 +378,8 @@ export function RoomExperience({
                 onToggleTheater={toggleTheater}
                 isTheater={isTheater}
                 showTheaterToggle
+                onToggleEconomy={toggleEconomy}
+                isEconomy={economyMode}
               />
             </div>
           )}
@@ -367,6 +404,7 @@ export function RoomExperience({
               source={video?.source ?? null}
               lastEvent={lastEvent}
               isFullscreen={isFullscreen}
+              economyMode={economyMode}
             >
               {/* bg-black literal de propósito (não --bg-void): é a letterbox
                   atrás do vídeo, não uma superfície da UI — ver revisão de
@@ -377,6 +415,10 @@ export function RoomExperience({
                 isFullscreen={isFullscreen}
                 onToggleFullscreen={toggleFullscreen}
                 showFullscreenOnly={hasGeneric}
+                sourceType={video?.source ?? null}
+                isSafari={isSafari}
+                fpsLimit={fpsLimit}
+                onToggleFps={toggleFps}
               >
                 {hasYouTube ? (
                   <>
@@ -482,6 +524,8 @@ export function RoomExperience({
                 onToggleTheater={toggleTheater}
                 isTheater={isTheater}
                 showTheaterToggle={isFullscreen}
+                onToggleEconomy={toggleEconomy}
+                isEconomy={economyMode}
               />
             </div>
             <PresenceList myName={userName} />
@@ -503,6 +547,12 @@ export function RoomExperience({
           onClose={closeLoadModal}
         />
       </div>
+      <EconomySuggestion
+        isLowEnd={isLowEnd}
+        hasSeenSuggestion={hasSeenSuggestion}
+        onAccept={() => { setEconomyMode(true); setResolution("480p"); }}
+        onDismiss={dismissSuggestion}
+      />
     </main>
   );
 }
