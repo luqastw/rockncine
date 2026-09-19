@@ -21,7 +21,7 @@ export default function SegmentError({ error, reset }: { error: Error; reset: ()
   }, [error]);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-4 px-6 py-10 text-center">
+    <main className="mx-auto flex w-full min-h-dvh max-w-sm flex-col items-center justify-center gap-4 px-6 py-10 text-center">
       <h1 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">
         alguma coisa quebrou
       </h1>

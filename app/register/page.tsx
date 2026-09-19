@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "criar conta · rockncine" };
 
 export default function RegisterPage() {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-8 px-6 py-10">
+    <main className="animate-rise mx-auto flex w-full min-h-dvh max-w-sm flex-col justify-center gap-8 px-6 py-10">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">rockncine</h1>
         {/* mesma promessa da tela de entrar — ver comentário em app/login/page.tsx */}

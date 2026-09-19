@@ -8,7 +8,9 @@ export const metadata: Metadata = { title: "entrar · rockncine" };
 
 export default function LoginPage() {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-8 px-6 py-10">
+    // `w-full`: sem ele a coluna encolhe até o conteúdo (margin automática no
+    // eixo transversal desliga o stretch do item de flex) — ver app/rooms/page.tsx.
+    <main className="animate-rise mx-auto flex w-full min-h-dvh max-w-sm flex-col justify-center gap-8 px-6 py-10">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">rockncine</h1>
         {/* A chegada só dizia "entrar na conta": quem nunca viu o produto não

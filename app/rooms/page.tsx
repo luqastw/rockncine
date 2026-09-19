@@ -35,7 +35,12 @@ export default async function RoomsPage() {
     : [];
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-10 px-6 py-10">
+    // `w-full` é obrigatório aqui: este `<main>` é item de um flex-coluna (o
+    // `body`) e o `mx-auto` faz margin automática no eixo transversal, que
+    // DESLIGA o stretch do item — sem `w-full` a coluna encolhe até o conteúdo
+    // e a largura da página passa a depender do nome das salas (medido: 348px
+    // com uma lista e 423px com outra, em vez dos 448px do `max-w-md`).
+    <main className="mx-auto flex w-full min-h-dvh max-w-md flex-col justify-center gap-10 px-6 py-10">
       <header className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">rockncine</h1>
@@ -69,9 +74,14 @@ export default async function RoomsPage() {
             nenhuma sala ainda — crie uma acima ou entre por código.
           </p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="room-list flex flex-col gap-2">
             {memberships.map(({ room, joinedAt }) => (
-              <li key={room.code} className="flex items-center gap-2">
+              // `items-stretch` (e não `items-center`): o card tem duas linhas e
+              // fica com ~58px, o botão de excluir tem 44px — centrado, os dois
+              // retângulos ficavam com alturas diferentes e as bordas não
+              // alinhavam (parecia quebrado). Esticado, o botão acompanha a
+              // altura do card.
+              <li key={room.code} className="flex items-stretch gap-2">
                 <Link
                   href={`/rooms/${room.code}`}
                   className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"

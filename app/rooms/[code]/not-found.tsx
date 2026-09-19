@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function RoomNotFound() {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-4 px-6 py-10 text-center">
+    <main className="mx-auto flex w-full min-h-dvh max-w-sm flex-col items-center justify-center gap-4 px-6 py-10 text-center">
       <h1 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">sala não encontrada</h1>
       <p className="text-sm text-[var(--ink-muted)]">
         esse código não corresponde a nenhuma sala ativa. confira se digitou certo.
