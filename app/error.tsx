@@ -3,8 +3,11 @@
 import { useEffect } from "react";
 import Link from "next/link";
 
-// Boundary de erro do segmento raiz (o global é `global-error.tsx` — o nome
-// antigo, `GlobalError`, sugeria o contrário).
+// Boundary de erro do segmento raiz. Não envolve o `layout.tsx` acima dele —
+// a falha no próprio layout raiz é coberta por `app/global-error.tsx`, que
+// substitui o layout inteiro (achado 7 da revisão de design: este comentário
+// antes afirmava que o global era `global-error.tsx` sem que o arquivo
+// existisse).
 //
 // Sem este arquivo, qualquer erro no servidor (Postgres fora do ar, por
 // exemplo) caía na tela de erro default do Next, fora da linguagem visual do
