@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { PlaybackController } from "@/hooks/playerController";
+import type { FpsLimit } from "@/lib/playback/types";
+import type { VideoSourceKind } from "@/lib/video-source";
 import { PlayerControls } from "@/components/room/player/PlayerControls";
 import { FullscreenEnterIcon, FullscreenExitIcon } from "@/components/room/player/icons";
 
@@ -21,6 +23,7 @@ export function PlayerShell({
   isSafari,
   fpsLimit,
   onToggleFps,
+  onToggleResolution,
   children,
 }: {
   controller: PlaybackController | null;
@@ -31,10 +34,15 @@ export function PlayerShell({
   // porta pro modo teatro (chat ao lado, ver RoomActions/9.2), então precisa
   // de um botão mesmo sem barra de controles completa.
   showFullscreenOnly?: boolean;
-  sourceType?: "YOUTUBE" | "VIMEO" | "DIRECT_MEDIA" | "GENERIC_IFRAME" | null;
+  sourceType?: VideoSourceKind | null;
   isSafari?: boolean;
-  fpsLimit?: "auto" | "30" | "60";
+  fpsLimit?: FpsLimit;
   onToggleFps?: () => void;
+  // Os setters de resolução/FPS NÃO vêm do controller: são preferência global
+  // do app (hooks/useVideoQuality), então quem é dono do estado passa o handler
+  // de cima pra baixo. O controller só informa `resolution` (ou `null` quando a
+  // fonte não permite limitar qualidade), e é isso que habilita o botão.
+  onToggleResolution?: () => void;
   children: ReactNode;
 }) {
   const hideTimerRef = useRef<number | null>(null);
@@ -115,14 +123,7 @@ export function PlayerShell({
               isFullscreen={isFullscreen}
               onToggleFullscreen={onToggleFullscreen}
               resolution={controller.resolution}
-              onToggleResolution={
-                controller.setResolution
-                  ? () =>
-                      controller.setResolution!(
-                        controller.resolution === "720p" ? "480p" : "720p",
-                      )
-                  : undefined
-              }
+              onToggleResolution={onToggleResolution}
               fpsLimit={fpsLimit}
               onToggleFps={onToggleFps}
               sourceType={sourceType}

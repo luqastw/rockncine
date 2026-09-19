@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { PlaybackController } from "@/hooks/playerController";
+import type { FpsLimit, Resolution } from "@/lib/playback/types";
+import type { VideoSourceKind } from "@/lib/video-source";
 import {
   FullscreenEnterIcon,
   FullscreenExitIcon,
@@ -10,6 +12,25 @@ import {
   VolumeHighIcon,
   VolumeMutedIcon,
 } from "@/components/room/player/icons";
+
+// O motivo de a resolução estar indisponível, em uma função em vez do ternário
+// de três níveis que vivia dentro do `title`.
+function resolutionUnavailableReason(
+  sourceType: VideoSourceKind | null | undefined,
+  isSafari?: boolean,
+): string {
+  if (sourceType === "YOUTUBE") return "o YouTube controla a qualidade automaticamente";
+  if (isSafari) return "o Safari controla a qualidade automaticamente";
+  return "esta fonte não suporta mudança de resolução";
+}
+
+// Classe dos botões de estado (resolução/FPS): o sufixo de desabilitado era
+// copiado literalmente nos dois.
+function toggleButtonClass(disabled: boolean): string {
+  return `flex h-8 shrink-0 items-center justify-center rounded-md border border-[var(--line)] px-2 font-mono text-xs text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]${
+    disabled ? " cursor-not-allowed opacity-50" : ""
+  }`;
+}
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -38,11 +59,11 @@ export function PlayerControls({
   controller: PlaybackController;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
-  resolution?: "720p" | "480p" | null;
+  resolution?: Resolution | null;
   onToggleResolution?: () => void;
-  fpsLimit?: "auto" | "30" | "60";
+  fpsLimit?: FpsLimit;
   onToggleFps?: () => void;
-  sourceType?: "YOUTUBE" | "VIMEO" | "DIRECT_MEDIA" | "GENERIC_IFRAME" | null;
+  sourceType?: VideoSourceKind | null;
   isSafari?: boolean;
 }) {
   // valor local do scrubber durante o arraste — só chama seek() no soltar,
@@ -146,19 +167,14 @@ export function PlayerControls({
       {sourceType && sourceType !== "GENERIC_IFRAME" && (
         <button
           type="button"
-          onClick={resolution !== null ? onToggleResolution : undefined}
+          // `disabled` já barra o clique; antes havia também um
+          // `onClick={resolution !== null ? … : undefined}`, que deixava o
+          // botão habilitado e inerte quando o handler não vinha.
+          onClick={onToggleResolution}
           disabled={resolution === null}
-          title={
-            resolution === null
-              ? sourceType === "YOUTUBE"
-                ? "O YouTube controla a qualidade automaticamente"
-                : isSafari
-                  ? "Safari controla a qualidade automaticamente"
-                  : "Esta fonte não suporta mudança de resolução"
-              : undefined
-          }
+          title={resolution === null ? resolutionUnavailableReason(sourceType, isSafari) : undefined}
           aria-label={`resolução: ${resolution ?? "indisponível"}`}
-          className={`flex h-8 shrink-0 items-center justify-center rounded-md border border-[var(--line)] px-2 font-mono text-xs text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]${resolution === null ? " cursor-not-allowed opacity-50" : ""}`}
+          className={toggleButtonClass(resolution === null)}
         >
           {resolution ?? "—"}
         </button>
@@ -169,13 +185,9 @@ export function PlayerControls({
           type="button"
           onClick={onToggleFps}
           disabled={!onToggleFps}
-          title={
-            !onToggleFps
-              ? "Esta fonte não suporta limite de FPS"
-              : undefined
-          }
+          title={!onToggleFps ? "esta fonte não suporta limite de FPS" : undefined}
           aria-label={`fps: ${fpsLimit ?? "auto"}`}
-          className={`hidden sm:flex h-8 shrink-0 items-center justify-center rounded-md border border-[var(--line)] px-2 font-mono text-xs text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]${!onToggleFps ? " cursor-not-allowed opacity-50" : ""}`}
+          className={`hidden sm:flex ${toggleButtonClass(!onToggleFps)}`}
         >
           {fpsLimit === "auto" ? "Auto" : `${fpsLimit}fps`}
         </button>

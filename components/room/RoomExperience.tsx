@@ -165,6 +165,12 @@ export function RoomExperience({
   }, [fpsLimit, setFpsLimit]);
   const toggleEconomy = useCallback(() => setEconomyMode(!economyMode), [economyMode, setEconomyMode]);
 
+  // Alterna a preferência global de resolução (quem é dono do estado é
+  // useVideoQuality; os hooks de sync só informam se a fonte aceita).
+  const toggleResolution = useCallback(() => {
+    setResolution(resolution === "720p" ? "480p" : "720p");
+  }, [resolution, setResolution]);
+
   const { isReady: youtubeReady, error: youtubeError, controller: youtubeController } =
     useYouTubeSync({ containerId: YT_CONTAINER_ID, userId });
   const { isReady: vimeoReady, error: vimeoError, controller: vimeoController } = useVimeoSync({
@@ -210,6 +216,17 @@ export function RoomExperience({
   // (achado 10). Com sync funcionando, estado local == estado da sala.
   const isPlayingNow = activeController?.isPlaying ?? false;
 
+  // Os hooks de sync recriam o objeto `controller` a cada render, e eles
+  // re-renderizam a ~2,5-4 Hz enquanto o vídeo toca (polling do YouTube,
+  // timeupdate do <video>). Com `activeController` nas deps do listener de
+  // teclado abaixo, o handler global era removido e re-adicionado a cada
+  // render durante toda a sessão. A ref mantém o valor corrente sem entrar no
+  // ciclo de inscrição.
+  const controllerRef = useRef(activeController);
+  useEffect(() => {
+    controllerRef.current = activeController;
+  });
+
   // se eu for o último a sair, devolvo o storage pra "pausado". Só quando não
   // há mais ninguém: zerar o flag com gente assistindo faria a correção de
   // drift dos outros puxar o vídeo de volta.
@@ -248,7 +265,7 @@ export function RoomExperience({
       // do browser), Ctrl+K (barra de endereço em alguns browsers) e Cmd+M
       // (minimizar no macOS) — nenhum atalho deste handler tem combinação
       // com modificador, então qualquer tecla com Ctrl/Cmd/Alt não é dele
-      // (achado 5, docs/specs/04-auditoria-ui-ux-rodada-2/spec.md).
+      // (achado 5, docs/specs/05-code-review-seguranca/spec.md).
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       if (e.key === "Escape" && cssFullscreen) {
@@ -261,25 +278,28 @@ export function RoomExperience({
         toggleFullscreen();
         return;
       }
-      if (!activeController?.isReady) return;
+
+      // lido da ref, não do estado: ver comentário em `controllerRef` acima.
+      const controller = controllerRef.current;
+      if (!controller?.isReady) return;
 
       if (e.key === " " || e.key === "k") {
         e.preventDefault();
-        activeController.togglePlay();
+        controller.togglePlay();
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
-        activeController.seek(Math.max(activeController.currentTime - SEEK_STEP_S, 0));
+        controller.seek(Math.max(controller.currentTime - SEEK_STEP_S, 0));
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
-        activeController.seek(activeController.currentTime + SEEK_STEP_S);
+        controller.seek(controller.currentTime + SEEK_STEP_S);
       } else if (e.key === "m") {
         e.preventDefault();
-        activeController.toggleMute();
+        controller.toggleMute();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeController, cssFullscreen, loadModalOpen, toggleFullscreen]);
+  }, [cssFullscreen, loadModalOpen, toggleFullscreen]);
 
   // YouTube não tem parâmetro oficial pra desligar a tela de sugestões que
   // desenha por cima ao pausar (ver docs/specs/01-fundacao-mvp/spec.md, seção 7) — cobrimos com um
@@ -408,7 +428,7 @@ export function RoomExperience({
             >
               {/* bg-black literal de propósito (não --bg-void): é a letterbox
                   atrás do vídeo, não uma superfície da UI — ver revisão de
-                  consistência, achado 5 de docs/specs/04-auditoria-ui-ux-rodada-2/spec.md. */}
+                  consistência, achado 5 de docs/specs/06-consistencia-design/spec.md. */}
               <div className="relative aspect-video w-full overflow-hidden rounded-md bg-black">
               <PlayerShell
                 controller={activeController}
@@ -418,7 +438,15 @@ export function RoomExperience({
                 sourceType={video?.source ?? null}
                 isSafari={isSafari}
                 fpsLimit={fpsLimit}
-                onToggleFps={toggleFps}
+                // FPS só existe no caminho HLS (hls.js), então o botão só é
+                // oferecido em DIRECT_MEDIA — antes ele aparecia habilitado
+                // também em YouTube/Vimeo, onde não faz nada (spec 09, CA-2.3).
+                onToggleFps={hasDirectMedia ? toggleFps : undefined}
+                onToggleResolution={
+                  activeController && activeController.resolution !== null
+                    ? toggleResolution
+                    : undefined
+                }
               >
                 {hasYouTube ? (
                   <>
