@@ -19,31 +19,38 @@ export function RegisterForm() {
         setError(null);
         setLoading(true);
 
-        const res = await fetch("/api/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email, password }),
-        });
+        try {
+          const res = await fetch("/api/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password }),
+          });
 
-        if (!res.ok) {
-          const data = await res.json().catch(() => null);
-          setError(data?.error ?? "não foi possível cadastrar.");
+          if (!res.ok) {
+            const data = await res.json().catch(() => null);
+            setError(data?.error ?? "não foi possível cadastrar.");
+            return;
+          }
+
+          const signInRes = await signIn("credentials", {
+            email,
+            password,
+            redirect: false,
+          });
+          if (signInRes?.error) {
+            router.push("/login");
+            return;
+          }
+          router.push("/rooms");
+          router.refresh();
+        } catch {
+          // Mesmo caso do LoginForm: sem o catch, falha de rede em qualquer um
+          // dos dois `await` (registro ou login automático) deixava o botão
+          // travado em "criando..." sem mensagem nenhuma.
+          setError("não foi possível cadastrar. verifique sua conexão e tente de novo.");
+        } finally {
           setLoading(false);
-          return;
         }
-
-        const signInRes = await signIn("credentials", {
-          email,
-          password,
-          redirect: false,
-        });
-        setLoading(false);
-        if (signInRes?.error) {
-          router.push("/login");
-          return;
-        }
-        router.push("/rooms");
-        router.refresh();
       }}
       className="flex flex-col gap-4"
     >

@@ -17,18 +17,27 @@ export function LoginForm() {
         e.preventDefault();
         setError(null);
         setLoading(true);
-        const res = await signIn("credentials", {
-          email,
-          password,
-          redirect: false,
-        });
-        setLoading(false);
-        if (res?.error) {
-          setError("email ou senha inválidos.");
-          return;
+        try {
+          const res = await signIn("credentials", {
+            email,
+            password,
+            redirect: false,
+          });
+          if (res?.error) {
+            setError("email ou senha inválidos.");
+            return;
+          }
+          router.push("/rooms");
+          router.refresh();
+        } catch {
+          // Sem isto, uma falha de rede (o fetch do next-auth rejeitando)
+          // pulava o `setLoading(false)` e deixava o botão desabilitado em
+          // "entrando..." para sempre, sem nenhuma mensagem — a promise
+          // rejeitada também virava unhandled rejection.
+          setError("não foi possível entrar. verifique sua conexão e tente de novo.");
+        } finally {
+          setLoading(false);
         }
-        router.push("/rooms");
-        router.refresh();
       }}
       className="flex flex-col gap-4"
     >

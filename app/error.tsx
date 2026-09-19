@@ -1,11 +1,22 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 
+// Boundary de erro do segmento raiz (o global é `global-error.tsx` — o nome
+// antigo, `GlobalError`, sugeria o contrário).
+//
 // Sem este arquivo, qualquer erro no servidor (Postgres fora do ar, por
 // exemplo) caía na tela de erro default do Next, fora da linguagem visual do
-// resto do app (achado 23). Mesmo padrão dos not-found já estilizados.
-export default function GlobalError({ reset }: { error: Error; reset: () => void }) {
+// resto do app (achado 23).
+export default function SegmentError({ error, reset }: { error: Error; reset: () => void }) {
+  // O `error` era declarado no tipo e ignorado: nenhum 500 em produção deixava
+  // rastro. O `digest` é o que o Next expõe do lado do servidor e é o que
+  // correlaciona a tela com o log — sem ele não há como investigar o ocorrido.
+  useEffect(() => {
+    console.error(`erro na tela (digest: ${(error as Error & { digest?: string }).digest ?? "—"})`, error);
+  }, [error]);
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-4 px-6 py-10 text-center">
       <h1 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">
