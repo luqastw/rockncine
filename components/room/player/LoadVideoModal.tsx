@@ -93,7 +93,7 @@ export function LoadVideoModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] px-4"
+      className="animate-fade fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] px-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -103,7 +103,7 @@ export function LoadVideoModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="load-video-modal-title"
-        className="w-full max-w-md rounded-md border border-[var(--line)] bg-[var(--bg-surface)] p-5"
+        className="animate-pop w-full max-w-md rounded-md border border-[var(--line)] bg-[var(--bg-surface)] p-5"
       >
         <div className="mb-4 flex items-center justify-between">
           <h2

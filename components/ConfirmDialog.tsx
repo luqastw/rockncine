@@ -105,7 +105,7 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] px-4"
+      className="animate-fade fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] px-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -117,7 +117,7 @@ export function ConfirmDialog({
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         tabIndex={-1}
-        className="flex w-full max-w-md flex-col gap-4 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] p-5"
+        className="animate-pop flex w-full max-w-md flex-col gap-4 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] p-5"
       >
         <h2
           id={titleId}

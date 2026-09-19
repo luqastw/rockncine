@@ -216,9 +216,9 @@ button,
 
 /* Contorno/borda mudam de cor no hover e no foco; sem transição o estado salta
    e a interface "estala" em vez de acompanhar o ponteiro (achado de fluidez da
-   revisão de design). Só propriedades de pintura — nada que dispare layout — e
-   de propósito SEM box-shadow: o anel de foco precisa aparecer na hora, não
-   desbotar por 180ms.
+   revisão de design). Só propriedades de pintura e `transform` — nada que
+   dispare layout — e de propósito SEM box-shadow: o anel de foco precisa
+   aparecer na hora, não desbotar por 180ms.
 
    Dentro de `@layer base` para perder para qualquer utilitário `transition-*`
    já usado no app (barra de controles do player, anel de sync, ações em tela
@@ -234,7 +234,8 @@ button,
       color 180ms cubic-bezier(0.16, 1, 0.3, 1),
       background-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
       border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
-      opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
+      opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
 
@@ -271,4 +272,50 @@ button,
    `justify-content` computado ficava em `normal`). */
 .justify-safe-center {
   justify-content: safe center;
+}
+
+/* ---------------------------------------------------------------------------
+   Movimento. Só o que ajuda a perceber mudança de estado — nada coreografado:
+   entradas curtas com curva de desaceleração, uma cascata discreta nos itens da
+   lista e resposta imediata no toque. Todas as durações morrem em
+   `prefers-reduced-motion` e no modo economy, que zeram `animation-duration` e
+   `transition-duration` globalmente (blocos acima).
+   --------------------------------------------------------------------------- */
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.965); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-rise { animation: rise-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-pop { animation: pop-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade { animation: fade-in 160ms ease-out both; }
+
+/* Cascata da lista de salas: cada item entra 24ms depois do anterior. Só os
+   cinco primeiros — do sexto em diante a espera já seria perceptível como
+   lentidão, e eles entram junto com o quinto. */
+.room-list > li {
+  animation: rise-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.room-list > li:nth-child(2) { animation-delay: 24ms; }
+.room-list > li:nth-child(3) { animation-delay: 48ms; }
+.room-list > li:nth-child(4) { animation-delay: 72ms; }
+.room-list > li:nth-child(5) { animation-delay: 96ms; }
+.room-list > li:nth-child(n + 6) { animation-delay: 120ms; }
+
+/* Press: o toque responde na hora, sem deslocar nada. Fica fora das regras de
+   reduced-motion de propósito — não é movimento, é confirmação de estado. */
+button:not(:disabled):active,
+a[href]:active {
+  opacity: 0.88;
 }
