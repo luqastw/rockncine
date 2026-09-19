@@ -139,7 +139,7 @@ export function Chat({
           placeholder="mensagem"
           aria-label="mensagem para o chat da sala"
           autoComplete="off"
-          className="min-h-11 min-w-0 flex-1 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+          className="min-h-11 min-w-0 flex-1 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 text-base text-[var(--ink)] placeholder:text-[var(--ink-muted)] sm:text-sm focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
         />
         <button
           type="submit"

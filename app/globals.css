@@ -139,6 +139,13 @@ html::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Edge */
 }
 
+/* Campos de formulário usam `text-base sm:text-sm` — 16px no mobile, 14px de
+   `sm` para cima — e não `text-sm` direto. No Safari do iOS, focar um campo com
+   menos de 16px dispara zoom automático da viewport: a página alarga, aparece
+   rolagem horizontal e o usuário precisa dar pinça para voltar. A regra vive na
+   classe de cada campo, de propósito: um seletor de tipo (`input { font-size }`)
+   perderia por especificidade para o utilitário do Tailwind e não valeria nada. */
+
 .reduce-motion,
 .reduce-motion *,
 .reduce-motion *::before,
