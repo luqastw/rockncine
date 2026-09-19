@@ -26,8 +26,19 @@ function resolutionUnavailableReason(
 
 // Classe dos botões de estado (resolução/FPS): o sufixo de desabilitado era
 // copiado literalmente nos dois.
+//
+// `min-h-[44px]` (px, não `min-h-11`) e borda `--ink-muted` (não `--line`) para
+// bater com o resto da própria barra: era `h-8` (32px medidos) com o token que
+// o projeto reserva a divisor decorativo, e ficavam os dois únicos alvos abaixo
+// do piso de 44px em todo o app (achado 2 da revisão de design).
+//
+// O px é deliberado e vale para os controles desta barra: ela é um overlay
+// sobre o vídeo, então não pode crescer junto com o texto do usuário — com
+// `min-h-11` (rem) a 200% de texto cada botão virava 88px, a barra quebrava em
+// cinco linhas e ficava com 434px de altura sobre um vídeo de 163 (medido).
+// Alvo de toque é físico; quem escala é o rótulo.
 function toggleButtonClass(disabled: boolean): string {
-  return `flex h-8 shrink-0 items-center justify-center rounded-md border border-[var(--line)] px-2 font-mono text-xs text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]${
+  return `flex min-h-[44px] shrink-0 items-center justify-center rounded-md border border-[var(--ink-muted)] px-3 font-mono text-xs text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]${
     disabled ? " cursor-not-allowed opacity-50" : ""
   }`;
 }
@@ -94,13 +105,23 @@ export function PlayerControls({
   });
 
   return (
-    <div className="flex items-center gap-2 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-void)]/90 px-2 py-2 sm:gap-3 sm:px-3">
+    // Uma linha que rola no eixo X quando não couber (`flex-nowrap` +
+    // `overflow-x-auto`), e NÃO quebra em várias linhas: a barra é um overlay
+    // dentro da caixa do vídeo, que tem `overflow-hidden`. Com `flex-wrap` a
+    // 200% de texto ela quebrava em cinco linhas e ficava com 242px de altura
+    // sobre um vídeo de 163 — e o botão de play, na primeira linha, era
+    // RECORTADO inteiro (medido: retângulo em y 236–280 contra uma caixa
+    // começando em y 314). Uma linha nunca fica mais alta que o vídeo; o que
+    // não couber fica a um swipe (e a um Tab: o browser rola o item focado para
+    // dentro da vista) de distância. `min-w-[96px]` no slider para ele não
+    // voltar a zero (achado 13 da revisão de design).
+    <div className="flex flex-nowrap items-center gap-2 overflow-x-auto rounded-md border border-[var(--ink-muted)] bg-[var(--bg-void)]/90 px-2 py-2 sm:gap-3 sm:px-3">
       <button
         type="button"
         onClick={controller.togglePlay}
         disabled={!controller.isReady}
         aria-label={controller.isPlaying ? "pausar" : "tocar"}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--invert-bg)] text-[var(--invert-fg)] disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full bg-[var(--invert-bg)] text-[var(--invert-fg)] disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
         {controller.isPlaying ? (
           <PauseIcon className="h-4 w-4" />
@@ -136,14 +157,19 @@ export function PlayerControls({
         aria-label="progresso do vídeo"
         aria-valuetext={`${formatTime(displayTime)} de ${formatTime(controller.duration)}`}
         style={trackStyle(progressPct)}
-        className="range-mono h-1 min-w-0 flex-1 cursor-pointer py-5 disabled:cursor-not-allowed disabled:opacity-40"
+        // O anel de foco entra aqui porque os dois ranges eram os ÚNICOS
+        // controles do app sem ele: sobrava o `outline: auto` do browser, de
+        // 1px e sem offset, enquanto todo o resto usa 2px + offset (achado 6 da
+        // revisão de design). O box do anel é a caixa de 44px que o `py-5` com
+        // `boxSizing: content-box` já cria, não a barra de 4px.
+        className="range-mono h-1 min-w-[96px] flex-1 cursor-pointer py-5 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       />
 
       <button
         type="button"
         onClick={controller.toggleMute}
         aria-label={controller.isMuted ? "reativar áudio" : "mutar"}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
         {controller.isMuted ? (
           <VolumeMutedIcon className="h-4 w-4" />
@@ -161,7 +187,8 @@ export function PlayerControls({
         onChange={(e) => controller.setVolume(Number(e.target.value))}
         aria-label="volume"
         style={trackStyle(volumePct)}
-        className="range-mono hidden h-1 w-16 shrink-0 cursor-pointer py-5 sm:block"
+        // mesmo anel de foco do scrubber — ver comentário lá (achado 6).
+        className="range-mono hidden h-1 w-16 shrink-0 cursor-pointer py-5 sm:block focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       />
 
       {sourceType && sourceType !== "GENERIC_IFRAME" && (
@@ -174,7 +201,11 @@ export function PlayerControls({
           disabled={resolution === null}
           title={resolution === null ? resolutionUnavailableReason(sourceType, isSafari) : undefined}
           aria-label={`resolução: ${resolution ?? "indisponível"}`}
-          className={toggleButtonClass(resolution === null)}
+          // Desabilitado e estreito: sai de cena abaixo de `sm`. A explicação do
+          // porquê vive no `title`, que não existe no toque — num telefone o
+          // botão é um alvo morto ocupando a barra inteira. De `sm` para cima há
+          // espaço para mostrar o estado indisponível.
+          className={`${resolution === null ? "hidden sm:flex" : "flex"} ${toggleButtonClass(resolution === null)}`}
         >
           {resolution ?? "—"}
         </button>
@@ -197,7 +228,7 @@ export function PlayerControls({
         type="button"
         onClick={onToggleFullscreen}
         aria-label={isFullscreen ? "sair da tela cheia" : "tela cheia"}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
         {isFullscreen ? (
           <FullscreenExitIcon className="h-4 w-4" />
