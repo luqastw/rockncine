@@ -7,7 +7,7 @@ import { isSafeEmbedUrl } from "@/lib/video-source";
 export function GenericIframe({ src }: { src: string }) {
   // `video.embedUrl` no storage do Liveblocks é escrito por qualquer membro
   // da sala (controle compartilhado — decisão travada) e pode chegar aqui
-  // sem ter passado por `resolveVideoUrl` (achado 5, docs/specs/04-auditoria-ui-ux-rodada-2/spec.md).
+  // sem ter passado por `resolveVideoUrl` (achado 2, docs/specs/05-code-review-seguranca/spec.md).
   // Recusar aqui, no ponto de renderização, é a única defesa que cobre todo
   // caminho de escrita, não só o PATCH server-side.
   if (!isSafeEmbedUrl(src)) {

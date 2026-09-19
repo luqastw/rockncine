@@ -1,378 +1,209 @@
-# Fundação do MVP — modelo de dados, contratos Liveblocks, rotas, auth, fases, fontes de vídeo e direção visual
+# Spec: Fundação do MVP
 
 **Status:** implementado
+**Pesquisa:** `research.md`
 
-Site estilo Rave: link de vídeo colado numa sala (YouTube como caso principal com sync completo; Vimeo e embeds genéricos como fontes adicionais), player sincronizado entre participantes onde a fonte permite, chat ao vivo.
+## 1. Problema / motivação
 
-## Decisões travadas
+O produto é um site estilo Rave: alguém cola o link de um vídeo numa sala e o assiste junto com outras pessoas — player sincronizado entre participantes onde a fonte permitir (YouTube como caso principal, Vimeo e embeds genéricos como fontes adicionais) e chat ao vivo. Sem uma base fixada, cada feature seguinte (auth, sala, sync, chat, fontes, visual) ficaria construída sobre decisões implícitas e divergentes. Esta spec fixa essa base como contrato: modelo de dados, contratos de eventos em tempo real, rotas, autenticação, catálogo de fontes de vídeo com seus limites técnicos e direção visual.
 
-- Auth: NextAuth Credentials (email + senha, hash no Postgres). Sem OAuth no MVP.
-- Chat: não persiste. Vive só no Liveblocks storage/broadcast durante a sessão da sala.
-- Sala: permanece indefinidamente após todos saírem. Sem expiração/cleanup no MVP.
-- Controle de player: qualquer participante pode play/pause/seek. Sem role de "dono com controle exclusivo".
+## 2. Objetivos e não-objetivos
 
----
+**Objetivos**
+- Fixar o modelo de dados (Prisma/Postgres) e as regras de identidade de sala.
+- Fixar os contratos de estado, eventos e presença do Liveblocks.
+- Fixar o mapa de rotas (App Router) e a proteção de `/rooms/**`.
+- Fixar o fluxo de autenticação (NextAuth Credentials) e a sessão JWT.
+- Fixar o catálogo de fontes de vídeo e o limite de sync de cada uma.
+- Fixar a direção visual monocromática e o piso de qualidade de UI.
 
-## 1. Modelo de dados (Prisma)
+**Não-objetivos (excluídos do MVP)**
+- Sem OAuth: autenticação é exclusivamente Credentials (email + senha).
+- Sem persistência de chat: não existe model `Message`; o histórico vive só durante a sessão ativa e é reconstituído a zero para quem entra depois.
+- Sem expiração ou cleanup de sala: a sala permanece indefinidamente após todos saírem.
+- Sem papel de "dono com controle exclusivo" de player: qualquer participante pode play/pause/seek.
+- Sem `postMessage`/controle de sync para `GENERIC_IFRAME` (a janela cross-origin não expõe contrato).
+- Sem curadoria de fontes: a responsabilidade por ter direito de uso/embedar o link colado é de quem cola.
+- Sem proxy, redirect-following, scraping ou processamento de mídia de terceiro no servidor.
+- Sem mute de presença (mutar indicando aos outros) — removido por não ser necessário ao MVP.
+- Sem conexão de conta via provider externo e sem tabela `Session` no banco.
 
-```prisma
-generator client {
-  provider = "prisma-client-js"
-}
+## 3. Histórias de usuário
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+- **US-1** — Como visitante, quero me cadastrar e entrar com email e senha, para ter uma identidade na sala.
+- **US-2** — Como usuário autenticado, quero criar uma sala, para receber um código de convite.
+- **US-3** — Como usuário autenticado, quero entrar numa sala por código, para assistir junto com quem já está lá.
+- **US-4** — Como participante, quero colar um link de vídeo e ver todos recebendo o mesmo vídeo ao mesmo tempo.
+- **US-5** — Como participante, quero dar play/pause/seek e ver o player dos outros acompanhar (quando a fonte permitir).
+- **US-6** — Como participante, quero saber quando uma fonte não sincroniza play/pause, para não supor que o controle de alguém vale para os outros.
+- **US-7** — Como participante, quero trocar mensagens ao vivo durante a sessão.
+- **US-8** — Como participante, quero ver quem está na sala.
+- **US-9** — Como participante, quero reabrir uma sala e reencontrar o último vídeo carregado.
+- **US-10** — Como participante, quero controlar a reprodução por uma barra própria do app, não pelo chrome do backend.
+- **US-11** — Como participante, quero entrar/sair da tela cheia e alternar o "modo teatro" com o chat ao lado.
+- **US-12** — Como participante em celular, quero uma coluna única com o vídeo primeiro e o chat abaixo.
 
-model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String?
-  createdAt    DateTime @default(now())
+## 4. Requisitos funcionais (EARS)
 
-  ownedRooms Room[]       @relation("RoomOwner")
-  memberships RoomMember[]
-}
+### Dados e identidade de sala
 
-enum VideoSource {
-  YOUTUBE
-  VIMEO
-  GENERIC_IFRAME
-}
+- **FR-001** O sistema DEVE persistir, via Prisma no Postgres, os modelos `User` (`email` @unique, `passwordHash`, `name?`, `createdAt`), `Room` (`code` @unique e indexado, `name?`, `videoSourceUrl?`, `videoSource?`, `embedUrl?`, `ownerId`, `createdAt`, `updatedAt`) e `RoomMember` (`roomId`, `userId`, `joinedAt`, com @@unique[roomId, userId]), e DEVE tipar `videoSource` como o enum `VideoSource` = { `YOUTUBE`, `VIMEO`, `GENERIC_IFRAME` }.
+- **FR-002** QUANDO criar uma sala, o sistema DEVE gravar em `Room.code` um código de 8 caracteres gerado por `lib/room-code.ts` (alfabeto sem `0`, `O`, `1`, `I`, `L` e `U`), e NÃO o `cuid` do schema; SE a gravação colidir (`P2002`), ENTÃO o sistema DEVE gerar novo código e repetir; após 5 tentativas, DEVE cair no `@default(cuid())` do schema.
+- **FR-003** Salas criadas antes da mudança de código DEVEM manter o `cuid` de 25 caracteres e continuar válidas.
+- **FR-004** QUANDO o usuário cria uma sala, o sistema DEVE responder com redirect HTTP **303** para `/rooms/[code]` (não o 307 default, que reenviaria o POST no destino).
+- **FR-005** O sistema DEVE manter em `Room` o último vídeo carregado (`videoSourceUrl`/`videoSource`/`embedUrl`), para que reabrir a sala reencontre o vídeo anterior mesmo com o storage do Liveblocks efêmero entre sessões ativas.
 
-model Room {
-  id             String       @id @default(cuid())
-  code           String       @unique @default(cuid()) // usado no link/código de convite; valor real vem de lib/room-code.ts (8 chars), o cuid é só fallback
-  name           String?
-  videoSourceUrl String?      // link original colado pelo usuário
-  videoSource    VideoSource?
-  embedUrl       String?      // URL final usada no player: videoId (YouTube/Vimeo) ou iframe src genérico
-  ownerId        String
-  owner          User         @relation("RoomOwner", fields: [ownerId], references: [id])
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+### Contratos Liveblocks
 
-  members RoomMember[]
+- **FR-006** O sistema DEVE identificar cada Liveblocks Room pelo mesmo valor de `Room.code` do Postgres.
+- **FR-007** O sistema DEVE manter o storage da sala tipado como `video { source: "YOUTUBE"|"VIMEO"|"GENERIC_IFRAME"|"DIRECT_MEDIA"|null, embedUrl: string|null, sourceUrl: string|null, loadedAt: number|null }` e `player { isPlaying: boolean, currentTime: number, updatedAt: number, lastActorId: string }`.
+- **FR-008** O sistema DEVE emitir eventos de broadcast tipados: `LOAD_VIDEO { source, embedUrl, sourceUrl, actorId, ts }`, `PLAY { time, actorId, ts }`, `PAUSE { time, actorId, ts }`, `SEEK { time, actorId, ts }` e `CHAT_MESSAGE { id, authorId, authorName, text, ts }`.
+- **FR-009** QUANDO um participante cola um link, o sistema DEVE escrever em `storage.video`, broadcastar `LOAD_VIDEO` e cada cliente DEVE recarregar seu player/iframe com o `embedUrl` recebido.
+- **FR-010** QUANDO um participante dispara play/pause/seek, o sistema DEVE escrever em `storage.player` (fonte de verdade do sync) e broadcastar `PLAY`/`PAUSE`/`SEEK`; todo cliente DEVE aplicar a ação no player local.
+- **FR-011** O sistema DEVE mudar `storage.video.loadedAt` a cada "carregar", inclusive para URL idêntica ao vídeo já carregado, e DEVE incluir `loadedAt` nas dependências do efeito que (re)cria o player.
+- **FR-012** ENQUANTO `isPlaying`, cada cliente DEVE comparar a posição local (`getCurrentTime()`) com a esperada (`storage.player.currentTime + (Date.now() - storage.player.updatedAt)/1000`) a cada 3s; SE `|diff| > 1.5s`, ENTÃO o sistema DEVE aplicar `seekTo(esperado)` local, sem gerar novo broadcast; a correção DEVE rodar apenas quando `source` for `YOUTUBE` ou `VIMEO`.
+- **FR-013** SE um snapshot de `storage.player` tiver mais de 300s (5 min), ENTÃO o sistema DEVE descartá-lo e limitar a posição calculada pela duração do vídeo.
+- **FR-014** QUANDO `source` for `GENERIC_IFRAME`, `PLAY`/`PAUSE`/`SEEK` NÃO DEVEM ter efeito e a UI DEVE exibir o badge "sync limitado — controle manual" (com borda tracejada no anel de sync).
+- **FR-015** O sistema DEVE expor `Presence` por conexão como `{ userId: string, name: string }`.
+- **FR-016** O sistema DEVE entregar o chat exclusivamente por broadcast `CHAT_MESSAGE`; o histórico DEVE viver em estado React local (array em memória), reconstituído a zero para quem entra depois, e NÃO DEVE ser gravado em `Presence` nem em `Storage`.
 
-  @@index([code])
-}
+### Rotas e autenticação
 
-model RoomMember {
-  id       String   @id @default(cuid())
-  roomId   String
-  userId   String
-  room     Room     @relation(fields: [roomId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
-  joinedAt DateTime @default(now())
+- **FR-017** O sistema DEVE expor as rotas: `/login`, `/register`, `/rooms` (menu: criar / entrar por código / suas salas por `RoomMember` / sair), `POST /rooms/new`, `/rooms/[code]` (+ `layout`, `loading`, `not-found`), `PATCH /rooms/[code]/video` (gated por `RoomMember`), `not-found` global, `error` global, `api/auth/[...nextauth]`, `POST /api/register`, `api/liveblocks-auth` e `POST /api/resolve-embed`.
+- **FR-018** `proxy.ts` (raiz) DEVE proteger `/rooms/**` redirecionando o não-autenticado para `/login`.
+- **FR-019** O sistema DEVE autenticar por `CredentialsProvider` único; em `authorize()`, DEVE normalizar o email recebido (`trim().toLowerCase()`) antes de buscar `User` e DEVE comparar a senha com `bcrypt.compare` contra `passwordHash`; DEVE usar estratégia de sessão `jwt` (sem tabela `Session`) e DEVE popular `session.user.id` a partir do `sub` do token.
+- **FR-020** O sistema DEVE cadastrar em `POST /api/register` (form próprio, não rota do NextAuth) fazendo `bcrypt.hash` e `prisma.user.create`.
+- **FR-021** O endpoint `api/liveblocks-auth` DEVE autorizar a conexão por sessão NextAuth + vínculo `RoomMember`, usando o secret key só no servidor.
+- **FR-022** O `layout` de `/rooms/[code]` DEVE buscar a sala por `code` case-insensitive e garantir o `RoomMember` do usuário (upsert ao entrar); `not-found` DEVE cobrir sala inexistente.
 
-  @@unique([roomId, userId])
-}
-```
+### Fontes de vídeo e limites técnicos
 
-Sem model `Message` — chat não persiste (decisão travada). `owner` existe só para exibir "criado por" e permitir futura extensão de moderação; não bloqueia controle de player.
+- **FR-023** O sistema DEVE resolver a fonte no servidor (`POST /api/resolve-embed`), recebendo `{ url: string }` e devolvendo `{ source, embedUrl, sourceUrl }` ou erro, para evitar CORS na consulta de oEmbed e não deixar o client decidir sozinho que conteúdo remoto processar.
+- **FR-024** QUANDO a URL casar com padrão do YouTube (`youtube.com/watch`, `youtu.be/`, `youtube.com/shorts/`), o sistema DEVE extrair o `videoId`, definir `source: "YOUTUBE"` e montar `embedUrl = https://www.youtube.com/embed/{id}`.
+- **FR-025** QUANDO a URL casar com padrão do Vimeo (`vimeo.com/{id}`), o sistema DEVE resolver via oEmbed público (`https://vimeo.com/api/oembed.json?url=...`), extrair o `videoId` do `iframe src` retornado e definir `source: "VIMEO"`.
+- **FR-026** QUANDO a URL casar com padrão do Google Drive (`drive.google.com/file/d/{id}/view`, `/open?id={id}` ou `/preview`), o sistema DEVE extrair o `{id}` e montar `embedUrl = https://drive.google.com/file/d/{id}/preview` com `source: "GENERIC_IFRAME"` (Drive não expõe controle via `postMessage`).
+- **FR-027** QUANDO o `pathname` da URL terminar em `.mp4`, `.webm` ou `.m3u8` (com ou sem query string), o sistema DEVE definir `source: "DIRECT_MEDIA"` com `embedUrl` igual à própria URL.
+- **FR-028** SE a URL não casar com nenhum padrão conhecido, ENTÃO o sistema DEVE tratá-la como `GENERIC_IFRAME`, usando a própria URL colada como `iframe src`.
+- **FR-029** O sistema DEVE validar formato no servidor (regex por domínio conhecido para YouTube/Vimeo; para o genérico, que seja uma URL bem formada com protocolo `https`) e NÃO DEVE seguir redirects nem baixar/executar HTML de terceiros.
+- **FR-030** O sistema DEVE renderizar o `iframe` genérico com `sandbox="allow-scripts allow-same-origin allow-presentation"`, sem `allow-top-navigation` e sem `allow-popups`; SE o embed for bloqueado por `X-Frame-Options`/`Content-Security-Policy: frame-ancestors`, ENTÃO o sistema DEVE exibir estado de erro visível ("este link não permite ser incorporado").
+- **FR-031** O sistema DEVE tocar `DIRECT_MEDIA` num `<video>` próprio — `.mp4`/`.webm` direto e `.m3u8` via `hls.js` em browsers com MSE, ou `video.src` nativo no Safari (HLS nativo) —, sem `HEAD`/checagem de `Content-Type` (sniff de extensão apenas).
+- **FR-032** SE o script da IFrame API do YouTube falhar (`onerror`) ou exceder timeout de 10s, ENTÃO o sistema DEVE rejeitar o `Promise` singleton de `loadYouTubeIframeApi()` e resetá-lo para `null`, permitindo nova tentativa sem reload de página.
+- **FR-033** O sistema DEVE destruir e zerar a ref do player assim que `video.source` deixar de ser a fonte daquele hook, para um load futuro construir um player novo contra o container atual.
+- **FR-034** O sistema DEVE tratar `onError` 100/101/150 do YouTube e `error` do Vimeo Player SDK, expondo mensagem específica via `PlayerLoadStatus` (além do timeout genérico).
+- **FR-035** O sistema DEVE expor de cada hook de sync (YouTube/Vimeo/nativo) um `controller: PlaybackController` = `{ isReady, isPlaying, currentTime, duration, volume, isMuted, error, play, pause, togglePlay, seek, setVolume, toggleMute }`; `volume`/`isMuted` DEVEM ser sempre locais, nunca sincronizados.
+- **FR-036** O sistema DEVE esconder o chrome nativo em `YOUTUBE`/`VIMEO`/`DIRECT_MEDIA` (YouTube `playerVars: { controls: 0, disablekb: 1 }`; Vimeo `controls: false`) e renderizar barra própria (`PlayerControls`) como overlay.
+- **FR-037** O sistema DEVE montar uma camada de captura de ponteiro (`div absolute inset-0 z-10` transparente) sobre o player sempre que houver `PlaybackController`; ela NÃO DEVE ser montada em `GENERIC_IFRAME`.
+- **FR-038** O alvo de `requestFullscreen()` DEVE ser o container que envolve **vídeo e aside** (o `stageRef`), não apenas o vídeo.
+- **FR-039** QUANDO o YouTube estiver `isReady` e pausado, o sistema DEVE cobrir o `iframe` com um `div` opaco (`bg-[var(--bg-void)]`) e um botão de play centralizado.
+- **FR-040** `seek()` DEVE broadcastar explicitamente em todo backend; `play()`/`pause()` NÃO DEVEM broadcastar por conta própria (os listeners de estado de cada SDK já o fazem).
 
-`code` continua declarado com `@default(cuid())` no schema, mas **o valor gravado em produção não é
-um cuid**: `app/rooms/new/route.ts` passa explicitamente um código de 8 caracteres gerado por
-`lib/room-code.ts` (alfabeto sem `0/O`, `1/I/L` e `U`), com retentativa em colisão (`P2002`) e queda
-pro `@default(cuid())` do schema só depois de 5 tentativas. Salas criadas antes dessa mudança
-mantêm o cuid de 25 caracteres e continuam válidas — ver `docs/specs/04-auditoria-ui-ux-rodada-2/spec.md`, achado 6.
+### Ambiente, serviços e direção visual
 
-`videoSourceUrl`/`videoSource`/`embedUrl` em `Room` guardam o último vídeo carregado — permite reabrir a sala depois e já achar o vídeo anterior, mesmo com Liveblocks storage efêmero entre sessões ativas.
+- **FR-041** O sistema DEVE exigir, em produção, as variáveis `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL` e `LIVEBLOCKS_SECRET_KEY` (uso só no endpoint de auth), tratando `NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY` como opcional.
+- **FR-042** O sistema NÃO DEVE esconder a badge "Powered by Liveblocks" (exigência do plano Free) e DEVE usar `badgeLocation="bottom-left"` apenas para reposicioná-la.
+- **FR-043** O sistema DEVE usar paleta monocromática dark-first com os tokens `--bg-void #0A0A0A`, `--bg-surface #141414`, `--line #2A2A2A`, `--ink #F2F2F2`, `--ink-muted #7A7A7A`, `--invert-bg #FFFFFF`, `--invert-fg #000000` e `--outline-strong #FFFFFF`.
+- **FR-044** O sistema DEVE sinalizar estado por contraste, inversão ou peso, nunca por matiz: CTA primário = bloco invertido (`--invert-bg`/`--invert-fg`); foco = anel duplo em `--outline-strong` com `ring-offset` em `--bg-void`; erro = bloco com borda em `--ink` + texto em negrito; link = `--ink` com sublinhado sempre visível; presença ativa = ponto sólido em `--ink`.
+- **FR-045** O sistema DEVE usar três papéis tipográficos: Display (grotesk geométrico, tracking apertado, só em título de sala/estados vazios), Corpo (sans humanista, ~90% da UI) e Utilitária (mono, para código da sala, timestamp do chat e diagnóstico de sync).
+- **FR-046** O sistema DEVE aplicar o anel de sync com três tratamentos estruturais: borda sólida `--line` (idle), borda sólida `--outline-strong` com pulso (`isPlaying`) e borda tracejada `--line` (`GENERIC_IFRAME`); a cada evento `LOAD_VIDEO`/`PLAY`/`PAUSE`/`SEEK` recebido, DEVE emitir um flash breve.
+- **FR-047** Em desktop (`lg`), o layout DEVE ser ~80% vídeo / ~20% chat+presença (`lg:basis-[80%]`/`lg:basis-[20%]`), com `+` no cabeçalho de presença abrindo o modal de carregar link (não um form fixo abaixo do vídeo).
+- **FR-048** Em tela cheia, o vídeo DEVE ocupar 100% por padrão; um botão (`TheaterIcon`, só visível em fullscreen) DEVE alternar o "modo teatro" (~80% de vídeo + chat/presença à direita, dentro da própria tela cheia), resetando para vídeo-só ao sair.
+- **FR-049** Abaixo de `lg`, o layout DEVE ser coluna única, com o vídeo primeiro e chat/presença abaixo; a página DEVE ser uma casca de altura fixa (`h-dvh`, `overflow-hidden`) com a caixa do vídeo limitada a `38dvh` e o `aside` em `flex-1 min-h-0`, de modo que quem rola é o log do chat, não a página.
+- **FR-050** Todo elemento interativo DEVE ter estado de foco visível (anel duplo em `--outline-strong`), inclusive em navegação por teclado.
+- **FR-051** SE `prefers-reduced-motion` estiver ativo, ENTÃO o sistema DEVE desligar o pulso do anel de sync e qualquer transição não-essencial, restando só o flash instantâneo de estado.
 
----
+## 5. Critérios de aceite (Given-When-Then)
 
-## 2. Contratos de eventos Liveblocks
+- **AC-001** Dado um usuário autenticado no menu `/rooms`, quando ele cria uma sala, então recebe redirect 303 para `/rooms/[code]` e o `code` gravado tem exatamente 8 caracteres, sem `0`/`O`/`1`/`I`/`L`/`U`.
+- **AC-002** Dado que o `code` gerado colide (erro `P2002`), quando o sistema tenta gravar, então gera um novo código e repete; após 5 tentativas, grava o `cuid` de 25 caracteres e a sala continua acessível.
+- **AC-003** Dado um visitante não-autenticado, quando ele acessa `/rooms/<qualquer>`, então é redirecionado para `/login`.
+- **AC-004** Dado um cadastro com email `A@B.com`, quando o login chega como `a@b.com` (autofill/caps), então o sistema autentica (email normalizado com `trim().toLowerCase()`); quando a senha está errada, então a resposta é "credenciais inválidas".
+- **AC-005** Dado o link `não-é-uma-url`, quando `POST /api/resolve-embed` recebe `{ url }`, então devolve erro e o cliente não carrega player.
+- **AC-006** Dado o link `https://youtu.be/abc123`, quando resolvido, então `source = "YOUTUBE"` e `embedUrl = https://www.youtube.com/embed/abc123`.
+- **AC-007** Dado o link `https://vimeo.com/123456`, quando resolvido, então `source = "VIMEO"` e `embedUrl` é o `videoId` extraído do `iframe src` do oEmbed.
+- **AC-008** Dado o link `https://drive.google.com/file/d/XYZ/view`, quando resolvido, então `embedUrl = https://drive.google.com/file/d/XYZ/preview` e `source = "GENERIC_IFRAME"`.
+- **AC-009** Dado o link terminando em `.m3u8?token=...`, quando resolvido, então `source = "DIRECT_MEDIA"` e `embedUrl` é a própria URL.
+- **AC-010** Dado um link `https://exemplo.com/player.html?x=1`, quando resolvido, então `source = "GENERIC_IFRAME"` e `embedUrl` é a própria URL (fallback universal).
+- **AC-011** Dados dois participantes na mesma sala, quando um cola um link, então ambos recebem `LOAD_VIDEO`, o `storage.video` reflete `source`/`embedUrl`/`sourceUrl` e ambos carregam o mesmo `embedUrl`; o `loadedAt` muda mesmo quando a URL é idêntica à anterior.
+- **AC-012** Dado `source = "YOUTUBE"` com dois participantes, quando um dá play, então `storage.player.isPlaying = true`, `updatedAt` é atualizado e o player do outro avança.
+- **AC-013** Dado `source = "YOUTUBE"` tocando e um cliente 2,0s à frente do esperado, quando o tick de 3s roda, então o cliente aplica `seekTo(esperado)` local sem emitir novo broadcast; com o cliente 1,4s à frente, então nenhum seek é aplicado.
+- **AC-014** Dado um snapshot de `storage.player` com `updatedAt` há 400s, quando o cliente calcula a posição esperada, então o snapshot é descartado e a posição é limitada pela duração do vídeo.
+- **AC-015** Dado `source = "GENERIC_IFRAME"`, quando um participante dá play, então o outro participante não é afetado e aparece o badge "sync limitado — controle manual" com a borda tracejada.
+- **AC-016** Dado que um participante entra depois de 20 mensagens enviadas, quando ele monta o chat, então sua lista começa vazia; quando alguém envia nova mensagem, então os conectados a recebem por broadcast, e nada de chat aparece em `Storage` ou `Presence`.
+- **AC-017** Dado que já existe um vídeo carregado, quando o usuário reabre a sala, então `Room.videoSourceUrl`/`videoSource`/`embedUrl` ainda apontam para o último vídeo.
+- **AC-018** Dado que o script da IFrame API falha (rede), quando `onerror` dispara ou passam 10s, então a promise é rejeitada e o singleton volta a `null`, e o próximo carregamento de vídeo YouTube funciona sem reload de página.
+- **AC-019** Dado YouTube → Vimeo → YouTube em sequência (troca de fonte e volta), quando o YouTube recarrega, então o player é construído contra o `div` recém-montado (ref antiga destruída), com `onReady` disparando.
+- **AC-020** Dado um link cujo embed é bloqueado por `X-Frame-Options`, quando a sala carrega, então o `iframe` fica em branco e a UI exibe "este link não permite ser incorporado" (não um bug silencioso).
+- **AC-021** Dada a sala sem vídeo carregado, quando aberta, então `videoSourceUrl`/`videoSource`/`embedUrl` são nulos e o player mostra o placeholder "use carregar vídeo...", sem botão de tela cheia.
 
-Room = um Liveblocks Room (`roomId` do Liveblocks = `Room.code` do Postgres).
+## 6. Requisitos não-funcionais (quantificados)
 
-### Storage (estado compartilhado persistente da sala Liveblocks, LiveObject)
+- **NFR-001** Contraste de `--ink` (#F2F2F2) sobre `--bg-void` (#0A0A0A) e sobre `--bg-surface` (#141414) ≥ 4,5:1 (AA) para texto de corpo.
+- **NFR-002** Alvos de toque em mobile (chat, controles do player, entrar na sala) ≥ 44×44 px.
+- **NFR-003** Correção de drift: tick a cada 3000 ms e limiar de 1,5 s.
+- **NFR-004** Timeout de carga do script da IFrame API do YouTube: 10 s.
+- **NFR-005** Snapshot de player considerado obsoleto (`STALE_SNAPSHOT_MS`): 300000 ms (5 min).
+- **NFR-006** Código de sala: 8 caracteres; até 5 tentativas em colisão antes do fallback `cuid` (25 caracteres).
+- **NFR-007** Caixa do vídeo em mobile limitada a 38dvh de altura.
+- **NFR-008** Proporção desktop: ~80% vídeo / ~20% chat+presença; container entre `max-w-6xl` (antigo) e `max-w-[1800px]`.
+
+## 7. Dados e contratos
+
+**Modelo (Prisma).** `User { id, email @unique, passwordHash, name?, createdAt }`; `Room { id, code @unique @default(cuid()), name?, videoSourceUrl?, videoSource?, embedUrl?, ownerId, owner, createdAt, updatedAt, @@index([code]) }`; `RoomMember { id, roomId, userId, room, user, joinedAt, @@unique([roomId, userId]) }`; `enum VideoSource { YOUTUBE, VIMEO, GENERIC_IFRAME }`. O valor real de `code` é gerado em `lib/room-code.ts` (8 chars), não pelo `@default(cuid())`.
+
+**Storage Liveblocks.**
 
 ```ts
 type RoomStorage = {
   video: {
     source: "YOUTUBE" | "VIMEO" | "GENERIC_IFRAME" | "DIRECT_MEDIA" | null;
-    embedUrl: string | null;   // videoId (YouTube/Vimeo), URL direta (DIRECT_MEDIA) ou iframe src genérico
-    sourceUrl: string | null;  // link original colado pelo usuário
-    loadedAt: number | null;   // epoch ms, muda a cada "carregar" — inclusive pra URL idêntica repetida
+    embedUrl: string | null;
+    sourceUrl: string | null;
+    loadedAt: number | null;   // epoch ms; muda a cada carregar, inclusive URL idêntica repetida
   };
   player: {
     isPlaying: boolean;
-    currentTime: number;   // segundos, na última ação de controle — só relevante pra YOUTUBE/VIMEO
-    updatedAt: number;     // epoch ms, pra calcular drift esperado por quem chegou depois
-    lastActorId: string;   // quem disparou a última ação
+    currentTime: number;       // segundos, na última ação de controle
+    updatedAt: number;         // epoch ms
+    lastActorId: string;
   };
 };
 ```
 
-### Broadcast events (`room.broadcastEvent`, efêmero, não fica em storage)
+**Broadcast / Presence.**
 
 ```ts
 type PlayerEvent =
-  | { type: "LOAD_VIDEO"; source: "YOUTUBE" | "VIMEO" | "GENERIC_IFRAME" | "DIRECT_MEDIA"; embedUrl: string; sourceUrl: string; actorId: string; ts: number }
-  | { type: "PLAY"; time: number; actorId: string; ts: number }
+  | { type: "LOAD_VIDEO"; source: "YOUTUBE"|"VIMEO"|"GENERIC_IFRAME"|"DIRECT_MEDIA"; embedUrl: string; sourceUrl: string; actorId: string; ts: number }
+  | { type: "PLAY";  time: number; actorId: string; ts: number }
   | { type: "PAUSE"; time: number; actorId: string; ts: number }
-  | { type: "SEEK"; time: number; actorId: string; ts: number };
+  | { type: "SEEK";  time: number; actorId: string; ts: number };
 
-type ChatEvent = {
-  type: "CHAT_MESSAGE";
-  id: string;        // uuid client-side, pra key de lista/dedupe
-  authorId: string;
-  authorName: string;
-  text: string;
-  ts: number;
-};
+type ChatEvent = { type: "CHAT_MESSAGE"; id: string; authorId: string; authorName: string; text: string; ts: number };
+
+type Presence = { userId: string; name: string };
 ```
 
-**`storage.player` é fonte de verdade pro *sync*, não pra *sinalização de UI*.** Ninguém escreve
-`isPlaying: false` ao fechar a aba, então uma sala abandonada durante a reprodução fica travada em
-"tocando" pra sempre. Desde a rodada de `docs/specs/04-auditoria-ui-ux-rodada-2/spec.md` (achado 10), o badge "ao vivo" e o `SyncRing` leem
-o estado do player local (`activeController.isPlaying`, `RoomExperience.tsx:173`) e o snapshot do
-storage passa por `expectedPlaybackTime()` (`hooks/playerController.ts:21`), que descarta snapshot
-com mais de `STALE_SNAPSHOT_MS` (5 min) e limita a posição pela duração do vídeo.
+**Controlador de player.** `PlaybackController = { isReady, isPlaying, currentTime, duration, volume, isMuted, error, play, pause, togglePlay, seek, setVolume, toggleMute }`, implementado por `useYouTubeSync`/`useVimeoSync`/`useNativeVideoSync` e consumido por `PlayerControls`.
 
-Fluxo: quem dispara a ação escreve em `storage.player` (fonte de verdade) e broadcasta o evento (pra listeners reagirem sem esperar round-trip de storage). Todo cliente escuta `PLAY`/`PAUSE`/`SEEK` e aplica no próprio player local.
+**Rota de resolução.** `POST /api/resolve-embed` recebe `{ url }` e devolve `{ source, embedUrl, sourceUrl }` ou erro.
 
-`LOAD_VIDEO` dispara sempre que alguém cola um novo link — todo cliente atualiza `storage.video` e recarrega o player/iframe com o `embedUrl` recebido.
+## 8. Riscos / dependências
 
-`storage.video.loadedAt` existe só pra forçar o efeito de (re)criação do player a rodar de novo mesmo quando `source`/`embedUrl` não mudam de valor — ex.: recarregar a URL idêntica que acabou de falhar. Sem esse campo, o efeito do hook de sync depende só de `embedUrl`/`source`, e uma retentativa com a mesma URL não muda nenhuma dependência — vira um no-op silencioso em todo participante da sala (era um bug real: ver seção 7).
+- **Dependências externas:** NextAuth (Credentials), bcrypt, Prisma/Postgres, Liveblocks, `hls.js` (MSE), `@vimeo/player`, YouTube IFrame API, oEmbed público do Vimeo e a badge obrigatória do plano Free do Liveblocks.
+- **Fontes não sincronizáveis:** `GENERIC_IFRAME` (iframe cross-origin opaco) não expõe `postMessage` de controle — play/pause/seek não têm efeito; a UI precisa deixar isso explícito.
+- **Embeds bloqueados:** sites podem recusar incorporação via `X-Frame-Options`/`frame-ancestors`; tratado como estado de erro visível, não como bug.
+- **Sniff de extensão:** `.m3u8`/`.mp4` sem extensão visível na `pathname` cai no fallback `GENERIC_IFRAME` em vez de `DIRECT_MEDIA`.
+- **Qualidade de reprodução:** o YouTube removeu a API pública de qualidade (ver `docs/specs/02-fullscreen-lag-qualidade/spec.md`, seção 9.4); não há teto de resolução para YouTube nem para `.mp4`/`.webm` progressivo.
+- **Estado efêmero:** `storage.player` continua "tocando" numa sala abandonada; quem chega depois depende de `expectedPlaybackTime()` (staleness + clamp por duração).
 
-**Importante:** `PLAY`/`PAUSE`/`SEEK` só têm efeito real para `source: "YOUTUBE"`, `"VIMEO"` ou `"DIRECT_MEDIA"` — ver seção 7 sobre por quê.
+## Anexo A — numeração legada (âncoras citadas pelo código)
 
-### Drift correction
+| Âncora | Título original | Onde vive agora | Citada em |
+|---|---|---|---|
+| seção 2 | Contratos de eventos Liveblocks | FR-006 a FR-016 | hooks/useChat.ts:12 |
+| seção 3 | Rotas / páginas (App Router) | FR-017, FR-018, FR-022 | components/room/player/LoadVideoModal.tsx:9 |
+| seção 6 | Variáveis de ambiente / serviços externos | FR-041, FR-042 | components/room/RoomExperience.tsx:319 |
+| seção 7 | Fontes de vídeo suportadas e limites técnicos | FR-023 a FR-040 | lib/video-source.ts:8, lib/video-source.ts:82, lib/video-source.ts:165, hooks/useNativeVideoSync.ts:21, hooks/useNativeVideoSync.ts:415, components/room/PlayerLoadStatus.tsx:9, components/room/GenericIframe.tsx:6, components/room/RoomExperience.tsx:305 |
+| seção 8 | Direção visual (monocromática, minimalista) | FR-043 a FR-051 | hooks/useLastRoomEvent.ts:16, lib/room-code.ts:4, components/room/player/LoadVideoModal.tsx:9, components/room/RoomExperience.tsx:331, app/globals.css:4, app/globals.css:10 |
 
-- Cada cliente roda um `setInterval` (ex. a cada 3s) comparando `player.getCurrentTime()` local com `storage.player.currentTime + (Date.now() - storage.player.updatedAt) / 1000` (se `isPlaying`).
-- Se `|diff| > 1.5s`, força `seekTo(expected)` local. Não gera novo broadcast — é correção silenciosa, não uma ação de usuário.
-- Só roda para `source: "YOUTUBE"` ou `"VIMEO"` — sem API de player exposta (caso `GENERIC_IFRAME`), não há `getCurrentTime`/`seekTo` pra chamar.
-
-### Presence (por conexão, `useMyPresence` / `useOthers`)
-
-```ts
-type Presence = {
-  userId: string;
-  name: string;
-};
-```
-
-Chat não fica no `Presence` nem no `Storage` — é só broadcast; histórico de mensagens vive em estado React local (array em memória), reconstituído a zero pra quem entra depois.
-
----
-
-## 3. Rotas / páginas (App Router)
-
-```
-app/
-  layout.tsx                     # providers globais (SessionProvider)
-  page.tsx                       # landing / redirect pra /login ou /rooms
-  login/
-    page.tsx                     # form de login (Credentials)
-  register/
-    page.tsx                     # form de cadastro
-  rooms/
-    page.tsx                     # menu: criar sala / entrar por código / suas salas (RoomMember) / sair da conta
-    new/
-      route.ts                   # POST — cria Room, redireciona 303 pra /rooms/[code] (303, não o 307 default, senão o browser repete o POST no destino)
-  rooms/[code]/
-    page.tsx                     # sala: player + chat + presence (Server Component busca Room; Client Component monta LiveblocksProvider)
-    layout.tsx                   # valida sessão (busca da sala por code case-insensitive), garante RoomMember (upsert on join)
-    loading.tsx                  # skeleton enquanto as consultas de Postgres do layout/page resolvem
-    not-found.tsx                # 404 estilizado — sala inexistente
-    video/
-      route.ts                   # PATCH — persiste o vídeo resolvido (source/embedUrl/sourceUrl) no Room do Postgres, gated por RoomMember
-  not-found.tsx                  # 404 global estilizado
-  error.tsx                      # erro de render/servidor estilizado (tentar de novo + voltar), no lugar da tela default do Next
-  api/
-    auth/[...nextauth]/route.ts  # NextAuth handler
-    register/route.ts            # POST — cadastro (bcrypt.hash, prisma.user.create)
-    liveblocks-auth/route.ts     # endpoint de auth do Liveblocks (authorize por sessão NextAuth + RoomMember)
-    resolve-embed/route.ts       # POST — ver seção 7
-```
-
-`proxy.ts` na raiz protege `/rooms/**` — redireciona não-autenticado pra `/login`. (Next.js 16 renomeou `middleware.ts` → `proxy.ts`; o padrão `withAuth(...)` como default export continua válido, só muda o nome do arquivo.)
-
----
-
-## 4. Fluxo de autenticação (NextAuth)
-
-- Provider: `CredentialsProvider` único. `authorize()` normaliza o email recebido (`trim().toLowerCase()`) antes de buscar `User`, compara senha com `bcrypt.compare` contra `passwordHash`. A normalização espelha a que já acontece no cadastro (`/api/register`) — sem ela, um usuário que loga com capitalização diferente da que usou ao se cadastrar (autofill, copiar/colar) toma "credenciais inválidas" mesmo com a senha certa, já que `email` é `@unique` case-sensitive no Postgres.
-- Session strategy: `jwt` (sem tabela `Session` no Prisma — não precisa do adapter de banco pra sessão, só pra usuário).
-- `/register`: form próprio (não é rota do NextAuth) → server action ou route handler que faz `bcrypt.hash` e `prisma.user.create`.
-- `session.user.id` populado via callback `jwt`/`session` a partir do `sub` do token, pra `RoomMember`/presence usarem o `User.id` real.
-
----
-
-## 5. Fases de implementação
-
-1. **Skeleton de auth + salas** — NextAuth Credentials, `/register`, `/login`, Prisma migrate inicial (`User`, `Room`, `RoomMember`), menu `/rooms` (criar / entrar por código), página de sala vazia (só mostra membros via query, sem Liveblocks ainda).
-2. **Presence + player sync (YouTube)** — integra Liveblocks (`liveblocks-auth`, `LiveblocksProvider`), hook `useYouTubePlayer` via `useSyncedPlayer`, storage `player`/`video`, broadcast de `LOAD_VIDEO`/`PLAY`/`PAUSE`/`SEEK`, drift correction, lista de presence. Só YouTube nessa fase — valida o mecanismo de sync antes de generalizar.
-3. **Chat** — broadcast `CHAT_MESSAGE`, lista local reconstituída por sessão.
-4. **Fontes adicionais** — adapter Vimeo (`useVimeoPlayer`, sync completo via Player SDK) e fallback `GENERIC_IFRAME` (`useIframeEmbed`, load-only, sem controle). Extração server-side por `POST /api/resolve-embed` (ver seção 7).
-5. **Polish** — parsing de formatos variados de URL do YouTube (watch, youtu.be, shorts, com timestamp) e Vimeo, estados de erro (link inválido, embed bloqueado por X-Frame-Options/CSP, sala inexistente), loading states.
-
-Cada fase termina com o app rodando ponta a ponta — fase 2 sem chat ainda é demo válida, fase 3 fecha o MVP com YouTube. Fase 4 é a extensão pedida pra fontes além do YouTube.
-
----
-
-## 6. Variáveis de ambiente / serviços externos
-
-| Variável | Origem | Observação |
-|---|---|---|
-| `DATABASE_URL` | Neon ou Supabase (Postgres free tier) | Neon tem free tier serverless mais alinhado a deploy na Vercel (connection pooling via `-pooler` já embutido na URL) |
-| `NEXTAUTH_SECRET` | gerado local (`openssl rand -base64 32`) | obrigatório em produção |
-| `NEXTAUTH_URL` | URL do deploy Vercel | ex. `https://rockncine.vercel.app` |
-| `LIVEBLOCKS_SECRET_KEY` | Liveblocks project (free tier) | usado só no endpoint `/api/liveblocks-auth`, nunca no client |
-| `NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY` | Liveblocks project | opcional — só se optar por auth pública em vez de endpoint de auth; com Credentials + auth por sessão, preferir o secret key + endpoint de auth, não expor public key |
-
-Serviços a provisionar antes da fase 1: projeto Postgres (Neon/Supabase em produção; dev local usa container `postgres:16-alpine` via Docker, mesma `DATABASE_URL` shape) e projeto Liveblocks. Vercel só entra no deploy, não bloqueia desenvolvimento local.
-
-A badge "Powered by Liveblocks" é exigência do plano Free (remover é feature paga, Pro+) — não
-escondida via CSS. `LiveblocksProvider` usa `badgeLocation="bottom-left"` (prop oficial) só pra
-reposicionar, saindo de baixo do chat/aside.
-
----
-
-## 7. Fontes de vídeo suportadas e limites técnicos
-
-### Detecção de fonte (server-side, `POST /api/resolve-embed`)
-
-Recebe `{ url: string }`, retorna `{ source, embedUrl, sourceUrl }` ou erro. Roda no servidor (não no client) pra evitar CORS na consulta de oEmbed e pra não deixar o client decidir sozinho que conteúdo remoto processar.
-
-1. URL bate com padrão do YouTube (`youtube.com/watch`, `youtu.be/`, `youtube.com/shorts/`) → extrai `videoId`, `source: YOUTUBE`. Client monta `https://www.youtube.com/embed/{id}` via IFrame API.
-2. URL bate com padrão do Vimeo (`vimeo.com/{id}`) → resolve via oEmbed público do Vimeo (`https://vimeo.com/api/oembed.json?url=...`), extrai o `videoId` do `iframe src` retornado, `source: VIMEO`.
-3. URL bate com padrão do Google Drive (`drive.google.com/file/d/{id}/view`, `/open?id={id}`, ou já `/preview`) → extrai `{id}` por regex e monta `embedUrl = https://drive.google.com/file/d/{id}/preview`. Necessário porque o link de compartilhamento padrão (`/view`) não é embutível — só a variante `/preview` libera `frame-ancestors`. `source: GENERIC_IFRAME` (Drive não expõe API de controle via `postMessage`, então cai no mesmo nível de sync do item 5 — só `LOAD_VIDEO`).
-4. URL termina em `.mp4`/`.webm`/`.m3u8` (sniff de extensão no `pathname`, com ou sem query string depois) → `source: DIRECT_MEDIA`, `embedUrl` = a própria URL. Tocado num `<video>` próprio (`.mp4`/`.webm` direto; `.m3u8` via `hls.js` em browsers com MSE, ou `video.src` nativo no Safari, que já suporta HLS sem precisar de `hls.js`). **Limitação conhecida**: é só sniff de extensão, sem `HEAD`/checagem de `Content-Type` (consistente com a regra de não fazer proxy/scraping de terceiro abaixo) — uma URL assinada sem extensão visível na `pathname` cai no fallback genérico do item 5 em vez de ser detectada como mídia direta.
-5. Qualquer outra URL → tratada como `GENERIC_IFRAME`: `embedUrl` = a própria URL colada, usada direto como `iframe src`. Sem scraping de HTML, sem oEmbed discovery genérico no MVP — o usuário cola o link que já é o player embutível (uma URL de `.../player.html?...`, por exemplo), não a página do site. Cobre "qualquer link com vídeo" como fallback universal — cada novo padrão conhecido (como Drive acima) só ganha um passo próprio na lista quando precisa de transformação de URL pra funcionar num iframe; senão o fallback genérico já resolve. **Deliberadamente não faz scraping/extração de stream de sites de terceiro** (ex. agregadores de streaming) pra montar um `DIRECT_MEDIA` a partir da página deles — isso seria bypassar o mecanismo de entrega deles pra redistribuir conteúdo que não é nosso pra redistribuir, fora de escopo independente de quão conveniente seria tecnicamente.
-
-### Por que YouTube, Vimeo e mídia direta sincronizam e o resto não
-
-YouTube (IFrame Player API) e Vimeo (Player SDK) expõem uma API JS baseada em `postMessage` que o parent (nosso app) chama pra controlar o player dentro do iframe, mesmo sendo cross-origin — é assim que `play()`/`pause()`/`seekTo()`/`getCurrentTime()` funcionam nesses dois casos. `DIRECT_MEDIA` sincroniza pelo mesmo motivo por um caminho mais direto ainda: é um `<video>` nosso, sem iframe nenhum no meio, então `play()`/`pause()`/`currentTime` são só a API nativa do elemento.
-
-Um iframe genérico de terceiro normalmente não expõe esse contrato — é uma janela cross-origin isolada por padrão do navegador. Sem o player do lado de dentro implementar seu próprio protocolo de `postMessage`, não há como o nosso JS chamar play/pause/seek nele. Por isso, para `GENERIC_IFRAME`:
-
-- `LOAD_VIDEO` sincroniza — todo mundo abre o mesmo link ao mesmo tempo.
-- `PLAY`/`PAUSE`/`SEEK` não têm efeito nenhum — cada participante controla o próprio player manualmente dentro do iframe, sem sync, sem drift correction (não há `getCurrentTime` pra comparar).
-- UI precisa deixar isso explícito (ex. badge "sync limitado — controle manual" quando `source === "GENERIC_IFRAME"`), pra não passar a impressão de que o play/pause de alguém vai refletir nos outros quando não vai.
-
-### Segurança / robustez do iframe genérico
-
-- `iframe` renderizado com `sandbox="allow-scripts allow-same-origin allow-presentation"` — sem `allow-top-navigation`, sem `allow-popups` por padrão — reduz o que um embed de terceiro não confiável pode fazer na página.
-- Alguns sites bloqueiam embed via `X-Frame-Options`/`Content-Security-Policy: frame-ancestors` — nesse caso o iframe fica em branco. Tratar como estado de erro visível ("este link não permite ser incorporado"), não como bug silencioso.
-- `/api/resolve-embed` não segue redirects nem baixa/executa HTML de terceiros no servidor — só valida formato de URL (regex por domínio conhecido pra YouTube/Vimeo; pra genérico, valida que é uma URL bem formada com protocolo `https`) e devolve. Sem proxy de conteúdo.
-- Escopo do MVP é o mecanismo de embed (extrair e sincronizar um iframe), não curadoria de fontes — a responsabilidade sobre ter direito de uso/embedar o conteúdo colado é de quem cola o link, não da aplicação.
-
-### Robustez do player YouTube/Vimeo (lições de um bug real em produção)
-
-Um relatório real: um vídeo do YouTube carregou preto sem nenhum erro visível; recarregar o mesmo link mais tarde funcionou, sem nenhuma mudança de código/ambiente entre as duas tentativas. Investigação (revisão de código completa pós-incidente) achou três causas reais, nenhuma ligada a bloqueador de anúncio, Brave Shields ou restrição do vídeo em si (hipóteses descartadas por teste do usuário: um vídeo diferente carregou normalmente mesmo com Shields ativo):
-
-1. **Script da API do YouTube sem timeout/`onerror`.** `loadYouTubeIframeApi()` guarda um `Promise` singleton a nível de módulo (sobrevive a navegação client-side entre salas). Sem tratar falha de carga do `<script src="youtube.com/iframe_api">`, uma falha transitória de rede deixava essa promise pendente pra sempre — todo carregamento futuro de vídeo YouTube na mesma sessão de aba ficava preso, tela preta, sem erro, só resolvível com reload de página (que reavalia o módulo do zero). Corrigido: `tag.onerror` + `setTimeout(10s)` rejeitam a promise e resetam o singleton pra `null`, permitindo que a próxima tentativa recarregue o script sem precisar de reload.
-2. **Retentativa com a mesma URL era um no-op silencioso.** O efeito que cria/atualiza o player do YouTube/Vimeo dependia só de `video.embedUrl`/`video.source` — colar de novo o link idêntico gera o mesmo `videoId`, então nenhuma dependência do efeito muda, e React nunca reexecuta. Corrigido com `storage.video.loadedAt` (epoch ms, escrito a cada "carregar" mesmo pra URL repetida) incluído nas dependências do efeito — força a recriação/reload do player mesmo sem mudança de `videoId`. Também zera o timeout de loading (`PlayerLoadStatus` agora usa `` `${embedUrl}-${loadedAt}` `` como `key`, não só `embedUrl`).
-3. **Player preso numa ref morta ao trocar de fonte e voltar.** O container `#yt-player`/`#vimeo-player` só existe no DOM enquanto `video.source` é `"YOUTUBE"`/`"VIMEO"` (ternário em `RoomExperience`) — trocar pra outra fonte desmonta esse `div`. A instância do player em `playerRef.current`, porém, só era destruída no unmount do hook inteiro (sair da sala), nunca nessa troca de fonte. Resultado: carregar YouTube → trocar pra Vimeo/genérico → voltar pro YouTube reusava a ref antiga contra um `div` recém-montado (mesmo `id`, nó DOM diferente) — falha silenciosa, sem `onReady` nem `onError`. Corrigido: o efeito agora destrói e zera a ref assim que `video.source` deixa de ser a fonte daquele hook, então um load futuro sempre constrói um player novo contra o container atual.
-
-Além disso, os hooks de sync agora tratam `onError` do YouTube (`100`: vídeo não encontrado/privado; `101`/`150`: dono desabilitou embed nesse player) e `error` do Vimeo Player SDK, expondo uma mensagem específica via `PlayerLoadStatus` assim que o SDK reporta — em vez de depender só do timeout genérico de 8s da fase 5. Isso cobre o caso de restrição real por parte do dono do vídeo, que é diferente e mais raro do que o bug acima.
-
-### Chrome de player próprio (`PlaybackController`)
-
-`YOUTUBE`/`VIMEO`/`DIRECT_MEDIA` escondem o controle nativo do backend (YouTube: `playerVars: {controls: 0, disablekb: 1}`; Vimeo: `new Player(el, {controls: false})`; `<video>` nativo já não tem chrome por padrão) e renderizam uma barra própria (`components/room/player/PlayerControls.tsx`) por cima, visualmente coesa com o resto do app.
-
-Cada hook de sync (`useYouTubeSync`, `useVimeoSync`, `useNativeVideoSync`) retorna um `controller: PlaybackController` (`hooks/playerController.ts`) — formato comum de `{isReady, isPlaying, currentTime, duration, volume, isMuted, error, play, pause, togglePlay, seek, setVolume, toggleMute}` que a barra consome sem saber qual backend está por trás. `RoomExperience` escolhe o controller ativo (o do hook cujo `source` bate com `video.source`) e passa pra `<PlayerShell>`, que envolve o container do player + a barra como overlay (mostra/esconde por inatividade).
-
-Chamar `controller.play()`/`pause()`/etc. não precisa de broadcast próprio: os listeners que cada hook já registra (`onStateChange`, `player.on('play'|'pause'|'seeked')`, eventos nativos de `<video>`) capturam a mudança de estado e disparam `commitPlayer`+`broadcast` como já faziam antes da barra existir — ela é só mais um chamador da mesma API imperativa que os SDKs expõem. Exceção: `seek()` broadcasta explicitamente em todo backend, porque nem toda API expõe um evento de "seek concluído" que dispararia isso sozinho.
-
-`volume`/`isMuted` do `PlaybackController` são sempre locais, nunca sincronizados — cada participante controla o próprio áudio (a funcionalidade de mute de *presença* — mutar indicando aos outros — foi removida, não é necessária pro MVP).
-
-Ícones da barra (`components/room/player/icons.tsx`) são SVG desenhado à mão, `currentColor`, sem dependência de icon-lib — decisão consistente com o rebrand monocromático da seção 8.
-
-**A barra própria só é alcançável porque existe uma camada de captura de ponteiro por cima do player.** `PlayerShell.tsx:85` monta um `div absolute inset-0 z-10` transparente sempre que há `PlaybackController`. Sem ela, em `YOUTUBE`/`VIMEO` a área inteira do player é um iframe cross-origin — nenhum `mousemove` de dentro dele atravessa pro parent — e a barra, uma vez escondida pelo auto-hide, ficava inalcançável pelo mouse (`docs/specs/04-auditoria-ui-ux-rodada-2/spec.md`, achado 1). A camada só é montada onde o chrome nativo do backend está desligado; em `GENERIC_IFRAME` o usuário precisa clicar dentro do iframe, e lá a solução é outra (`docs/specs/02-fullscreen-lag-qualidade/spec.md`, seção 9.7).
-
-**Fullscreen mora em `RoomExperience`, não em `PlayerShell`.** `PlayerShell` só cuida do auto-hide
-da barra por inatividade e recebe `isFullscreen`/`onToggleFullscreen` como props. Quem chama
-`requestFullscreen()` é um `stageRef` em `RoomExperience` que envolve as duas colunas (vídeo +
-aside), não só o vídeo — necessário pro "modo teatro" (seção 8) caber chat dentro da tela cheia.
-
-**Overlay pra esconder o chrome nativo do YouTube pausado.** Sem parâmetro oficial da IFrame API
-pra desligar a tela de sugestões que o YouTube desenha por cima ao pausar (mesmo com
-`controls: 0`) — `RoomExperience` cobre o iframe com um `div` opaco nosso (`bg-[var(--bg-void)]`)
-sempre que `youtubeController.isReady && !youtubeController.isPlaying`, com um botão de play
-centralizado que também serve de affordance. Só se aplica a `YOUTUBE` — Vimeo/mídia direta não têm
-esse overlay nativo.
-
----
-
-## 8. Direção visual (monocromática, minimalista)
-
-Princípio geral: o vídeo é o objeto — a UI existe pra sumir ao redor dele, como uma sala escura em volta de uma tela. Nada de decoração que compita com o player.
-
-### Paleta (dark-first, estritamente monocromática)
-
-Zero cor de marca — preto, branco, cinza, só. Estado é sinalizado por **contraste/inversão/peso**, nunca por matiz. Referência de linha: a vertente "ink-is-the-brand" (ex. Vercel/Geist) — ação primária é uma inversão de polaridade (bloco sólido invertido), foco usa espessura/contraste em vez de cor, hierarquia vem de peso e espaçamento.
-
-| Token | Hex | Uso |
-|---|---|---|
-| `--bg-void` | `#0A0A0A` | fundo base |
-| `--bg-surface` | `#141414` | painéis: chat, sidebar de presence, modais |
-| `--line` | `#2A2A2A` | divisores e bordas, sempre discretos |
-| `--ink` | `#F2F2F2` | texto primário — branco suave, não `#FFF` puro (reduz halo/glare em ambiente escuro) |
-| `--ink-muted` | `#7A7A7A` | metadados: timestamps, nomes secundários, placeholders |
-| `--invert-bg` | `#FFFFFF` | CTA primário / estado ativo — bloco sólido invertido, substitui o antigo acento |
-| `--invert-fg` | `#000000` | texto/ícone sobre `--invert-bg` |
-| `--outline-strong` | `#FFFFFF` | foco (anel duplo: `ring` + `ring-offset` sobre `--bg-void`), borda de estado "ao vivo" |
-
-Substituição de semântica, aplicada em todo botão/link/estado que antes usava o acento laranja: **CTA primário** = bloco `--invert-bg`/`--invert-fg` (não mais cor de fundo colorida); **foco** = anel duplo em `--outline-strong` com `ring-offset` em `--bg-void` (espessura/contraste, não cor); **erro** = bloco com borda em `--ink` + texto em negrito (antes usava a mesma cor do CTA, o que confundia os dois sinais); **link** = `--ink` com sublinhado sempre visível (não pode depender só de cor); **presença ativa** = ponto sólido em `--ink`.
-
-### Tipografia (3 papéis)
-
-- **Display** — grotesk geométrico, tracking apertado. Só em momentos grandes: título da sala, estados vazios ("nenhuma sala ainda"). Nunca em texto de corpo — é pra pontuar, não pra preencher.
-- **Corpo** — sans humanista, legível em tamanho pequeno (chat é denso). É a fonte de 90% da UI: mensagens, labels, botões, formulários.
-- **Utilitária (mono)** — pra código da sala, timestamp do chat, e qualquer diagnóstico de sync (`currentTime`, drift em ms). Mono aqui não é estética — é funcional: elimina ambiguidade `0`/`O`, `1`/`l` num código que a pessoa vai ditar ou colar pro amigo entrar na sala. **A mono sozinha não resolvia isso**: até a rodada de `docs/specs/04-auditoria-ui-ux-rodada-2/spec.md` o código era o cuid de 25 caracteres do Prisma, indititável na prática e sem botão de copiar em lugar nenhum. Hoje `lib/room-code.ts` gera 8 caracteres num alfabeto que já exclui `0/O`, `1/I/L` e `U` — a mono passa a reforçar uma decisão de formato, não a compensar sozinha um identificador impossível de ditar — e `components/room/InviteCode.tsx` copia a URL completa do convite ao lado do código (`docs/specs/04-auditoria-ui-ux-rodada-2/spec.md`, achado 6).
-
-### Assinatura visual: anel de sync ao redor do vídeo
-
-Sem cor pra diferenciar estado, o anel usa três tratamentos estruturais (`components/room/SyncRing.tsx`): borda sólida em `--line` (idle/pausado), borda sólida em `--outline-strong` (branca) com pulso lento (`isPlaying`), e borda **tracejada** em `--line` quando `source === "GENERIC_IFRAME"` (seção 7) — o tracejado é o único jeito de comunicar "essa sala não tem sync de play/pause real" sem depender de matiz. A cada evento `LOAD_VIDEO`/`PLAY`/`PAUSE`/`SEEK` recebido de qualquer participante (seção 2), o anel dá um flash breve em branco — um eco visual real do broadcast, não um efeito decorativo solto.
-
-### Layout
-
-Desktop — proporção real de ~80% vídeo / ~20% chat+presença (`lg:basis-[80%]`/`lg:basis-[20%]`
-em `RoomExperience.tsx`, container solto de `max-w-6xl` pra `max-w-[1800px]` — em 1152px, 80%
-ainda era só ~920px de vídeo, não sobrava espaço real):
-
-```
-┌───────────────────────────────────────────────────────┬─────────────┐
-│                                                         │  presença ＋│
-│                                                         │  ● ● ●   3  │
-│              ╭─────────────────────────────╮           ├─────────────┤
-│              │                              │           │  chat       │
-│              │       [ vídeo, ~80% ]        │           │  ...        │
-│              │                              │           │  ...        │
-│              ╰─────────────────────────────╯           │  ...        │
-│  ● ao vivo · sincronizado           00:12:34            ├─────────────┤
-│                                                          │ [ mensagem ]│
-└───────────────────────────────────────────────────────┴─────────────┘
-```
-
-`+` no cabeçalho de presença abre o modal de carregar link (`LoadVideoModal.tsx`) — o form de colar
-URL não fica mais fixo embaixo do vídeo, evitando competir por atenção com o player.
-
-Tela cheia: por padrão o vídeo ocupa 100% da tela (chat escondido, imersivo). Um botão
-(`TheaterIcon`, só visível em fullscreen) alterna "modo teatro" — vídeo encolhe pra ~80% e o
-chat/presença aparece à direita, dentro da própria tela cheia (o alvo do `requestFullscreen()` é o
-container que envolve as duas colunas, não só o vídeo, exatamente pra isso caber). Reseta pra
-vídeo-só toda vez que sai da tela cheia. **Geometria e posição exatas desse botão: `docs/specs/02-fullscreen-lag-qualidade/spec.md`, seção 9.1** —
-o layout de tela cheia descrito aqui foi refeito (centralizado, com margem em todos os lados) e o
-botão saiu do canto flutuante.
-
-Mobile — coluna única, vídeo sempre primeiro; chat/presença abaixo, nunca disputando espaço com o
-player. **Aba/bottom-sheet foi cogitada e não é o mecanismo implementado** (`docs/specs/04-auditoria-ui-ux-rodada-2/spec.md`, achado 9): o
-que existe hoje é uma casca de altura fixa. Abaixo de `lg`, `<main>` ganha
-`max-lg:h-dvh max-lg:overflow-hidden max-lg:pb-4` (`RoomExperience.tsx:251`), a caixa do vídeo é
-limitada a `38dvh` de altura (`:331`) e o `aside` vira `max-lg:flex-1 min-h-0` (`:433`) — quem rola
-é o log do chat, dentro do próprio painel, nunca a página. Sem a casca, o `flex-1` do chat não tem
-altura pra distribuir (não existe espaço livre a repartir), o `ul` colapsa pra altura do conteúdo e
-o vídeo é empurrado pra fora da tela pela primeira dezena de mensagens.
-
-### Piso de qualidade (não negociável, independe de tema)
-
-- Contraste `--ink` sobre `--bg-void` e `--bg-surface` dentro de AA pra texto de corpo.
-- Todo elemento interativo tem estado de foco visível (anel duplo em `--outline-strong`), inclusive em navegação por teclado.
-- `prefers-reduced-motion` desliga o pulso do anel de sync e qualquer transição não-essencial — vira só o flash instantâneo de estado, sem animação contínua.
-- Alvos de toque em mobile ≥ 44px (chat, controles do player, entrar na sala) — sala é usada por 2 pessoas, muitas vezes em celular deitado no sofá, não em mesa com mouse.
+> Nota: `hooks/useLastRoomEvent.ts:16` cita "seção 8" mas descreve o filtro de `LOAD_VIDEO`/`PLAY`/`PAUSE`/`SEEK`, cujo conteúdo mora na seção 2 (FR-008/FR-016). A âncora numérica foi preservada como no original; a correção é tarefa separada.

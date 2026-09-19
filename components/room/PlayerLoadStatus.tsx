@@ -29,7 +29,7 @@ export function PlayerLoadStatus({
   // `!loading` sozinho escondia o overlay assim que o backend reportava
   // `isReady` — erro emitido depois disso (autoplay bloqueado, embed
   // restrito reportado só após `onReady`) nunca chegava a aparecer (achado 3,
-  // docs/specs/04-auditoria-ui-ux-rodada-2/spec.md). `error` mantém o overlay vivo independente do
+  // docs/specs/05-code-review-seguranca/spec.md). `error` mantém o overlay vivo independente do
   // estado de `loading`.
   if (!loading && !error) return null;
 

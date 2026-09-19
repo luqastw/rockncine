@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  /* monocromático, dark-first — ver SPEC.md seção 8. Nenhuma cor de marca:
+  /* monocromático, dark-first — ver docs/specs/01-fundacao-mvp/spec.md, seção 8. Nenhuma cor de marca:
      estado é sinalizado por contraste/inversão/peso, nunca por matiz. */
   --gray-950: #0a0a0a;
   --gray-900: #141414;
   --gray-700: #2a2a2a;
   /* #7a7a7a dava 4,29:1 sobre --bg-surface (#141414), abaixo do piso AA de
-     4,5:1 que a seção 8 do SPEC.md exige — #828282 sobe pra ~4,8:1 mantendo
-     a mesma função de "cinza neutro discreto" (ver SPEC.md seção 10). */
+     4,5:1 que a seção 8 de docs/specs/01-fundacao-mvp/spec.md exige — #828282 sobe pra ~4,8:1 mantendo
+     a mesma função de "cinza neutro discreto" (ver docs/specs/03-auditoria-ui-ux/spec.md, achado 2). */
   --gray-500: #828282;
   --gray-100: #f2f2f2;
   --pure-black: #000000;
@@ -37,7 +37,7 @@
   /* scrim de overlay (modal, mensagem de carregamento/erro do player) — antes
      dois valores de opacidade diferentes (bg-black/70, bg-black/60) pra
      mesma função de "escurecer o que está atrás" (revisão de consistência,
-     achado 5, SPEC.md seção 11). Não usar em cima do vídeo: ali "preto" é
+     achado 5 de docs/specs/06-consistencia-design/spec.md). Não usar em cima do vídeo: ali "preto" é
      letterbox real, não scrim de UI — ver comentário em RoomExperience.tsx. */
   --scrim: rgb(0 0 0 / 0.7);
 }

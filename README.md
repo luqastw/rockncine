@@ -7,7 +7,7 @@ Live at [rockncine.vercel.app](https://rockncine.vercel.app).
 ## Features
 
 - **Rooms** — create a room, get a short 8-character code (no `0/O`, `1/I/L`, `U` — easy to read aloud), share the link or code
-- **Synchronized playback** — play, pause, and seek propagate to every participant in real time via Liveblocks, with drift correction against clock skew
+- **Synchronized playback** — play, pause, and seek propagate to every participant in real time via Liveblocks. Every event carries the sender's `ts`, which is validated on arrival and used for last-write-wins ordering plus a clock-skew estimate: a follower compares the storage snapshot against *that actor's* clock, not its own, so a machine whose clock is off by seconds no longer stays permanently out of sync
 - **Multiple video sources** — YouTube (full sync via the player SDK, closed captions off by default regardless of viewer language/account preference) and Vimeo (full sync via their player SDK), direct media (`.mp4`/`.webm`/`.m3u8`, `.m3u8` via `hls.js`), Google Drive previews, and a generic iframe fallback for anything else (load-only, no sync — the source doesn't expose a control API)
 - **Live chat** — ephemeral, scoped to the room session, not persisted to the database; system messages announce when someone joins or leaves (debounced against reconnects/refreshes)
 - **Presence** — see who else is in the room in real time, collapsed to a count by default with the full list one click away
@@ -28,7 +28,8 @@ Live at [rockncine.vercel.app](https://rockncine.vercel.app).
 | Styling | Tailwind CSS 4 |
 | Direct media playback | hls.js |
 | Vimeo playback | @vimeo/player |
-| Tests | Vitest |
+| Tests | Vitest 4 + Testing Library (jsdom) |
+| CI | GitHub Actions — runs the full gate on push/PR |
 | Deployment | Vercel + Neon Postgres + Liveblocks |
 
 ## Data model
@@ -80,13 +81,27 @@ The app runs at `http://localhost:3000`.
 ## Testing
 
 ```bash
-npm test
-npx tsc --noEmit
-npx eslint .
-npx next build
+npm run gate
 ```
 
-Vitest, covering video source detection, room code generation, and the playback controller abstraction. All four are expected to pass clean before any change is considered done.
+`npm run gate` is the single entry point, and it is what CI runs on every push and pull request. It
+runs, in this order: `next typegen` → `tsc --noEmit` → `eslint .` → `vitest run` → `next build`.
+The order matters — `tsc` depends on `next-env.d.ts` and `.next/types/**`, which are generated and
+gitignored, so on a clean clone it fails with `Cannot find name 'LayoutProps'` until `next typegen`
+(or a build) has run.
+
+The script also normalizes two environment traps that cost real debugging time:
+
+- `NODE_ENV=production` makes `npm ci` silently skip devDependencies (no `vitest`, no `eslint`, no
+  `@types/node`), and makes React resolve its production build — where `act` is not exported, so
+  React Testing Library dies with `React.act is not a function` before running a single test.
+- `NODE_ENV=development` makes `next build` fail while prerendering `/_global-error`.
+
+What the suite covers: video source detection, room code generation, the synchronization core
+(`lib/playback/` — event validation, last-write-wins ordering, clock-skew estimation), playback
+quality preferences and their hydration contract, and the rate limiter. The three hooks that talk to
+the player SDKs (YouTube / Vimeo / `<video>`) are still untested — covering them needs the SDKs
+mocked.
 
 ## License
 

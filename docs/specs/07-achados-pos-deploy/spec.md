@@ -1,192 +1,239 @@
-# Achados pós-deploy (teste real do usuário)
+# Spec: achados pós-deploy
 
-**Status: pendente — spec pronta, implementação não iniciada.** Único dos sete specs do projeto
-ainda não implementado; os demais (`01` a `06`) já estão no ar.
+**Status:** implementado (com ressalvas) — 6 dos 7 achados implementados (14.1–14.4, 14.6, 14.7); o item 14.5 (código de sala de 8 → 4 caracteres) segue pendente.
+**Pesquisa:** `research.md`
 
-Rodada motivada por teste manual do usuário em produção, sete pedidos concretos (print anexado ao
-item 14.1). Cada subseção é spec de implementação — nenhum código foi escrito nesta rodada, só
-leitura/diagnóstico contra o estado atual do repo. Convenção mantida de `docs/specs/02-fullscreen-lag-qualidade/spec.md`: verdito explícito
-(CONFIRMADO / A CONFIRMAR / DESCARTADO) sempre que a causa depender de comportamento observável, não
-só de leitura de código.
+## 1. Problema / motivação
 
-### 14.1 Chat sem teto de altura fora de tela cheia — CONFIRMADO
+Rodada de sete pedidos concretos levados por teste manual do usuário em produção. Os pedidos cobrem:
+o log do chat estica a página em telas largas fora de tela cheia; não há mensagem de chat quando
+alguém sai da sala; o cadastro aceita e-mail malformado; a lista de presença fica sempre aberta; o
+código de sala de 8 caracteres é difícil de ditar; o modal de "carregar vídeo" não aparece em tela
+cheia nativa; e as legendas do YouTube iniciam ligadas.
 
-**Sintoma do print:** lista de mensagens cresce sem limite conforme chega texto, sem scrollbar
-interna — a página inteira estica.
+O diagnóstico completo de cada item — medições, vereditos e código citado por linha — está em
+`research.md`; este documento fica com o contrato.
 
-**Causa, por leitura de código.** `Chat.tsx:63` já tem `overflow-y-auto` no `<ul>` do log — a
-intenção de rolagem interna existe. Mas rolagem interna só funciona se algum ancestral tiver altura
-*definida*, não só `min-height`. Em `lg+`, `<main>` (`RoomExperience.tsx:259`) é
-`min-h-dvh flex flex-col ...` — sem `h-dvh`/`overflow-hidden`, só `max-lg:h-dvh max-lg:overflow-hidden`
-(a correção de altura fixa existe, mas só abaixo de `lg`, ver `docs/specs/01-fundacao-mvp/spec.md`, seção 8, "Mobile"). Em `lg+` a altura de
-`main` é intrínseca ao conteúdo: o `stage` (`:300`, `min-h-0 flex-1`) recebe altura real via
-`flex-1` **só quando o pai tem altura fixa pra distribuir** — sem isso, `flex-1` não trava nada, o
-`aside`/`Chat` cresce e empurra `main` pra baixo do viewport, e o `overflow-y-auto` do item acima
-nunca tem uma caixa fechada onde agir. Fora de fullscreen, é exatamente o vazamento do print.
+## 2. Objetivos e não-objetivos
 
-Em tela cheia (`isFullscreen`), o próprio `stage` ganha `h-dvh w-dvw overflow-hidden`
-(`RoomExperience.tsx:307-309`) — isso já dá altura real e deveria conter o chat pelo mesmo mecanismo
-que funciona no mobile empilhado. **Não achei, por leitura de código, o mesmo vazamento dentro de
-fullscreen** — se persistir depois da correção abaixo, é outra causa (candidato: `cssFullscreen`
-seria o mais provável de escapar, por depender de `fixed inset-0` em vez da Fullscreen API nativa) e
-precisa de reprodução em vez de suposição.
+**Objetivos**
 
-**Correção.** Estender pra `lg+` o mesmo tratamento que `max-lg` já tem em `main`
-(`RoomExperience.tsx:259`): trocar `max-lg:h-dvh max-lg:overflow-hidden max-lg:pb-4` por uma versão
-sem prefixo (`h-dvh overflow-hidden`, ajustando o `pb-14`/`pb-4` que hoje diverge entre os dois casos
-pra não regredir o respiro do badge do Liveblocks — `docs/specs/01-fundacao-mvp/spec.md`, seção 6). Com `main` de altura travada em
-qualquer breakpoint, a cadeia `flex-1`/`min-h-0` que já existe do `stage` até o `<ul>` do chat passa
-a ter uma caixa real pra distribuir, e `overflow-y-auto` (já implementado) assume a rolagem sozinho.
-Nenhuma mudança dentro de `Chat.tsx` é necessária.
+1. Conter a lista de mensagens do chat em uma altura fixa em todos os breakpoints, com rolagem interna.
+2. Anunciar no chat a saída de um participante, sem duplicar mensagens em reconexões.
+3. Recusar no servidor e-mails que não tenham formato válido.
+4. Mostrar a presença colapsada, com a contagem visível e a lista de nomes sob clique.
+5. Reduzir o código de sala gerado de 8 para 4 caracteres.
+6. Fazer o modal de "carregar vídeo" aparecer em tela cheia nativa.
+7. Manter as legendas do YouTube desligadas por padrão.
 
-**Verificação pós-fix:** reproduzir o print (mandar ~20 mensagens curtas seguidas) em `lg+` fora de
-fullscreen, depois repetir dentro de fullscreen nativo e no fallback `cssFullscreen` — os três casos
-citados no pedido do usuário ("tanto no fullscreen quanto sem").
+**Não-objetivos (fora do escopo)**
 
-### 14.2 Presença não atualiza ao fechar o navegador + mensagem de saída
+- Implementar protocolo de heartbeat próprio no client para acelerar a detecção de queda abrupta de
+  conexão (14.2): `useOthers()` já responde "quem está online"; o único gap acionável é a mensagem de
+  saída.
+- Implementar validação de e-mail segundo a RFC 5322 completa (14.3); basta um formato prático.
+- Aplicar o regex de e-mail no login (14.3) — no login a consulta é lookup, não criação.
+- Introduzir portal ou dependência nova para posicionar o modal (14.6).
+- Migrar o schema de `Room.code` (14.5) — a coluna é `String` livre, sem `VarChar(n)`.
+- Alterar o restante do chat, da presença ou do layout além do que cada achado descreve.
 
-**O que já funciona.** `PresenceList` (`PresenceList.tsx`) deriva a lista inteiramente de
-`useOthers()` — não há estado próprio de "quem está online" desincronizado da conexão real do
-Liveblocks. Quando uma aba fecha normalmente (frame de close do WebSocket chega ao servidor), os
-outros clientes já devem ver a lista encolher sozinha, sem código nosso — "identificar se ainda está
-online" já é, por construção, o que `useOthers()` responde.
+## 3. Histórias de usuário
 
-**O que falta, dois itens concretos:**
+- **US-1** (14.1): Como participante fora de tela cheia em tela larga, quero que a lista do chat role
+  dentro de um quadro fixo, para que a página não estique a cada mensagem recebida.
+- **US-2** (14.2): Como participante, quero ver no chat uma mensagem quando alguém sai da sala, para
+  não ter que procurar quem sumiu na lista de presença.
+- **US-3** (14.3): Como operador da plataforma, quero que o cadastro recuse e-mails malformados, para
+  não gravar contas com endereço inválido.
+- **US-4** (14.4): Como participante, quero ver só a contagem de pessoas conectadas e expandir a
+  lista ao clicar, para reduzir o espaço ocupado pela presença.
+- **US-5** (14.5): Como quem cria uma sala, quero um código mais curto, para ditar aos amigos sem erro.
+- **US-6** (14.6): Como participante em tela cheia nativa, quero que o modal de "carregar vídeo"
+  apareça, para trocar o vídeo sem sair da tela cheia.
+- **US-7** (14.7): Como espectador, quero que as legendas do YouTube comecem desligadas, para assistir
+  sem sobreposição de texto.
 
-1. **Nenhuma mensagem de sistema quando alguém sai.** Existe o par de "entrou"
-   (`useRoomJoinAnnouncement.ts`, broadcast explícito no mount), mas não o de "saiu". Pedido do
-   usuário: fechar essa assimetria.
-2. **Sem confirmação empírica de quão rápido a saída se reflete em queda abrupta de conexão**
-   (navegador fechado à força, processo morto, rede caindo sem enviar o frame de close) — nesses
-   casos a detecção depende do heartbeat/timeout interno do servidor Liveblocks, não documentado
-   publicamente com precisão de milissegundos. **Não tratar isso como bug nosso corrigível**: não há
-   protocolo de heartbeat próprio no client hoje, e implementar um só pra apertar essa janela é
-   escopo novo, não o pedido original ("verificar se ainda está online" já é respondido por
-   `useOthers`; o gap real e acionável é a mensagem de saída do item 1).
+## 4. Requisitos funcionais (EARS)
 
-**Decisão de design pro "saiu da sala": detecção local via `useOthersListener`, sem broadcast.**
-Broadcast simétrico ao de entrada (a própria pessoa que sai avisando ao sair) é estruturalmente
-frágil aqui: o disparo teria que rodar em `pagehide`/`beforeunload`, exatamente o momento em que o
-socket está sendo derrubado — sem garantia de entrega. Em vez disso, usar
-`useOthersListener(({type, user}) => ...)` do Liveblocks: cada cliente já conectado recebe localmente
-um evento `{type: "leave"}` quando a conexão de outro participante cai, de forma determinística (é o
-mesmo mecanismo que já alimenta `useOthers()`). Cada cliente conectado então adiciona, só no próprio
-feed local (mesmo padrão de "chat não persiste, reconstituído por sessão" de `docs/specs/01-fundacao-mvp/spec.md`, seção 2 — sem broadcast,
-sem risco de N cópias duplicadas de "fulano saiu" vindas de N observadores), um item
-`SYSTEM_MESSAGE` "{name} saiu da sala" via o mesmo `appendUnique` que `useChat.ts` já expõe.
+### 14.1 — Altura do chat
+- **FR-001** O sistema DEVE fixar a altura do contêiner principal da sala (`main`) em `100dvh` com
+  `overflow: hidden` em todos os breakpoints, inclusive `lg+`, de modo que o log do chat (`<ul>` com
+  `overflow-y-auto`) receba uma caixa fechada onde rolar.
+- **FR-002** O sistema DEVE preservar, em qualquer breakpoint, o respiro inferior entre o palco e o
+  badge de presença do Liveblocks.
+- **FR-003** QUANDO o chat estiver em tela cheia — nativa ou fallback `cssFullscreen` —, o sistema
+  DEVE conter a lista de mensagens na altura da viewport, com rolagem interna.
 
-**Anti-flicker obrigatório.** Um refresh de página ou uma queda de rede breve gera
-`leave` seguido de `enter` do mesmo `userId` em poucos segundos — sem tratamento, isso mostraria
-"fulano saiu" + "fulano entrou" a cada F5. Segurar o `leave` num timer curto (ordem de alguns
-segundos) antes de emitir a mensagem; se um `enter` do mesmo `userId` chegar antes do timer estourar,
-cancelar e não emitir nada. Precisa de um registro local (`Map<userId, timeoutId>`) — cabe num hook
-novo (`useRoomLeaveAnnouncement`, espelhando `useRoomJoinAnnouncement`), montado no mesmo nível de
-`RoomExperience` (nunca dentro de `<Chat>`, pela mesma razão documentada em
-`useRoomJoinAnnouncement.ts:6-9`: um unmount/remount por toggle de fullscreen/teatro não pode
-reprocessar histórico de presence do zero).
+### 14.2 — Anúncio de saída
+- **FR-004** QUANDO a última conexão de um participante deixar a sala, o sistema DEVE adicionar ao
+  feed local do chat uma mensagem de sistema `"{nome} saiu da sala"`.
+- **FR-005** O sistema DEVE detectar a saída localmente, em cada cliente já conectado, sem broadcast
+  aos demais clientes.
+- **FR-006** SE o mesmo `userId` reentrar antes de decorrida a janela anti-flicker, ENTÃO o sistema
+  NÃO DEVE emitir a mensagem de saída.
+- **FR-007** SE ainda houver outra conexão ativa do mesmo `userId`, ENTÃO o sistema NÃO DEVE emitir a
+  mensagem de saída.
+- **FR-008** O sistema NÃO DEVE emitir a mensagem de saída relativa ao usuário local.
+- **FR-009** O sistema DEVE hospedar o detector de saída no mesmo nível de `RoomExperience`, nunca
+  dentro de `Chat`, para que um remount por toggle de tela cheia ou teatro não reprocese o histórico
+  de presence.
 
-### 14.3 Verificação de formato de e-mail
+### 14.3 — Formato de e-mail
+- **FR-010** QUANDO uma requisição de cadastro chegar, SE o campo `email` não satisfizer o formato
+  (sem espaço, com um `@` e com domínio contendo ao menos um `.`), ENTÃO o servidor DEVE responder
+  `400` com a mensagem de e-mail em minúsculas já usada e NÃO DEVE criar nenhuma linha de `User`.
 
-**Gap real:** `/api/register/route.ts:11` só valida `email.includes("@")` — `"a@"`, `"@@"` ou
-`"x@y"` passam. É o único lugar server-side que decide o que vira `User.email` (`@unique` no
-Postgres); os dois forms já usam `type="email"` (`RegisterForm.tsx:63`, `LoginForm.tsx:38`), que dá
-alguma validação de browser, mas isso é só UX — não protege contra chamada direta à API.
+### 14.4 — Presença colapsável
+- **FR-011** O sistema DEVE renderizar o cabeçalho de presença como um botão-resumo que exibe apenas a
+  contagem de pessoas ("N na sala") no estado fechado, que é o padrão.
+- **FR-012** QUANDO o botão-resumo for acionado, o sistema DEVE alternar a lista completa de nomes
+  entre visível e oculta.
+- **FR-013** O botão-resumo DEVE expor `aria-expanded` refletindo o estado e `aria-controls` apontando
+  para a lista.
+- **FR-014** O sistema DEVE exibir no botão-resumo um chevron da mesma família de ícones SVG já usada
+  no player, que gira 180° no estado aberto.
+- **FR-015** ENQUANTO a lista estiver expandida, o sistema DEVE exibir os participantes deduplicados
+  por `userId`, com o ponto de presença e a marcação "(você)" para o usuário local.
 
-**Correção:** trocar o `includes("@")` por um regex prático de formato (não RFC 5322 completo — 
-implementar RFC 5322 por regex é notoriamente impraticável e fora de escopo; o pedido do usuário é
-"pelo menos... a formatação correta", não validação de existência de caixa real). Padrão suficiente:
-algo como `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` — sem espaço, com `@`, com domínio contendo pelo menos um
-`.`. Aplicar em `/api/register/route.ts` (autoritativo) mantendo a mensagem de erro já existente no
-mesmo formato (minúscula, ver `docs/specs/06-consistencia-design/spec.md`, achado "quatro mensagens de erro capitalizadas... baixadas
-pra minúsculo"). Login (`LoginForm.tsx`/NextAuth `authorize()`) não precisa do mesmo regex — é
-lookup, não criação; formato inválido já cai em "credenciais inválidas" por não achar o `User`.
+### 14.5 — Código da sala
+- **FR-016** O sistema DEVE gerar códigos de sala com exatamente 4 caracteres.
+- **FR-017** O sistema DEVE manter o alfabeto de geração restrito a letras maiúsculas e dígitos,
+  excluindo `0`, `O`, `1`, `I`, `L` e `U`.
 
-### 14.4 Presença colapsável: só contagem, detalhe sob clique
+### 14.6 — Modal de "carregar vídeo" em tela cheia
+- **FR-018** O sistema DEVE renderizar o `<LoadVideoModal>` dentro da subárvore do elemento que entra
+  em tela cheia (`stageRef`), e não como irmão dela.
+- **FR-019** QUANDO a tela cheia nativa estiver ativa e o usuário acionar "carregar vídeo", o sistema
+  DEVE tornar o modal visível na árvore renderizada da tela cheia.
+- **FR-020** O sistema NÃO DEVE introduzir portal nem dependência nova para posicionar o modal.
 
-Pedido: cabeçalho de presença mostra só "N conectados"; clicar expande a lista de nomes; clicar de
-novo fecha.
+### 14.7 — Legendas do YouTube
+- **FR-021** QUANDO um vídeo do YouTube for carregado, o sistema DEVE manter as legendas desativadas.
+- **FR-022** O sistema DEVE declarar `cc_load_policy: 0` nos `playerVars` do player do YouTube.
 
-**Onde muda.** `PresenceList.tsx` hoje sempre renderiza a `<ul>` inteira (você + outros,
-deduplicados por `userId`, `:13-40` — essa lógica de dedupe fica igual, não é o que muda). O pedido é
-só sobre a forma de exibição, não sobre a fonte de dados.
+## 5. Critérios de aceite (Given-When-Then)
 
-**Forma:** `PresenceList` passa a controlar um `useState(false)` local de expansão. Estado fechado
-(default): uma única linha resumo — `button` com `aria-expanded`/`aria-controls`, texto "N na sala" +
-ícone de chevron (mesma família SVG mão-desenhada de `player/icons.tsx`, `docs/specs/01-fundacao-mvp/spec.md`, seção 8: sem lib de ícone
-nova) que gira 180° no estado aberto. Clicar alterna; a lista completa (as `<li>` que já existem,
-com o ponto de presença e "(você)") só monta quando `expanded === true`. Não precisa de nova consulta
-Liveblocks — é puramente `useState` sobre os dados que `useOthers()`/`useMyPresence()` já entregam.
+Um `When` por cenário; todo `Then` é observável.
 
-Isso é interno a `PresenceList` — o `h2` "presença" (mono, `RoomExperience.tsx:454`) e o
-`RoomActions` ao lado continuam onde estão; o componente que muda de forma é só o que fica embaixo
-desse cabeçalho.
+### Formato de e-mail (14.3)
+- **AC-001** [FR-010] Given uma requisição de cadastro com `email` = `"a@"`, When `POST /api/register`,
+  Then a resposta é `400`, o corpo tem `error` com a mensagem de e-mail em minúsculas e a contagem de
+  linhas de `User` é igual à de antes.
+- **AC-002** [FR-010] Given `email` = `"@@"`, When `POST /api/register`, Then a resposta é `400`.
+- **AC-003** [FR-010] Given `email` = `"x@y"` (domínio sem ponto), When `POST /api/register`, Then a
+  resposta é `400`.
+- **AC-004** [FR-010] Given `email` = `"a@b.co"`, When `POST /api/register`, Then a resposta não é a
+  mensagem de e-mail inválido (o formato passa).
 
-Alvo de toque ≥44px pro botão-resumo, anel de foco duplo — piso de qualidade de `docs/specs/01-fundacao-mvp/spec.md`, seção 8, sem exceção
-pra este componente.
+### Anúncio de saída (14.2)
+- **AC-005** [FR-006] Given um participante que sai e reentra dentro da janela anti-flicker, When os
+  eventos `leave` e `enter` do mesmo `userId` são processados, Then nenhuma mensagem de sistema
+  contendo "saiu da sala" é adicionada ao feed.
+- **AC-006** [FR-004] Given um participante que fecha a conexão e não reentra, When a janela
+  anti-flicker transcorre, Then o feed local contém exatamente uma mensagem de sistema
+  `"{nome} saiu da sala"`.
+- **AC-007** [FR-007] Given a mesma pessoa com duas conexões ativas e uma delas fecha, When o evento
+  `leave` é processado, Then nenhuma mensagem de saída é adicionada.
+- **AC-008** [FR-005] Given N clientes conectados e um participante que sai, When a saída é detectada,
+  Then a mensagem entra só no feed local de cada cliente, sem broadcast de saída.
+- **AC-009** [FR-008] Given o próprio usuário local, When um evento `leave` do seu `userId` é
+  processado, Then nenhuma mensagem de saída é adicionada.
+- **AC-010** [FR-009] Given um toggle de tela cheia/teatro que desmonta e remonta o componente do
+  chat, When o detector de saída permanece montado em `RoomExperience`, Then nenhum histórico de
+  presence é reprocessado e nenhuma mensagem de saída espúria é gerada.
 
-### 14.5 Código da sala: 8 → 4 caracteres
+### Altura do chat (14.1)
+- **AC-011** [FR-001, FR-002] Given viewport `lg+` fora de tela cheia, When cerca de 20 mensagens
+  curtas são anexadas, Then `scrollHeight` da página é ≤ `innerHeight`, o `<ul>` do chat tem
+  `scrollHeight > clientHeight` (rola internamente) e o respiro inferior do badge é preservado.
+- **AC-012** [FR-003] Given tela cheia nativa ativa, When cerca de 20 mensagens curtas são anexadas,
+  Then a lista do chat rola internamente sem empurrar o palco para fora da viewport.
+- **AC-013** [FR-003] Given o fallback `cssFullscreen` ativo, When cerca de 20 mensagens curtas são
+  anexadas, Then a lista do chat rola internamente sem esticar a página.
 
-Mudança de uma constante: `CODE_LENGTH = 8` → `4` em `lib/room-code.ts:10`. Alfabeto
-(`ALPHABET`, `:9`) já é só maiúsculas + dígitos sem ambíguos (`0/O`, `1/I/L`, `U`) — já atende
-"somente letras maiúsculas e números", não muda.
+### Presença colapsável (14.4)
+- **AC-014** [FR-011, FR-013] Given a presença no estado padrão, When o cabeçalho é renderizado, Then
+  existe um único `button` com texto "N na sala", `aria-expanded="false"`, `aria-controls` apontando
+  para a lista, e as `<li>` de nomes não estão no DOM.
+- **AC-015** [FR-012] Given a lista recolhida, When o botão-resumo é acionado, Then `aria-expanded`
+  passa a `"true"` e as `<li>` de nomes entram no DOM.
+- **AC-016** [FR-012] Given a lista expandida, When o botão-resumo é acionado, Then `aria-expanded`
+  volta a `"false"` e as `<li>` de nomes saem do DOM.
+- **AC-017** [FR-014] Given a lista expandida, When o botão-resumo é renderizado, Then o chevron
+  carrega a classe de rotação de 180°.
+- **AC-018** [FR-015] Given duas conexões da mesma pessoa e uma terceira pessoa, When a lista é
+  expandida, Then a pessoa aparece uma única vez (dedupe por `userId`) e o usuário local aparece com a
+  marcação "(você)".
 
-Verificado por grep: nenhum outro lugar do código assume 8 caracteres (sem `maxLength` no
-`JoinRoomForm.tsx`, sem formatação hardcoded em `InviteCode.tsx`, sem checagem de tamanho em
-`app/rooms/[code]/layout.tsx`). Migração de schema não é necessária — `Room.code` é `String` livre
-(`prisma/schema.prisma:30`), sem `@db.VarChar(n)`.
+### Código da sala (14.5)
+- **AC-019** [FR-016, FR-017] Given a criação de uma sala, When o código é gerado, Then ele tem
+  exatamente 4 caracteres e usa somente caracteres maiúsculos ou dígitos sem ambíguos.
 
-**Consequência aritmética a registrar, não a "corrigir":** o espaço de códigos cai de 30⁸ (~656
-bilhões) pra 30⁴ (810.000). O retry-on-collision que já existe
-(`app/rooms/new/route.ts:11-19`, 5 tentativas antes de cair pro `cuid()` de fallback) cobre isso sem
-mudança — mas com volume alto de salas simultâneas (dezenas de milhares), colisões deixam de ser
-evento raro. Aceitável na escala atual por decisão explícita do usuário (ditabilidade > espaço de
-nomes); não é um "bug" desta rodada, só uma troca que vale registrar caso o produto cresça.
+### Modal em tela cheia (14.6)
+- **AC-020** [FR-018, FR-019] Given tela cheia nativa ativa com o `stageRef` em
+  `document.fullscreenElement`, When "carregar vídeo" é acionado, Then existe um elemento com
+  `role="dialog"` dentro da subárvore de `document.fullscreenElement`.
 
-### 14.6 Modal de "carregar vídeo" não funciona em tela cheia — CONFIRMADO
+### Legendas do YouTube (14.7)
+- **AC-021** [FR-021, FR-022] Given um vídeo do YouTube cuja preferência do usuário iniciaria com
+  legendas ligadas, When o player termina de inicializar, Then as legendas estão desativadas e
+  `playerVars` contém `cc_load_policy: 0`.
 
-**Causa raiz, por leitura de código, não por suposição de CSS quebrado.** `<LoadVideoModal>` é
-renderizado em `RoomExperience.tsx:472`, como **irmão** da `div` que é `stageRef`
-(`RoomExperience.tsx:300`, fecha em `:470`) — ambos filhos diretos de `<main>`. Em Fullscreen API
-nativa, só a subárvore do elemento que está de fato em tela cheia (`document.fullscreenElement`, aqui
-o `stageRef`) é pintada na tela; um irmão dele fica fora da árvore renderizada enquanto a tela cheia
-nativa está ativa — isso é comportamento padrão de browser (spec da Fullscreen API), não uma falha
-específica desta implementação. Clicar em "carregar vídeo" dentro de tela cheia nativa abre o modal
-(o estado `loadModalOpen` muda, o componente monta), só que ele não aparece em lugar nenhum — daí
-"não funciona" ser a descrição exata do sintoma, sem erro no console.
+## 6. Requisitos não-funcionais (quantificados)
 
-**Não afeta o fallback `cssFullscreen`** (`stageRef` vira `fixed inset-0`, sem Fullscreen API real) —
-lá o modal, sendo `fixed inset-0` também mas fora da árvore do stage, continua no fluxo normal do
-DOM/CSS e deveria aparecer normalmente. Se o usuário testou num ambiente que cai nesse fallback (ex.
-navegador sem `document.fullscreenEnabled`) e ainda assim viu falha, é caso separado — reproduzir
-antes de generalizar a causa.
+- **Área de toque (14.4):** o botão-resumo de presença mede no mínimo 44 px.
+- **Anti-flicker (14.2):** a janela que segura o `leave` é de 4000 ms; um `enter` dentro dela cancela
+  a emissão.
+- **Geração de código (14.5):** alfabeto de 30 símbolos, o que dá 30⁴ = 810 000 códigos; o
+  retry-on-collision existente faz 5 tentativas antes de cair no `cuid()` de fallback.
+- **Legendas (14.7):** `playerVars` do YouTube com 6 chaves, incluindo `cc_load_policy: 0`.
+- **Gate de qualidade (14.8):** 0 erros em `npm test`, `npx tsc --noEmit`, `npx eslint` e
+  `npx next build` antes de declarar qualquer item concluído.
+- **Verificação em navegador (14.8):** 3 casos de reprodução real — fora de tela cheia, tela cheia
+  nativa e fallback `cssFullscreen` — obrigatórios para os itens 14.1 e 14.6.
 
-**Correção recomendada: mover o modal pra dentro da árvore do stage**, não criar mecanismo novo.
-Renderizar `<LoadVideoModal>` como filho da `div` de `RoomExperience.tsx:300-470` (ex. logo após o
-`</aside>`, ainda dentro do `stageRef`) em vez de depois dela. `position: fixed` continua resolvendo
-contra o viewport normalmente quando aninhado dentro de um ancestral só com `position: fixed`/sem
-`transform` (o caso de `cssFullscreen` já se comporta assim hoje) — não deveria quebrar nenhum dos
-dois modos de tela cheia, e o modo não-fullscreen não muda (o modal já era `fixed inset-0` cobrindo a
-tela toda de qualquer ponto do DOM). Evita introduzir portal/dependência nova, consistente com o
-comentário já existente em `LoadVideoModal.tsx:7` ("sem dependência nova").
+## 7. Dados e contratos
 
-**Não remover o modal** — a causa é posicionamento de DOM, não um mecanismo quebrado; dá pra corrigir
-sem trocar por alternativa.
+- Nenhuma migração de schema. `Room.code` continua `String` `@unique` com `@default(cuid())`; códigos
+  de 8 caracteres já emitidos permanecem válidos.
+- Contrato do endpoint `POST /api/register`: a validação de formato passa a usar regex, sem mudar o
+  formato do corpo de erro (`{ error: string }`, texto em minúsculas).
+- O feed do chat ganha uma nova origem de item `SYSTEM_MESSAGE` `"{nome} saiu da sala"`, produzida só
+  no feed local; a interface de `useChat` (append por item) não muda.
+- `PresenceList` passa a ter estado de expansão local; nenhum contrato externo de props muda.
+- `RoomExperience` muda a altura do `main` e a posição do `<LoadVideoModal>` na árvore; nenhuma prop
+  pública muda.
 
-### 14.7 Legendas do YouTube ligadas por padrão
+## 8. Riscos / dependências / divergências
 
-`hooks/useYouTubeSync.ts:104` monta `playerVars` sem `cc_load_policy`. Pela IFrame Player API
-(mesma referência oficial já citada em `docs/specs/02-fullscreen-lag-qualidade/spec.md`, seção 9.4), `cc_load_policy: 0` é o parâmetro
-documentado pra manter legendas desligadas por padrão; sem ele, o comportamento default observado na
-prática nem sempre é "desligado" (relato real do usuário confirma isso — a omissão não é
-neutra). Correção de uma linha: adicionar `cc_load_policy: 0` ao objeto `playerVars` existente
-(`{ autoplay: 0, playsinline: 1, rel: 0, controls: 0, disablekb: 1 }` → acrescentar
-`cc_load_policy: 0`). Escopo só YouTube — Vimeo, mídia direta e iframe genérico não foram citados no
-relato e não têm o mesmo parâmetro/mecanismo.
+- **Divergência de status (2026-09-18).** O `spec.md` original declarava "pendente — implementação não
+  iniciada", mas os itens 14.1, 14.2, 14.3, 14.4, 14.6 e 14.7 estão implementados no código; só o
+  14.5 segue aberto (`lib/room-code.ts` mantém `CODE_LENGTH = 8`, e `lib/room-code.test.ts` ainda
+  afirma `toHaveLength(8)`).
+- **Dependência do Liveblocks (14.2).** Não há heartbeat próprio; a janela real de detecção de queda
+  abrupta depende do timeout interno do Liveblocks — fora de escopo. Só a mensagem de saída é
+  acionável.
+- **Risco de colisão (14.5).** Com 4 caracteres, o espaço cai para 810 000 códigos; em escala de
+  dezenas de milhares de salas simultâneas, colisões deixam de ser raras. O retry cobre a geração, mas
+  o produto deve monitorar.
+- **Dependência da API do YouTube (14.7).** `cc_load_policy: 0`, sozinho, cai em "preferência do
+  usuário"; a implementação também descarrega o módulo `captions` via `onApiChange`.
+- **Risco de posicionamento (14.6).** O modal depende de `position: fixed` continuar resolvendo contra
+  a viewport dentro da árvore do palco; os 3 casos de exibição precisam ser reproduzidos.
 
-### 14.8 Verificação exigida ao implementar
+## Anexo A — numeração legada (âncoras citadas pelo código)
 
-Nenhum item acima tem código escrito ainda. Ao implementar, seguir o piso já estabelecido pelo
-projeto (`docs/specs/02-fullscreen-lag-qualidade/spec.md` a `docs/specs/06-consistencia-design/spec.md`): `npm test`, `npx tsc --noEmit`, `npx eslint`, `npx next build` limpos antes de
-declarar qualquer item concluído; 14.1 e 14.6 exigem reprodução em navegador real (crescimento de
-altura e tela cheia nativa não são verificáveis só por leitura de classe Tailwind com a mesma
-confiança que, por ex., 14.5 ou 14.7 — mudanças de constante/parâmetro único).
+| Âncora antiga | O que dizia | Onde vive agora |
+|---|---|---|
+| 14.1 | chat sem teto de altura fora de tela cheia | FR-001–FR-003 / AC-011–AC-013 |
+| 14.2 | presença ao fechar navegador + mensagem de saída | FR-004–FR-009 / AC-005–AC-010 |
+| 14.3 | verificação de formato de e-mail | FR-010 / AC-001–AC-004 |
+| 14.4 | presença colapsável (contagem + detalhe sob clique) | FR-011–FR-015 / AC-014–AC-018 |
+| 14.5 | código da sala de 8 → 4 caracteres | FR-016–FR-017 / AC-019 (pendente) |
+| 14.6 | modal de "carregar vídeo" em tela cheia | FR-018–FR-020 / AC-020 |
+| 14.7 | legendas do YouTube desligadas por padrão | FR-021–FR-022 / AC-021 |
+| 14.8 | verificação exigida ao implementar | NFR (gate + reprodução em navegador) |
+
+Nenhuma destas âncoras é citada **por caminho** no código (`grep -rn "docs/specs/07" app components
+hooks lib prisma` não retorna nada); a README de specs cita os números `14.x` desta tabela. O número
+de item 14.x era a âncora estável desta spec — a numeração `FR-`/`AC-` nova é a substituta.

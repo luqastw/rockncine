@@ -1,231 +1,137 @@
-# Tarefas — Otimização para PCs fracos
+# Tarefas — resolução client-side, FPS e modo economy
 
-Spec: `docs/specs/09-resolucao-client/spec.md`
+Spec: `spec.md` · Pesquisa: `research.md` · Plano de execução legado (verbatim): `research-tasks.md`
 
-**Estado:** todas implementadas
+Reconstrução histórica — o trabalho já foi implementado; não é um plano a executar.
 
----
-
-## Decisões de arquitetura
-
-### A1. Estado de qualidade: hook `useVideoQuality`
-Criar um hook `hooks/useVideoQuality.ts` que encapsula:
-- `resolution: "720p" | "480p"` (padrão: "720p")
-- `fpsLimit: "auto" | "30" | "60"` (padrão: "auto")
-- `economyMode: boolean` (padrão: false)
-- Persistência em localStorage com chave `rockncine-video-quality`
-- Funções `setResolution()`, `setFpsLimit()`, `setEconomyMode()`
-- Heurística de detecção de dispositivo fraco (CA-4.1 a CA-4.5)
-
-O hook é chamado em `RoomExperience` e o state é passado via props ao `PlayerShell` → `PlayerControls`.
-
-### A2. Mudança de resolução HLS em runtime
-`useNativeVideoSync` não expõe `hlsRef`. Solução: adicionar prop `targetResolution` ao hook.
-Quando `targetResolution` mudar, o hook recalcula `autoLevelCapping` no `MANIFEST_PARSED`
-e também aplica imediatamente via `hls.levels` + `hls.currentLevel` se o manifesto já foi carregado.
-
-**Risco (CA-1.4):** `autoLevelCapping` dinâmico pode não ser suportado em runtime. Fallback:
-se o cap não resolver, forçar `hls.currentLevel` (perde ABR mas garante resolução).
-
-### A3. Mudança de resolução Vimeo em runtime
-`useVimeoSync` já tem `capQuality()`. Adicionar prop `targetResolution` que chama
-`player.setQuality('480p')` ou `player.setQuality('720p')` diretamente. Tratar erro
-silenciosamente (plano gratuito pode não ter 480p).
-
-### A4. FPS: simplificação
-A limitação real de FPS via `requestVideoFrameCallback` não é padronizada. Decisão:
-- "Automático" = sem intervenção
-- "30fps" = reduzir `hls.maxMaxBufferLength` para processar menos frames (HLS apenas)
-- "60fps" = sem intervenção (padrão já é 60fps ou menos)
-- Para YouTube/Vimeo: FPS é controlado pelo player embed, botão desabilitado
-- Em mobile: seletor oculto (CA-2.5)
-
-### A5. Modo economy
-- `economyMode` do hook `useVideoQuality` controla tudo
-- `SyncRing`: desabilitar `animate-sync-pulse` quando economy ativo
-- Chat: sem mudanças significativas (já é leve — 153 linhas, zero animações)
-- Liveblocks: throttle de 80ms → 500ms (via prop no `RoomLiveblocksProvider`)
-- Badge "Economy" no header da sala
+> A numeração abaixo (`T-001`…) é a reconstruída no formato SDD. O plano original (decisões A1–A5 e
+> tarefas T1–T13) permanece íntegro em `research-tasks.md`.
 
 ---
 
-## Tarefas
+## Decisões de arquitetura (histórico, preservado)
 
-### T1 — Hook `useVideoQuality` (resolução + FPS + economy + detecção)
-**Arquivo:** `hooks/useVideoQuality.ts` (novo)
-**CA:** 1.8, 2.4, 3.3, 4.1–4.5
-**Dependências:** nenhuma
-
-- Criar hook com state `resolution`, `fpsLimit`, `economyMode`
-- Persistir em localStorage (`rockncine-video-quality`)
-- Implementar heurística `detectLowEndDevice()`: `hardwareConcurrency <= 2 || deviceMemory < 4`
-- Detectar Safari via user agent (para CA-1.10)
-- Retornar: `{ resolution, fpsLimit, economyMode, setResolution, setFpsLimit, setEconomyMode, isLowEnd, isSafari }`
-
----
-
-### T2 — Estender `PlaybackController` com resolução
-**Arquivo:** `hooks/playerController.ts`
-**CA:** 1.4, 1.5
-**Dependências:** nenhuma (interface only)
-
-- Adicionar ao tipo `PlaybackController`:
-  - `resolution: "720p" | "480p" | null` (null = fonte não suporta)
-  - `setResolution?: (r: "720p" | "480p") => void`
-  - `fpsLimit: "auto" | "30" | "60"`
-  - `setFpsLimit?: (f: "auto" | "30" | "60") => void`
-- O `null` indica que a fonte não suporta mudança (YouTube, .mp4, Safari HLS nativo)
+- **A1.** Hook `useVideoQuality` centraliza resolução, FPS, economy e a heurística; estado passado por
+  props a `PlayerShell` → `PlayerControls`.
+- **A2.** Resolução HLS recalculada em runtime: a prop `targetResolution` recalcula `autoLevelCapping`
+  no `MANIFEST_PARSED` e aplica via `hls.currentLevel` se o manifest já carregou.
+- **A3.** Resolução Vimeo via `player.setQuality(...)`, erro tratado em silêncio.
+- **A4.** FPS: "Automático" = sem intervenção; "30fps" via `hls.maxMaxBufferLength`; YouTube/Vimeo sem
+  controle; seletor oculto em mobile.
+- **A5.** Modo economy controlado pelo hook; SyncRing sem pulso, chat inalterado, throttle do
+  Liveblocks 80 → 500 ms, badge "Economy" no header.
 
 ---
 
-### T3 — Integrar resolução em `useNativeVideoSync`
-**Arquivo:** `hooks/useNativeVideoSync.ts`
-**CA:** 1.4, 1.9, 1.10, 2.3
-**Dependências:** T2
-
-- Adicionar prop `targetResolution: "720p" | "480p"` e `fpsLimit`
-- No `MANIFEST_PARSED`: calcular cap baseado em `targetResolution` (≤480 ou ≤720)
-- Efeito separado que reage a mudanças em `targetResolution`:
-  - Se manifesto já carregado, recalcular cap e aplicar via `hls.currentLevel`
-  - Fallback: se `autoLevelCapping` dinâmico não funcionar, usar `currentLevel`
-- Para FPS "30": setar `hls.maxMaxBufferLength` para valor baixo (ex: 2s)
-- Retornar `resolution: "720p" | "480p"` e `setResolution` no controller
-- Em Safari (sem hls.js): `resolution = null`, `setResolution = undefined`
-
----
-
-### T4 — Integrar resolução em `useVimeoSync`
-**Arquivo:** `hooks/useVimeoSync.ts`
-**CA:** 1.5, 1.9
-**Dependências:** T2
-
-- Adicionar prop `targetResolution: "720p" | "480p"`
-- Efeito que reage a mudanças em `targetResolution`:
-  - Chamar `player.setQuality(targetResolution === "480p" ? "480p" : "720p")`
-  - `.catch(() => {})` — silencioso para planos gratuitos
-- Retornar `resolution` e `setResolution` no controller
+| Tarefa | Estado | Prova |
+|---|---|---|
+| T-001 hook `useVideoQuality` | concluída | `hooks/useVideoQuality.test.ts` |
+| T-002 `PlaybackController` com resolução/FPS | concluída | revisão (`hooks/playerController.ts`) |
+| T-003 resolução em `useNativeVideoSync` (HLS) | concluída | revisão + reprodução |
+| T-004 resolução em `useVimeoSync` | concluída | revisão |
+| T-005 resolução em `useYouTubeSync` (null) | concluída | revisão |
+| T-006 resolução no controller genérico (null) | concluída | revisão |
+| T-007 botão de resolução em `PlayerControls` | concluída | revisão |
+| T-008 `PlayerShell` repassa resolução | concluída | revisão |
+| T-009 economy: `SyncRing` | concluída | revisão |
+| T-010 economy: throttle do Liveblocks | concluída | revisão |
+| T-011 economy: badge + integração | concluída | revisão |
+| T-012 detecção automática: `EconomySuggestion` | concluída | revisão |
+| T-013 testes unitários | concluída | `npx vitest run hooks/useVideoQuality.test.ts` |
 
 ---
 
-### T5 — Integrar resolução em `useYouTubeSync`
-**Arquivo:** `hooks/useYouTubeSync.ts`
-**CA:** 1.6
-**Dependências:** T2
+### T-001 — Hook `useVideoQuality`
+**Objetivo:** criar o hook com `resolution`, `fpsLimit` e `economyMode`, persistência em
+`localStorage` e a heurística `detectLowEndDevice()` / detecção de Safari.
+**Arquivos:** `hooks/useVideoQuality.ts` (novo)
+**Cobre:** FR-008, FR-014, FR-018, FR-021, FR-022, FR-023, FR-024, FR-025 / AC-011, AC-014, AC-019,
+AC-022, AC-023, AC-024, AC-025, AC-026, AC-027
+**Prova:** `hooks/useVideoQuality.test.ts`.
 
-- Retornar `resolution: null` e `setResolution: undefined` no controller
-- Sem lógica adicional (YouTube API não suporta controle de qualidade)
+### T-002 — Estender `PlaybackController` com resolução/FPS
+**Objetivo:** adicionar `resolution` (`null` = fonte sem suporte), `setResolution?`, `fpsLimit` e
+`setFpsLimit?` ao tipo do controller.
+**Arquivos:** `hooks/playerController.ts`
+**Cobre:** FR-004, FR-005
+**Prova:** revisão de tipo (`npx tsc --noEmit`).
 
----
+### T-003 — Resolução no `useNativeVideoSync` (HLS)
+**Objetivo:** adicionar `targetResolution`/`fpsLimit`; calcular o cap no `MANIFEST_PARSED` e reaplicar
+em runtime; Safari → `resolution = null`.
+**Arquivos:** `hooks/useNativeVideoSync.ts`
+**Cobre:** FR-004, FR-009, FR-010, FR-013 / AC-002, AC-003, AC-004, AC-007, AC-012
+**Prova:** revisão + reprodução (troca de resolução sem restart).
 
-### T6 — Integrar resolução em controller genérico (playback)
-**Arquivo:** `hooks/playerController.ts` (ou arquivo auxiliar)
-**CA:** 1.7
-**Dependências:** T2
+### T-004 — Resolução no `useVimeoSync`
+**Objetivo:** chamar `player.setQuality("480p" | "720p")` na mudança de resolução, erro silencioso.
+**Arquivos:** `hooks/useVimeoSync.ts`
+**Cobre:** FR-005, FR-009 / AC-001, AC-004
+**Prova:** revisão.
 
-- Para fontes `.mp4/.webm` (DIRECT_MEDIA sem hls.js): retornar `resolution: null`
-- Para GENERIC_IFRAME: retornar `resolution: null`
+### T-005 — Resolução no `useYouTubeSync`
+**Objetivo:** retornar `resolution: null` e `setResolution: undefined` (API sem controle de qualidade).
+**Arquivos:** `hooks/useYouTubeSync.ts`
+**Cobre:** FR-006 / AC-005
+**Prova:** revisão.
 
----
+### T-006 — Resolução no controller genérico
+**Objetivo:** para `.mp4`/`.webm` e iframe genérico, retornar `resolution: null`.
+**Arquivos:** `hooks/playerController.ts` (ou auxiliar)
+**Cobre:** FR-007 / AC-006
+**Prova:** revisão.
 
-### T7 — Atualizar `PlayerControls` com botão de resolução
-**Arquivo:** `components/room/player/PlayerControls.tsx`
-**CA:** 1.1, 1.2, 1.3, 1.6, 1.7
-**Dependências:** T3, T4, T5, T6
+### T-007 — Botão de resolução em `PlayerControls`
+**Objetivo:** inserir o botão entre volume e fullscreen, com texto da resolução atual e dica quando
+desabilitado (YouTube, `.mp4`/`.webm`, Safari).
+**Arquivos:** `components/room/player/PlayerControls.tsx`
+**Cobre:** FR-001, FR-002, FR-003, FR-006, FR-007 / AC-005, AC-006, AC-008, AC-009, AC-010
+**Prova:** revisão + reprodução.
 
-- Adicionar prop `resolution: "720p" | "480p" | null` e `onToggleResolution`
-- Inserir `<button>` entre volume slider e fullscreen:
-  - Se `resolution !== null`: botão clicável com texto "720p" ou "480p"
-  - Se `resolution === null`: botão com `opacity-50 cursor-not-allowed` + tooltip
-  - Tooltip varia: YouTube → "O YouTube controla a qualidade automaticamente"
-    - .mp4/.webm → "Esta fonte não suporta mudança de resolução"
-    - Safari → "Safari controla a qualidade automaticamente"
-- Estilo: `flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-xs font-mono`
+### T-008 — `PlayerShell` repassa a resolução
+**Objetivo:** adicionar `resolution` e `onToggleResolution` e repassar ao `PlayerControls`.
+**Arquivos:** `components/room/player/PlayerShell.tsx`
+**Cobre:** FR-001 / AC-008
+**Prova:** revisão.
 
----
+### T-009 — Modo economy: `SyncRing`
+**Objetivo:** com `economyMode`, remover `animate-sync-pulse` (mantendo o flash de evento).
+**Arquivos:** `components/room/SyncRing.tsx`
+**Cobre:** FR-017 / AC-017
+**Prova:** revisão.
 
-### T8 — Atualizar `PlayerShell` para repassar resolução
-**Arquivo:** `components/room/player/PlayerShell.tsx`
-**CA:** 1.1
-**Dependências:** T7
+### T-010 — Modo economy: throttle do Liveblocks
+**Objetivo:** `throttle = economyMode ? 500 : 80`.
+**Arquivos:** `components/RoomLiveblocksProvider.tsx`
+**Cobre:** FR-017 / AC-017
+**Prova:** revisão.
 
-- Adicionar props `resolution` e `onToggleResolution`
-- Repassar ao `<PlayerControls>`
+### T-011 — Modo economy: badge + integração
+**Objetivo:** chamar `useVideoQuality()` no `RoomExperience`, forçar 480p quando economy está ativo,
+renderizar o badge "Economy", integrar o toggle e repassar props.
+**Arquivos:** `components/room/RoomExperience.tsx`
+**Cobre:** FR-016, FR-018, FR-019, FR-020 / AC-017, AC-018, AC-020, AC-021
+**Prova:** revisão + reprodução.
 
----
+### T-012 — Detecção automática: `EconomySuggestion`
+**Objetivo:** toast quando `isLowEnd && !já_decidiu`, com "Sim" (ativa economy + 480p) e "Agora não"
+(registra a recusa).
+**Arquivos:** `components/room/EconomySuggestion.tsx` (novo)
+**Cobre:** FR-022, FR-023, FR-024 / AC-024, AC-025, AC-026
+**Prova:** reprodução (mock de `hardwareConcurrency`).
 
-### T9 — Modo economy: `SyncRing`
-**Arquivo:** `components/room/SyncRing.tsx`
-**CA:** 3.2 (SyncRing)
-**Dependências:** T1
-
-- Adicionar prop `economyMode: boolean`
-- Quando `economyMode = true`: remover classe `animate-sync-pulse`
-- Manter flash de evento (informativo, não é animação contínua)
-
----
-
-### T10 — Modo economy: Liveblocks throttle
-**Arquivo:** `components/RoomLiveblocksProvider.tsx`
-**CA:** 3.2 (presença)
-**Dependências:** T1
-
-- Adicionar prop `economyMode: boolean`
-- `throttle={economyMode ? 500 : 80}`
-
----
-
-### T11 — Modo economy: badge + integração no RoomExperience
-**Arquivo:** `components/room/RoomExperience.tsx`
-**CA:** 3.1, 3.3, 3.4, 3.5
-**Dependências:** T1, T9, T10
-
-- Chamar `useVideoQuality()` no `RoomExperience`
-- Quando `economyMode = true && resolution === "720p"`: forçar 480p (CA-3.4)
-- Renderizar badge "Economy" no header quando ativo
-- Integrar toggle de economy (botão ou menu)
-- Repassar `economyMode` ao `SyncRing` e `RoomLiveblocksProvider`
-- Repassar `resolution` e `setResolution` ao `PlayerShell`
-
----
-
-### T12 — Detecção automática: componente toast
-**Arquivo:** `components/room/EconomySuggestion.tsx` (novo)
-**CA:** 4.2, 4.3, 4.4
-**Dependências:** T1
-
-- Componente que aparece quando `isLowEnd && !já_decidiu`
-- Toast/banner não intrusivo: "Detectamos que seu dispositivo pode ter dificuldades com vídeo. Ativar modo economy?"
-- Botões "Sim" e "Agora não"
-- "Sim": chama `setEconomyMode(true)` + `setResolution("480p")`
-- "Agora não": salva em localStorage que o usuário recusou (não sugerir novamente)
-- Renderizado dentro de `RoomExperience`
+### T-013 — Testes unitários
+**Objetivo:** cobrir persistência, heurística, ciclo de resolução, economy forçando 480p e detecção de
+Safari.
+**Arquivos:** `hooks/useVideoQuality.test.ts` (novo)
+**Cobre:** todos os FR / AC-010, AC-011, AC-014, AC-019, AC-022, AC-023, AC-025, AC-026, AC-027
+**Prova:** `npx vitest run hooks/useVideoQuality.test.ts`.
 
 ---
 
-### T13 — Testes unitários
-**Arquivo:** `hooks/useVideoQuality.test.ts` (novo)
-**CA:** todos
-**Dependências:** T1
-
-- Testar persistência em localStorage
-- Testar heurística de detecção (mock `navigator.hardwareConcurrency`)
-- Testar ciclo de resolução (720p → 480p → 720p)
-- Testar modo economy force 480p
-- Testar detecção Safari
-
----
-
-## Ordem de execução
+## Ordem de execução (histórica)
 
 ```
-T1 (hook) → T2 (interface) → T3/T4/T5/T6 (hooks de sync) → T7/T8 (UI player)
-                                                          → T9/T10/T11 (economy) → T12 (toast) → T13 (testes)
+T-001 (hook) → T-002 (interface) → T-003/T-004/T-005/T-006 (hooks de sync) → T-007/T-008 (UI player)
+                                                       → T-009/T-010/T-011 (economy) → T-012 → T-013
 ```
-
-T1 e T2 podem rodar em paralelo (sem dependência cruzada).
-T3-T6 dependem de T2.
-T7 depende de T3-T6.
-T9, T10 dependem de T1.
-T11 depende de T1, T9, T10.
-T12 depende de T1.
-T13 depende de T1.

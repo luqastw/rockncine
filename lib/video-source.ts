@@ -120,7 +120,7 @@ function parseUrl(rawUrl: string): URL | null {
 // vetor de injeção mesmo quando o valor chega tainted por um caminho que não
 // passou por `resolveVideoUrl` — ex. escrita direta no storage do Liveblocks
 // por um client malicioso, que nenhuma validação de rota server-side alcança
-// (achado 5, docs/specs/04-auditoria-ui-ux-rodada-2/spec.md).
+// (achado 2, docs/specs/05-code-review-seguranca/spec.md).
 export function isSafeEmbedUrl(value: string): boolean {
   try {
     const u = new URL(value);
