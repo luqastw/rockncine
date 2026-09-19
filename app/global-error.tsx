@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
 // Boundary de erro do documento inteiro. `app/error.tsx` cobre o segmento raiz,
@@ -16,13 +16,8 @@ import "./globals.css";
 //      nada disso é herdado;
 //   2. `metadata`/`generateMetadata` não existem aqui (é client component): o
 //      título vai por `<title>` do React.
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -41,13 +36,10 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html
-      lang="pt-BR"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="pt-BR" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full">
         <title>alguma coisa quebrou · rockncine</title>
-        <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-4 px-6 py-10 text-center">
+        <main className="animate-rise mx-auto flex w-full min-h-dvh max-w-sm flex-col items-center justify-center gap-4 px-6 py-10 text-center">
           <h1 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">
             alguma coisa quebrou
           </h1>

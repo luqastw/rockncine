@@ -89,7 +89,7 @@ Uma rodada de auditoria de UI/UX foi rodada sobre o projeto inteiro (skill `fron
 - **Trap de foco manual:** cobre Tab/Shift+Tab entre focáveis do painel; não é uma lib de focus-trap. Regressões dependem do conjunto de focáveis dentro do painel.
 - **Contraste:** `--ink-muted` melhora os dois fundos, mas tokens de affordance dependem de o elemento estar sobre `--bg-void`; sobre `--bg-surface` a análise é outra.
 - **Emojis:** mantidos por decisão explícita do usuário; qualquer revisão futura reabre uma escolha já feita.
-- **Fonte Display:** o papel "Display" é emulado com peso/tamanho/tracking sobre Geist Sans (`next/font`); não há família Display instalada.
+- **Fonte Display:** o papel "Display" é emulado com peso/tamanho/tracking sobre a fonte do sistema — `--font-sans` pede a do SO (`-apple-system`/SF Pro em iOS e macOS) e cai para **Inter**, que vai no bundle via `next/font`; não há família Display instalada. *(Revisão de 2026-09-19, a pedido: era Geist; a utilitária segue a mesma ideia com `ui-monospace`/SF Mono.)*
 
 ## Anexo A — numeração legada (âncoras citadas pelo código)
 
