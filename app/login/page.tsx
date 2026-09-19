@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { LoginForm } from "@/components/LoginForm";
+
+// Sem metadata por rota, todas as páginas herdavam o mesmo `<title>rockncine</title>`
+// do layout raiz — abas e histórico ficavam indistinguíveis.
+export const metadata: Metadata = { title: "entrar · rockncine" };
 
 export default function LoginPage() {
   return (

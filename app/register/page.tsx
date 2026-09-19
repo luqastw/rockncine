@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { RegisterForm } from "@/components/RegisterForm";
+
+export const metadata: Metadata = { title: "criar conta · rockncine" };
 
 export default function RegisterPage() {
   return (
