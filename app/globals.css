@@ -146,6 +146,25 @@ html::-webkit-scrollbar {
    classe de cada campo, de propósito: um seletor de tipo (`input { font-size }`)
    perderia por especificidade para o utilitário do Tailwind e não valeria nada. */
 
+/* A casca da sala tem altura fixa (`h-dvh` + `overflow-hidden`, FR-049), o que
+   é o certo enquanto o conteúdo cabe: o log do chat ganha altura definida para
+   rolar e a página fica parada. Quando NÃO cabe — janela de 256px de altura, ou
+   o texto do usuário a 200% — espremer é pior que rolar: o campo de mensagem
+   saía da caixa e o vídeo colapsava para 0×0 (achado 12 da revisão de design).
+
+   A unidade é `em` de propósito: 32em vale 512px com a fonte padrão e 1024px
+   quando o usuário dobra o tamanho base do texto, então a troca de modo
+   acompanha a preferência do usuário em vez de assumir uma altura fixa. Rolagem
+   vertical é o que a WCAG 1.4.10 permite; perder conteúdo não é. Regra sem
+   camada, então vence os utilitários do Tailwind (que vivem em `@layer`). */
+@media (max-height: 32em) {
+  .room-shell {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+}
+
 .reduce-motion,
 .reduce-motion *,
 .reduce-motion *::before,

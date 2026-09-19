@@ -309,15 +309,19 @@ export function RoomExperience({
   const showAside = !isFullscreen || isTheater;
 
   return (
-    // a página é uma casca de altura fixa em todos os breakpoints: sem isso
-    // o vídeo (mesmo com teto de altura) somado ao chat estoura o viewport,
-    // o chat nunca chega a ter altura própria pra rolar (o `overflow-y-auto`
-    // do `<ul>` em Chat.tsx depende de um ancestral com altura *definida*,
-    // não só `min-height`) e é a PÁGINA que rola, levando o player pra fora
-    // da tela (achado 9, também reproduzível em lg+ — achado 14).
-    // pb-14/max-lg:pb-4 divergem de propósito: respiro pro badge do
-    // Liveblocks fixo no canto (docs/specs/01-fundacao-mvp/spec.md, seção 6).
-    <main className="mx-auto flex h-dvh w-full max-w-[1800px] flex-col gap-6 overflow-hidden px-6 pt-8 pb-14 max-lg:pb-4">
+    // A casca é de altura fixa (`room-shell` = `h-dvh` + `overflow-hidden`), como
+    // manda a FR-049: assim o chat recebe uma altura definida, o log rola por
+    // dentro e a página não rola. A exceção mora no `globals.css`: com a
+    // viewport abaixo de `32em` de altura — o que inclui o texto do usuário a
+    // 200%, porque a unidade é `em` — a casca vira altura mínima e a PÁGINA
+    // passa a rolar. Sem isso, o conteúdo não cabia e era espremido: o composer
+    // saía da caixa e, no reflow da WCAG (320×256), o vídeo ficava 0×0 — perda
+    // de conteúdo (achado 12 da revisão de design).
+    // pb-14 SEM a exceção `max-lg:pb-4` que existia aqui: o selo do Liveblocks
+    // ocupa 12px + 38px a partir da borda inferior, então 16px de respiro no
+    // mobile deixavam o selo por cima do campo de mensagem (medido a 390px:
+    // selo em y 794-832, input em y 784-828 — achado 1 da revisão de design).
+    <main className="room-shell mx-auto flex h-dvh w-full max-w-[1800px] flex-col gap-6 overflow-hidden px-6 pt-8 pb-14">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link
@@ -409,15 +413,20 @@ export function RoomExperience({
               do vídeo: a moldura de sync precisa continuar colada no vídeo
               quando o limite de altura entra em ação, senão a borda passa a
               contornar a coluna inteira com faixas pretas dos dois lados.
-              Dois eixos, não só a largura: 38dvh no empilhado (mobile) pra
-              sobrar altura real pro chat, e o desconto do chrome da página
-              (10rem, ver PAGE_CHROME) no lado a lado — classe literal porque
-              o Tailwind não extrai string interpolada (achados 4 e 9). */}
+              Dois eixos, não só a largura. Empilhado (<lg) o teto é o que
+              SOBRA da altura depois do chrome fixo (paddings do main, header,
+              os dois gaps) e do mínimo da aside (presença + emojis + composer):
+              quem cede altura é o vídeo, nunca o campo de mensagem (achado 10
+              da revisão de design). O `max(16rem, ...)` é o PISO: sem ele, em
+              janela muito curta a conta fica negativa e o vídeo colapsava para
+              0×0 — conteúdo perdido, não encolhido (achado 12). Lado a lado
+              (lg+) o desconto do chrome é 10rem, como antes. Classe literal
+              porque o Tailwind não extrai string interpolada (achados 4 e 9). */}
           <div
             className={`w-full ${
               isFullscreen
                 ? "mx-auto max-w-[min(100%,calc((100dvh-2*var(--fs-pad))*16/9))]"
-                : "mx-auto max-w-[min(100%,calc(38dvh*16/9))] lg:max-w-[min(100%,calc((100dvh-10rem)*16/9))]"
+                : "mx-auto max-w-[min(100%,max(16rem,calc((100dvh-22rem)*16/9)))] lg:max-w-[min(100%,calc((100dvh-10rem)*16/9))]"
             }`}
           >
             <SyncRing
@@ -535,12 +544,27 @@ export function RoomExperience({
               ? ({ "--focus-offset": "var(--bg-surface)" } as React.CSSProperties)
               : undefined
           }
-          className={`w-full min-h-0 flex-col gap-6 max-lg:flex-1 lg:min-w-72 lg:basis-[20%] ${
+          // `overflow-y-auto`: a aside é o último recurso de altura. Com o teto
+          // do vídeo acima, ela recebe o suficiente para presença + chat em
+          // qualquer viewport de altura razoável; abaixo disso ela rola, em vez
+          // de pintar conteúdo fora da própria caixa (era assim que o composer
+          // caía sob o selo do Liveblocks). Sem overflow, não rola e nada muda.
+          //
+          // `p-2 -m-2`: contêiner de rolagem RECORTA o que sai da caixa de
+          // padding, e sem esse respiro o anel de foco do composer era cortado
+          // na esquerda e embaixo (medido por diff de pixel: o anel aparecia de
+          // x=8 a y=51 em vez de x=4 a y=56). Mesma técnica de `p-4 -m-4` já
+          // usada na coluna do vídeo logo acima. Efeito colateral medido: o
+          // `-m-2` mantém a borda esquerda do conteúdo onde estava, mas o
+          // `lg:min-w-72` é mínimo de caixa de borda, então a largura útil da
+          // coluna cai 16px (288 → 272 no desktop, 342 → 326 a 390px). Em modo
+          // teatro vale o `p-4` de verdade, que ali é padding pintado do painel.
+          className={`w-full min-h-0 flex-col gap-6 overflow-y-auto max-lg:flex-1 lg:min-w-72 lg:basis-[20%] ${
             showAside ? "flex" : "hidden"
           } ${
             isFullscreen && isTheater
               ? "rounded-lg border border-[var(--line)] bg-[var(--bg-surface)] p-4"
-              : ""
+              : "p-2 -m-2"
           }`}
         >
           <section className="flex min-h-0 shrink-0 flex-col gap-3">
@@ -559,7 +583,11 @@ export function RoomExperience({
             </div>
             <PresenceList myName={userName} />
           </section>
-          <section className="flex min-h-0 flex-1 flex-col gap-3">
+          {/* `min-h-11` (e não `min-h-0`) no bloco do chat: é o piso que
+              garante altura para o próprio composer (44px), que fica preso no
+              rodapé dele. Sem o piso, em viewport muito curta o bloco encolhia
+              a menos que o campo de mensagem e o campo era recortado. */}
+          <section className="flex min-h-11 flex-1 flex-col gap-3">
             <Chat userId={userId} messages={chatMessages} sendMessage={sendChatMessage} />
           </section>
         </aside>

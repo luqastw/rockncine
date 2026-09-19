@@ -49,7 +49,13 @@ export function Chat({
   }, [messages]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3">
+    // `<lg` o próprio chat é o contêiner de rolagem: se a altura disponível
+    // não couber o cabeçalho + log + emojis + composer, quem rola é o conjunto,
+    // em vez de o composer ser empurrado para fora da caixa (achado 10 da
+    // revisão de design). Nada muda quando sobra altura — sem overflow, sem
+    // rolagem. Em `lg+` o chat recebe a altura cheia da coluna e a rolagem
+    // continua sendo só a do log.
+    <div className="flex h-full min-h-0 flex-col gap-3 max-lg:overflow-y-auto">
       <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
         chat
       </h2>
@@ -105,7 +111,13 @@ export function Chat({
         )}
       </div>
 
-      <div className="flex flex-wrap gap-1">
+      {/* Uma linha só, com rolagem horizontal quando não couber: com
+          `flex-wrap` os 6 emojis quebravam para 2 linhas a 320px de largura
+          (6x44 + gaps > 272 disponíveis), e as 44px extras empurravam o campo
+          de mensagem para fora da viewport em tela curta — medido a 320x700 o
+          `aside` estourava 9px e o composer caía sob o selo do Liveblocks.
+          `shrink-0` nos botões para o alvo de 44px não encolher. */}
+      <div className="flex flex-nowrap gap-1 overflow-x-auto">
         {REACTION_EMOJIS.map((emoji) => (
           <button
             key={emoji}
@@ -115,13 +127,20 @@ export function Chat({
               inputRef.current?.focus();
             }}
             aria-label={`inserir ${emoji} na mensagem`}
-            className="flex h-11 w-11 items-center justify-center rounded-md text-base hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-base hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
           >
             {emoji}
           </button>
         ))}
       </div>
 
+      {/* O composer fica preso no rodapé do chat quando o conteúdo rola: o
+          campo de mensagem é o único caminho de entrada na sala, então ele não
+          pode depender de o usuário descobrir que há conteúdo abaixo (ainda
+          mais com a barra de rolagem escondida, por decisão de design). Sem
+          overflow, `sticky` não desloca nada — só age no caso apertado. O fundo
+          opaco é para o conteúdo não passar por trás do campo durante a
+          rolagem. */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -130,7 +149,7 @@ export function Chat({
           setDraft("");
           scrollToLatest();
         }}
-        className="flex gap-2"
+        className="flex gap-2 max-lg:sticky max-lg:bottom-0 max-lg:bg-[var(--bg-void)]"
       >
         <input
           ref={inputRef}
