@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    env:
+      # O build lê .env localmente; aqui os valores vêm do ambiente. Nenhuma
+      # rota conecta no banco durante o build (todas são dinâmicas), então
+      # placeholders bastam — não aponte isto para um banco real.
+      DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
+      NEXTAUTH_SECRET: "ci-placeholder-not-a-real-secret"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # NODE_ENV=production faz o npm omitir devDependencies em silêncio
+      # (sem vitest/eslint/@types/node) — o gate roda em cima de uma árvore
+      # incompleta e falha com erro enganoso. Ver o perfil da skill quality-gate.
+      - name: Instalar dependências
+        run: NODE_ENV=development npm ci --include=dev
+
+      - name: Gerar client do Prisma
+        run: npx prisma generate
+
+      - name: Gate (typegen, tsc, eslint, vitest, build)
+        run: npm run gate

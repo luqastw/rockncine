@@ -40,6 +40,11 @@ yarn-error.log*
 # harness local (Claude Code)
 .claude/
 
+# harness local (Command Code: skills, taste, planos) — não versionado, é
+# ferramenta pessoal. O que o repositório precisa do harness vive fora daqui:
+# `scripts/gate.sh` é o gate, e `docs/specs/` é a spec.
+.commandcode/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
