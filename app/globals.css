@@ -117,14 +117,25 @@ body {
   background: var(--ink);
 }
 
-/* Esconde a barra de scroll visual mantendo a capacidade de scroll
-   (mouse wheel, trackpad, teclado). Firefox: scrollbar-width; Chrome/Safari:
-   ::-webkit-scrollbar. Aplicar só onde a barra visual destoa do design
-   (spec 08, CA2.1). */
-.scrollbar-hidden {
+/* Nenhuma barra de rolagem visível em lugar nenhum do app. A rolagem continua
+   funcionando por wheel, trackpad, toque, teclado e leitor de tela — o que sai
+   é só o desenho da barra, para a superfície ficar uniforme.
+
+   Isto AMPLIA o escopo do CA2.1 da spec 08, que aplicava a regra apenas ao log
+   do chat (era a classe `.scrollbar-hidden`, hoje removida — um só lugar
+   decide isso agora). Efeito colateral aceito: em telas curtas, páginas que
+   rolam (entrar, criar conta, suas salas) deixam de mostrar que há mais
+   conteúdo abaixo; a rolagem por gesto e por teclado continua igual. */
+html {
   scrollbar-width: none; /* Firefox */
 }
-.scrollbar-hidden::-webkit-scrollbar {
+html::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
+* {
+  scrollbar-width: none; /* Firefox */
+}
+*::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Edge */
 }
 

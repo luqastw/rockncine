@@ -67,7 +67,7 @@ export function Chat({
             pinnedRef.current = atBottom;
             if (atBottom) setHasNew(false);
           }}
-          className="scrollbar-hidden flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-md border border-[var(--line)] bg-[var(--bg-surface)] p-3"
+          className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-md border border-[var(--line)] bg-[var(--bg-surface)] p-3"
         >
           {messages.length === 0 && (
             <li className="text-sm text-[var(--ink-muted)]">nenhuma mensagem ainda.</li>
