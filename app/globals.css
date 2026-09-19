@@ -156,3 +156,28 @@ html::-webkit-scrollbar {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Selo do Liveblocks — nó de terceiro, com estilo inline, por isso `!important`.
+   O botão de esconder nasce com `outline: none` e opacidade 0 (só aparecia no
+   hover do selo): alcançável por Tab, invisível e sem nome (achado 1 da revisão
+   de design). Aqui ele ganha anel de foco do projeto, aparece quando focado e
+   uma área de toque de 24px — o mínimo que o app aceita para alvo pequeno. */
+#liveblocks-badge-hide-button {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+#liveblocks-badge-hide-button:focus-visible {
+  opacity: 1 !important;
+  outline: 2px solid var(--outline-strong) !important;
+  outline-offset: 2px !important;
+}
+
+/* O selo vem com `z-index: 9999` inline: medido, ele pintava POR CIMA do modal
+   do app (`z-50`) — `elementFromPoint` no centro do selo, com o "carregar
+   vídeo" aberto, devolvia o SVG do selo. Um overlay de terceiro acima de um
+   diálogo modal quebra o próprio contrato do diálogo. 40 o deixa abaixo de
+   toda a camada de overlay do app (z-50) e acima do conteúdo comum. */
+#liveblocks-badge {
+  z-index: 40 !important;
+}

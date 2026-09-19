@@ -3,6 +3,7 @@
 import { LiveblocksProvider, RoomProvider } from "@liveblocks/react";
 import { useState, type ReactNode } from "react";
 import type { VideoSourceKind } from "@/lib/video-source";
+import { LiveblocksBadgeA11y } from "@/components/room/LiveblocksBadgeA11y";
 
 export function RoomLiveblocksProvider({
   roomCode,
@@ -44,6 +45,7 @@ export function RoomLiveblocksProvider({
       >
         {children}
       </RoomProvider>
+      <LiveblocksBadgeA11y />
     </LiveblocksProvider>
   );
 }
