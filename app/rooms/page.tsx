@@ -1,10 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { JoinRoomForm } from "@/components/JoinRoomForm";
 import { CreateRoomForm } from "@/components/CreateRoomForm";
+import { DeleteRoomButton } from "@/components/DeleteRoomButton";
 import { SignOutButton } from "@/components/SignOutButton";
+
+export const metadata: Metadata = { title: "suas salas · rockncine" };
 
 function formatDate(date: Date) {
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
@@ -67,10 +71,10 @@ export default async function RoomsPage() {
         ) : (
           <ul className="flex flex-col gap-2">
             {memberships.map(({ room, joinedAt }) => (
-              <li key={room.code}>
+              <li key={room.code} className="flex items-center gap-2">
                 <Link
                   href={`/rooms/${room.code}`}
-                  className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+                  className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
                 >
                   <span className="flex min-w-0 flex-col">
                     <span className="truncate text-sm text-[var(--ink)]">
@@ -83,6 +87,12 @@ export default async function RoomsPage() {
                     {formatDate(joinedAt)}
                   </span>
                 </Link>
+                {/* Botão irmão do Link, nunca filho — interativo aninhado em
+                    interativo é HTML inválido. Só aparece na sala de quem é
+                    dono (FR-001/FR-002), e o servidor reconfere. */}
+                {room.ownerId === userId && (
+                  <DeleteRoomButton roomCode={room.code} roomName={room.name} />
+                )}
               </li>
             ))}
           </ul>

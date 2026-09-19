@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { useBroadcastEvent, useEventListener } from "@liveblocks/react";
 import type { ChatEvent, SystemEvent } from "@/liveblocks.config";
 
-const MAX_MESSAGES = 200;
+const MAX_MESSAGES = 30;
 
 export type ChatFeedItem = ChatEvent | SystemEvent;
 
@@ -19,7 +19,17 @@ export function useChat({ userId, userName }: { userId: string; userName: string
   const appendUnique = useCallback((event: ChatFeedItem) => {
     if (seenIdsRef.current.has(event.id)) return;
     seenIdsRef.current.add(event.id);
-    setMessages((prev) => [...prev, event].slice(-MAX_MESSAGES));
+    setMessages((prev) => {
+      const next = [...prev, event].slice(-MAX_MESSAGES);
+      // O feed era limitado a 200 mensagens, mas o índice de ids vistos não:
+      // ele acumulava toda mensagem da sessão para sempre. Quando o slice de
+      // fato descarta algo, o índice é reconstruído a partir do que sobrou —
+      // continua deduplicando o que está na tela e para de crescer sem limite.
+      if (next.length !== prev.length + 1) {
+        seenIdsRef.current = new Set(next.map((message) => message.id));
+      }
+      return next;
+    });
   }, []);
 
   useEventListener(({ event }) => {
