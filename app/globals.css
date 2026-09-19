@@ -165,6 +165,17 @@ html::-webkit-scrollbar {
   }
 }
 
+/* `touch-action: manipulation` em link, botão e papel de botão: no toque, remove
+   a espera de ~300ms do browser para decidir se o toque é um duplo-toque de
+   zoom. Não é só em ponteiro grosso de propósito — a propriedade não faz nada
+   sem toque, e assim ela vale também em híbrido (notebook com tela sensível). O
+   zoom por pinça continua disponível; o que sai é a espera. */
+a,
+button,
+[role="button"] {
+  touch-action: manipulation;
+}
+
 .reduce-motion,
 .reduce-motion *,
 .reduce-motion *::before,
@@ -180,6 +191,30 @@ html::-webkit-scrollbar {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Contorno/borda mudam de cor no hover e no foco; sem transição o estado salta
+   e a interface "estala" em vez de acompanhar o ponteiro (achado de fluidez da
+   revisão de design). Só propriedades de pintura — nada que dispare layout — e
+   de propósito SEM box-shadow: o anel de foco precisa aparecer na hora, não
+   desbotar por 180ms.
+
+   Dentro de `@layer base` para perder para qualquer utilitário `transition-*`
+   já usado no app (barra de controles do player, anel de sync, ações em tela
+   cheia): a regra preenche o vazio, não sobrescreve transição existente. */
+@layer base {
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  [role="button"] {
+    transition:
+      color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      background-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
 
