@@ -33,22 +33,28 @@ model Room {
   videoSource    VideoSource?
   embedUrl       String?      // URL final usada no player: videoId (YouTube/Vimeo) ou iframe src genérico
   ownerId        String
-  owner          User         @relation("RoomOwner", fields: [ownerId], references: [id])
+  // Restrict explícito: apagar o dono não apaga a sala em cascata por acidente.
+  owner          User         @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
   members RoomMember[]
 
-  @@index([code])
+  // sem @@index([code]): o `@unique` acima já cria um índice único na coluna,
+  // e um segundo índice não-único sobre ela só custa escrita.
 }
 
 model RoomMember {
   id       String   @id @default(cuid())
   roomId   String
   userId   String
-  room     Room     @relation(fields: [roomId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
+  // Cascade: é tabela de junção — membership órfã não tem significado.
+  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   joinedAt DateTime @default(now())
 
   @@unique([roomId, userId])
+  // o unique acima tem `roomId` como coluna líder, então não serve para a
+  // query "suas salas" (filtra por userId e ordena por joinedAt).
+  @@index([userId, joinedAt])
 }
