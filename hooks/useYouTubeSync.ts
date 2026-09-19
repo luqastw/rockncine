@@ -12,6 +12,8 @@ import {
   REMOTE_APPLY_COOLDOWN_MS,
   type PlaybackController,
 } from "@/hooks/playerController";
+import { parsePlayerEvent, shouldApplyPlayerEvent } from "@/lib/playback/events";
+import { skewFor, updateSkew, type SkewSamples } from "@/lib/playback/clock";
 
 const TIME_POLL_MS = 400; // YT API não emite timeupdate — só leitura pra UI do scrubber
 
@@ -52,6 +54,9 @@ export function useYouTubeSync({
   const [error, setError] = useState<string | null>(null);
   const isApplyingRemoteRef = useRef(false);
   const loadedVideoIdRef = useRef<string | null>(null);
+  // desvio de relógio estimado por ator e maior `ts` já aplicado (last-write-wins)
+  const skewRef = useRef<SkewSamples>({});
+  const lastAppliedTsRef = useRef<number | null>(null);
 
   // estado local só pra UI da barra de controles — não participa do sync
   const [isPlayingLocal, setIsPlayingLocal] = useState(false);
@@ -151,6 +156,7 @@ export function useYouTubeSync({
               const { time, shouldPlay } = expectedPlaybackTime(
                 snapshot,
                 playerRef.current!.getDuration(),
+                skewFor(skewRef.current, snapshot.lastActorId),
               );
               applyRemote(() => {
                 playerRef.current!.seekTo(time, true);
@@ -187,7 +193,14 @@ export function useYouTubeSync({
 
             if (e.data === window.YT.PlayerState.PLAYING) {
               const time = player.getCurrentTime();
-              const evt: PlayerEvent = { type: "PLAY", time, actorId: userId, ts: Date.now() };
+              const evt: PlayerEvent = {
+                type: "PLAY",
+                time,
+                source: "YOUTUBE",
+                actorId: userId,
+                ts: Date.now(),
+              };
+              lastAppliedTsRef.current = evt.ts;
               commitPlayer({
                 isPlaying: true,
                 currentTime: time,
@@ -197,7 +210,14 @@ export function useYouTubeSync({
               broadcast(evt);
             } else if (e.data === window.YT.PlayerState.PAUSED) {
               const time = player.getCurrentTime();
-              const evt: PlayerEvent = { type: "PAUSE", time, actorId: userId, ts: Date.now() };
+              const evt: PlayerEvent = {
+                type: "PAUSE",
+                time,
+                source: "YOUTUBE",
+                actorId: userId,
+                ts: Date.now(),
+              };
+              lastAppliedTsRef.current = evt.ts;
               commitPlayer({
                 isPlaying: false,
                 currentTime: time,
@@ -233,23 +253,39 @@ export function useYouTubeSync({
 
   // aplica PLAY/PAUSE/SEEK vindos de outros participantes
   useEventListener(({ event }) => {
-    if (event.type !== "PLAY" && event.type !== "PAUSE" && event.type !== "SEEK") return;
-    if (event.actorId === userId) return; // origem já aplicou localmente
+    // O payload chega de outro cliente e vira `seekTo` direto: passa por
+    // validação de formato antes de qualquer coisa (lib/playback/events).
+    const parsed = parsePlayerEvent(event);
+    if (!parsed) return;
+
+    // Alimenta a estimativa de desvio de relógio com o `ts` do remetente.
+    skewRef.current = updateSkew(skewRef.current, parsed.actorId, parsed.ts, Date.now());
 
     const player = playerRef.current;
     if (!player) return;
 
+    if (
+      !shouldApplyPlayerEvent(parsed, {
+        selfId: userId,
+        localSource: "YOUTUBE",
+        lastAppliedTs: lastAppliedTsRef.current,
+      })
+    ) {
+      return;
+    }
+    lastAppliedTsRef.current = parsed.ts;
+
     applyRemote(() => {
-      if (event.type === "PLAY") {
-        player.seekTo(event.time, true);
+      if (parsed.type === "PLAY") {
+        player.seekTo(parsed.time, true);
         player.playVideo();
         setIsPlayingLocal(true);
-      } else if (event.type === "PAUSE") {
-        player.seekTo(event.time, true);
+      } else if (parsed.type === "PAUSE") {
+        player.seekTo(parsed.time, true);
         player.pauseVideo();
         setIsPlayingLocal(false);
-      } else if (event.type === "SEEK") {
-        player.seekTo(event.time, true);
+      } else if (parsed.type === "SEEK") {
+        player.seekTo(parsed.time, true);
       }
     });
   });
@@ -286,14 +322,25 @@ export function useYouTubeSync({
         return;
       }
 
-      const { time: expected, stale } = expectedPlaybackTime(snapshot, duration);
+      const { time: expected, stale } = expectedPlaybackTime(
+        snapshot,
+        duration,
+        skewFor(skewRef.current, snapshot.lastActorId),
+      );
       if (stale) return; // snapshot abandonado: não arrasta ninguém (ver playerController)
       const diff = localTime - expected;
       const isOwner = snapshot.lastActorId === userId;
       const isPaused = player.getPlayerState() === window.YT.PlayerState.PAUSED;
 
       if (isOwner && isPaused && Math.abs(diff) > SEEK_WHILE_PAUSED_THRESHOLD_S) {
-        const evt: PlayerEvent = { type: "SEEK", time: localTime, actorId: userId, ts: Date.now() };
+        const evt: PlayerEvent = {
+          type: "SEEK",
+          time: localTime,
+          source: "YOUTUBE",
+          actorId: userId,
+          ts: Date.now(),
+        };
+        lastAppliedTsRef.current = evt.ts;
         commitPlayer({
           isPlaying: false,
           currentTime: localTime,
@@ -330,7 +377,14 @@ export function useYouTubeSync({
       if (!player) return;
       player.seekTo(seconds, true);
       setCurrentTime(seconds);
-      const evt: PlayerEvent = { type: "SEEK", time: seconds, actorId: userId, ts: Date.now() };
+      const evt: PlayerEvent = {
+        type: "SEEK",
+        time: seconds,
+        source: "YOUTUBE",
+        actorId: userId,
+        ts: Date.now(),
+      };
+      lastAppliedTsRef.current = evt.ts;
       commitPlayer({
         isPlaying: player.getPlayerState() === window.YT.PlayerState.PLAYING,
         currentTime: seconds,
@@ -377,10 +431,9 @@ export function useYouTubeSync({
     seek,
     setVolume,
     toggleMute,
+    // o YouTube decide a qualidade sozinho — não há nível para nós limitarmos
     resolution: null,
-    setResolution: undefined,
     fpsLimit: "auto",
-    setFpsLimit: undefined,
   };
 
   return { isReady, error, controller };

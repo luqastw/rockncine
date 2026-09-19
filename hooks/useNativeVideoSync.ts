@@ -12,6 +12,9 @@ import {
   REMOTE_APPLY_COOLDOWN_MS,
   type PlaybackController,
 } from "@/hooks/playerController";
+import { parsePlayerEvent, shouldApplyPlayerEvent } from "@/lib/playback/events";
+import { skewFor, updateSkew, type SkewSamples } from "@/lib/playback/clock";
+import type { FpsLimit, Resolution } from "@/lib/playback/types";
 
 // Mesmo esqueleto de useYouTubeSync/useVimeoSync (constantes de drift/cooldown,
 // applyRemote, commitPlayer/broadcast, destruir+zerar ref na troca de fonte,
@@ -25,8 +28,8 @@ export function useNativeVideoSync({
 }: {
   containerId: string;
   userId: string;
-  targetResolution?: "720p" | "480p";
-  fpsLimit?: "auto" | "30" | "60";
+  targetResolution?: Resolution;
+  fpsLimit?: FpsLimit;
 }) {
   const video = useStorage((root) => root.video);
   const playerStorage = useStorage((root) => root.player);
@@ -49,6 +52,9 @@ export function useNativeVideoSync({
   const loadedUrlRef = useRef<string | null>(null);
   const targetResolutionRef = useRef(targetResolution);
   const fpsLimitRef = useRef(fpsLimit);
+  // desvio de relógio estimado por ator e maior `ts` já aplicado (last-write-wins)
+  const skewRef = useRef<SkewSamples>({});
+  const lastAppliedTsRef = useRef<number | null>(null);
 
   const [isPlayingLocal, setIsPlayingLocal] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -127,7 +133,7 @@ export function useNativeVideoSync({
       // fixam o nível e cortam a capacidade de cair de qualidade em rede
       // ruim). Registrado antes de loadSource: MANIFEST_PARSED dispara antes
       // da escolha do primeiro fragmento, então o teto já vale de cara.
-      const heightForTarget = (t: "720p" | "480p") => (t === "480p" ? 480 : 720);
+      const heightForTarget = (t: Resolution) => (t === "480p" ? 480 : 720);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         const maxHeight = heightForTarget(targetResolutionRef.current);
         const cap = hls.levels.reduce(
@@ -181,7 +187,11 @@ export function useNativeVideoSync({
 
       const snapshot = playerStorageRef.current;
       if (snapshot) {
-        const { time, shouldPlay } = expectedPlaybackTime(snapshot, videoEl.duration || 0);
+        const { time, shouldPlay } = expectedPlaybackTime(
+          snapshot,
+          videoEl.duration || 0,
+          skewFor(skewRef.current, snapshot.lastActorId),
+        );
         applyRemote(() => {
           videoEl.currentTime = time;
           if (shouldPlay) videoEl.play().catch(() => {});
@@ -198,9 +208,11 @@ export function useNativeVideoSync({
       const evt: PlayerEvent = {
         type: "PLAY",
         time: videoEl.currentTime,
+        source: "DIRECT_MEDIA",
         actorId: userId,
         ts: Date.now(),
       };
+      lastAppliedTsRef.current = evt.ts;
       commitPlayer({
         isPlaying: true,
         currentTime: videoEl.currentTime,
@@ -216,9 +228,11 @@ export function useNativeVideoSync({
       const evt: PlayerEvent = {
         type: "PAUSE",
         time: videoEl.currentTime,
+        source: "DIRECT_MEDIA",
         actorId: userId,
         ts: Date.now(),
       };
+      lastAppliedTsRef.current = evt.ts;
       commitPlayer({
         isPlaying: false,
         currentTime: videoEl.currentTime,
@@ -234,9 +248,11 @@ export function useNativeVideoSync({
       const evt: PlayerEvent = {
         type: "SEEK",
         time: videoEl.currentTime,
+        source: "DIRECT_MEDIA",
         actorId: userId,
         ts: Date.now(),
       };
+      lastAppliedTsRef.current = evt.ts;
       commitPlayer({
         isPlaying: !videoEl.paused,
         currentTime: videoEl.currentTime,
@@ -322,21 +338,37 @@ export function useNativeVideoSync({
   }, [fpsLimit]);
 
   useEventListener(({ event }) => {
-    if (event.type !== "PLAY" && event.type !== "PAUSE" && event.type !== "SEEK") return;
-    if (event.actorId === userId) return;
+    // O payload chega de outro cliente e vira `currentTime` direto: passa por
+    // validação de formato antes de qualquer coisa (lib/playback/events).
+    const parsed = parsePlayerEvent(event);
+    if (!parsed) return;
+
+    // Alimenta a estimativa de desvio de relógio com o `ts` do remetente.
+    skewRef.current = updateSkew(skewRef.current, parsed.actorId, parsed.ts, Date.now());
 
     const videoEl = videoElRef.current;
     if (!videoEl) return;
 
+    if (
+      !shouldApplyPlayerEvent(parsed, {
+        selfId: userId,
+        localSource: "DIRECT_MEDIA",
+        lastAppliedTs: lastAppliedTsRef.current,
+      })
+    ) {
+      return;
+    }
+    lastAppliedTsRef.current = parsed.ts;
+
     applyRemote(() => {
-      if (event.type === "PLAY") {
-        videoEl.currentTime = event.time;
+      if (parsed.type === "PLAY") {
+        videoEl.currentTime = parsed.time;
         videoEl.play().catch(() => {});
-      } else if (event.type === "PAUSE") {
-        videoEl.currentTime = event.time;
+      } else if (parsed.type === "PAUSE") {
+        videoEl.currentTime = parsed.time;
         videoEl.pause();
-      } else if (event.type === "SEEK") {
-        videoEl.currentTime = event.time;
+      } else if (parsed.type === "SEEK") {
+        videoEl.currentTime = parsed.time;
       }
     });
   });
@@ -350,7 +382,11 @@ export function useNativeVideoSync({
       if (isApplyingRemoteRef.current) return;
       if (snapshot.lastActorId === userId) return;
 
-      const { time: expected, stale } = expectedPlaybackTime(snapshot, videoEl.duration || 0);
+      const { time: expected, stale } = expectedPlaybackTime(
+        snapshot,
+        videoEl.duration || 0,
+        skewFor(skewRef.current, snapshot.lastActorId),
+      );
       if (stale) return; // snapshot abandonado: não arrasta ninguém
       if (Math.abs(videoEl.currentTime - expected) > DRIFT_THRESHOLD_NATIVE_S) {
         applyRemote(() => {
@@ -410,7 +446,13 @@ export function useNativeVideoSync({
     videoEl.muted = !videoEl.muted;
   }, []);
 
-  const isHlsSupported = Hls.isSupported();
+  // O teto de resolução só existe quando NÓS controlamos o ABR (hls.js). Em
+  // `.mp4`/`.webm`, ou em HLS nativo do Safari, não há nível para limitar — e o
+  // botão tem que sair desabilitado com o motivo certo, em vez de habilitado e
+  // inerte. A versão anterior gateava por `Hls.isSupported()` (capacidade do
+  // navegador), então um `.mp4` no Chrome anunciava suporte a resolução.
+  const canCapResolution = isHlsUrl(video?.embedUrl ?? "") && Hls.isSupported();
+
   const controller: PlaybackController = {
     isReady,
     isPlaying: isPlayingLocal,
@@ -419,10 +461,8 @@ export function useNativeVideoSync({
     volume,
     isMuted: isMutedLocal,
     error,
-    resolution: isHlsSupported ? targetResolution : null,
-    setResolution: undefined,
+    resolution: canCapResolution ? targetResolution : null,
     fpsLimit,
-    setFpsLimit: undefined,
     play,
     pause,
     togglePlay,

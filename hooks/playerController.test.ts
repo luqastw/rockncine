@@ -58,6 +58,14 @@ describe("expectedPlaybackTime", () => {
     expect(result.time).toBe(10);
   });
 
+  it("não marca stale exatamente no limiar", () => {
+    const result = expectedPlaybackTime(
+      { isPlaying: true, currentTime: 10, updatedAt: NOW - STALE_SNAPSHOT_MS },
+      3600,
+    );
+    expect(result.stale).toBe(false);
+  });
+
   it("nunca retorna tempo negativo", () => {
     const result = expectedPlaybackTime(
       { isPlaying: false, currentTime: -5, updatedAt: NOW },
@@ -75,28 +83,78 @@ describe("expectedPlaybackTime", () => {
   });
 });
 
-describe("sync constants (spec 08)", () => {
-  it("YouTube drift threshold é 2x maior que o nativo", () => {
+// O `updatedAt` do snapshot foi gravado com o relógio de QUEM agiu, e
+// `Date.now()` aqui é o relógio local. Sem descontar a diferença, o seguidor
+// ficava permanentemente fora da sala por esse valor (lib/playback/clock.ts).
+describe("expectedPlaybackTime — compensação de desvio de relógio", () => {
+  it("sem amostra (skewMs = 0), mantém o comportamento anterior", () => {
+    const semSkew = expectedPlaybackTime(
+      { isPlaying: true, currentTime: 10, updatedAt: NOW - 5000 },
+      120,
+    );
+    const explicito = expectedPlaybackTime(
+      { isPlaying: true, currentTime: 10, updatedAt: NOW - 5000 },
+      120,
+      0,
+    );
+    expect(explicito.time).toBe(semSkew.time);
+  });
+
+  it("desconta o desvio: relógio adiantado não infla o tempo decorrido", () => {
+    // O ator está com o relógio 2s ADIANTADO. Ele gravou `updatedAt` às
+    // NOW-5000 do relógio dele, que é NOW-7000 no nosso: decorreram 7s.
+    const adiantado = expectedPlaybackTime(
+      { isPlaying: true, currentTime: 10, updatedAt: NOW - 5000 },
+      120,
+      2000,
+    );
+    expect(adiantado.time).toBeCloseTo(17, 1);
+  });
+
+  it("desconta o desvio: relógio atrasado não encolhe o tempo decorrido", () => {
+    // Ator 3s ATRASADO: o instante que ele gravou como NOW-5000 é NOW-2000
+    // no nosso relógio, então decorreram 2s.
+    const atrasado = expectedPlaybackTime(
+      { isPlaying: true, currentTime: 10, updatedAt: NOW - 5000 },
+      120,
+      -3000,
+    );
+    expect(atrasado.time).toBeCloseTo(12, 1);
+  });
+
+  it("o teto de duração continua valendo com skew grande", () => {
+    const result = expectedPlaybackTime(
+      { isPlaying: true, currentTime: 10, updatedAt: NOW - 5000 },
+      60,
+      60_000,
+    );
+    expect(result.time).toBe(59.5);
+  });
+});
+
+describe("constantes de sincronização (spec 08)", () => {
+  // Asserção de RELAÇÃO, não de literal: fixar o valor exato só quebra quando
+  // alguém mexe no fonte de propósito, sem indicar regressão nenhuma.
+  it("a tolerância do YouTube é pelo menos o dobro da do player nativo", () => {
     expect(DRIFT_THRESHOLD_YOUTUBE_S).toBeGreaterThanOrEqual(DRIFT_THRESHOLD_NATIVE_S * 2);
   });
 
-  it("native drift threshold é 1.5s", () => {
-    expect(DRIFT_THRESHOLD_NATIVE_S).toBe(1.5);
+  it("as tolerâncias ficam na casa de segundos (pega erro de unidade)", () => {
+    for (const threshold of [DRIFT_THRESHOLD_NATIVE_S, DRIFT_THRESHOLD_YOUTUBE_S]) {
+      expect(threshold).toBeGreaterThan(0.5);
+      expect(threshold).toBeLessThan(10);
+    }
   });
 
-  it("YouTube drift threshold é 3.0s", () => {
-    expect(DRIFT_THRESHOLD_YOUTUBE_S).toBe(3.0);
+  it("o cooldown do apply remoto expira antes da próxima checagem de drift", () => {
+    // Se o cooldown fosse MAIOR que o intervalo de checagem, a guarda ainda
+    // estaria ativa na checagem seguinte e a correção automática seria pulada
+    // a cada duas rodadas.
+    expect(REMOTE_APPLY_COOLDOWN_MS).toBeLessThan(CHECK_INTERVAL_MS);
   });
 
-  it("check interval é 3s", () => {
-    expect(CHECK_INTERVAL_MS).toBe(3000);
-  });
-
-  it("seek-while-pausado threshold é 2s", () => {
-    expect(SEEK_WHILE_PAUSED_THRESHOLD_S).toBe(2);
-  });
-
-  it("remote apply cooldown é 1500ms (timeout de fallback)", () => {
-    expect(REMOTE_APPLY_COOLDOWN_MS).toBe(1500);
+  it("o limiar de seek-enquanto-pausado fica na casa de segundos (pega erro de unidade)", () => {
+    expect(SEEK_WHILE_PAUSED_THRESHOLD_S).toBeGreaterThan(0.5);
+    expect(SEEK_WHILE_PAUSED_THRESHOLD_S).toBeLessThan(10);
   });
 });

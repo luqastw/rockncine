@@ -31,9 +31,14 @@ export type PlayerEvent =
       actorId: string;
       ts: number;
     }
-  | { type: "PLAY"; time: number; actorId: string; ts: number }
-  | { type: "PAUSE"; time: number; actorId: string; ts: number }
-  | { type: "SEEK"; time: number; actorId: string; ts: number };
+  // `source` em todo evento de player: sem ele, um PLAY emitido enquanto a
+  // sala estava no Vimeo era aplicado no player do YouTube recém-carregado
+  // (conteúdo diferente), buscando no lugar errado. `ts` é o relógio de QUEM
+  // emitiu — alimenta o last-write-wins e a estimativa de desvio de relógio
+  // (ver lib/playback/).
+  | { type: "PLAY"; time: number; source: VideoSourceKind; actorId: string; ts: number }
+  | { type: "PAUSE"; time: number; source: VideoSourceKind; actorId: string; ts: number }
+  | { type: "SEEK"; time: number; source: VideoSourceKind; actorId: string; ts: number };
 
 export type ChatEvent = {
   type: "CHAT_MESSAGE";

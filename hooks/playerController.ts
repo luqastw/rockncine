@@ -1,3 +1,5 @@
+import type { FpsLimit, Resolution } from "@/lib/playback/types";
+
 // Formato comum que todo hook de sync (YouTube/Vimeo/mídia nativa) retorna —
 // PlayerControls não sabe qual backend está por trás, só chama esses métodos.
 // Chamar play()/pause()/seek() aqui não precisa de broadcast próprio: os
@@ -24,7 +26,12 @@ export const REMOTE_APPLY_COOLDOWN_MS = 1500;
 type PlayerSnapshot = { isPlaying: boolean; currentTime: number; updatedAt: number };
 
 // Posição esperada pra quem chega depois (late join) e pra correção de drift.
-// Duas proteções que não existiam (achado 10 da auditoria):
+// Três proteções:
+//   - compensação de relógio (`skewMs`): `updatedAt` foi gravado com o relógio
+//     de QUEM agiu, e `Date.now()` aqui é o relógio local. Sem descontar a
+//     diferença, `elapsedMs` embutia o skew das duas máquinas e o seguidor
+//     ficava permanentemente fora por esse valor (ver lib/playback/clock.ts).
+//     Sem amostra do ator, skewMs = 0 — o comportamento antigo, nunca pior.
 //   - staleness: ninguém escreve `isPlaying: false` ao fechar a aba, então uma
 //     sala abandonada durante a reprodução fica com o storage travado em
 //     "tocando". Sem isto, reabrir a sala horas depois calculava
@@ -33,8 +40,9 @@ type PlayerSnapshot = { isPlaying: boolean; currentTime: number; updatedAt: numb
 export function expectedPlaybackTime(
   snapshot: PlayerSnapshot,
   duration: number,
+  skewMs = 0,
 ): { time: number; shouldPlay: boolean; stale: boolean } {
-  const elapsedMs = Date.now() - snapshot.updatedAt;
+  const elapsedMs = Date.now() + skewMs - snapshot.updatedAt;
   const stale = elapsedMs > STALE_SNAPSHOT_MS;
   const shouldPlay = snapshot.isPlaying && !stale;
   const raw = snapshot.currentTime + (shouldPlay ? elapsedMs / 1000 : 0);
@@ -50,10 +58,17 @@ export type PlaybackController = {
   volume: number; // 0–1, só local, nunca sincroniza (mesma regra de Presence.isMuted)
   isMuted: boolean; // só local
   error: string | null;
-  resolution: "720p" | "480p" | null;
-  setResolution?: (r: "720p" | "480p") => void;
-  fpsLimit: "auto" | "30" | "60";
-  setFpsLimit?: (f: "auto" | "30" | "60") => void;
+  // Preferência de resolução **efetiva**, ou `null` quando a fonte não permite
+  // limitar qualidade (YouTube decide sozinho; `.mp4` não tem nível; Safari usa
+  // HLS nativo sem nos deixar escolher). É o gate do botão nos controles.
+  //
+  // Não há `setResolution`/`setFpsLimit` aqui de propósito: essas preferências
+  // são estado global do app (hooks/useVideoQuality) e não do player — os
+  // setters chegam aos controles como props, vindos de quem é dono do estado.
+  // Os campos existiam nos três hooks sempre como `undefined`, e o botão
+  // ficava habilitado (`resolution !== null`) com `onClick` indefinido.
+  resolution: Resolution | null;
+  fpsLimit: FpsLimit;
   play: () => void;
   pause: () => void;
   togglePlay: () => void;

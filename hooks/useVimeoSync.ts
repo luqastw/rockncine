@@ -10,17 +10,33 @@ import {
   CHECK_INTERVAL_MS,
   type PlaybackController,
 } from "@/hooks/playerController";
+import { parsePlayerEvent, shouldApplyPlayerEvent } from "@/lib/playback/events";
+import { skewFor, updateSkew, type SkewSamples } from "@/lib/playback/clock";
+import type { Resolution } from "@/lib/playback/types";
 
-const RESOLUTION_MAX_HEIGHT: Record<"720p" | "480p", number> = {
+const RESOLUTION_MAX_HEIGHT: Record<Resolution, number> = {
   "720p": 720,
   "480p": 480,
 };
+
+// O SDK do Vimeo devolve mensagens em inglês ("Sorry, this video does not
+// exist"), que apareciam cruas dentro de uma UI em português. O YouTube já
+// tinha mapa equivalente (youtubeErrorMessage); o Vimeo não tinha nenhum.
+function vimeoErrorMessage(raw: unknown): string {
+  const message = typeof raw === "string" ? raw : "";
+  if (/password/i.test(message)) return "este vídeo é privado e exige senha.";
+  if (/does not exist|not found|404/i.test(message)) return "vídeo não encontrado ou privado.";
+  if (/privacy|embed|permission|domain/i.test(message)) {
+    return "o dono deste vídeo não permite reprodução embutida.";
+  }
+  return "não foi possível reproduzir este vídeo.";
+}
 
 // Reforço best-effort do teto de resolução além da opção de embed do construtor
 // (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.4) — não está garantido que max_quality sobrevive a um
 // loadVideo(), então reaplica aqui. Silencioso de propósito: rejeitar é o
 // caso comum em vídeo de conta free, não um erro real pro usuário.
-function capQuality(player: Player, resolution: "720p" | "480p" = "720p") {
+function capQuality(player: Player, resolution: Resolution = "720p") {
   const maxHeight = RESOLUTION_MAX_HEIGHT[resolution];
   player
     .getQualities()
@@ -45,7 +61,7 @@ export function useVimeoSync({
 }: {
   containerId: string;
   userId: string;
-  targetResolution?: "720p" | "480p";
+  targetResolution?: Resolution;
 }) {
   const video = useStorage((root) => root.video);
   const playerStorage = useStorage((root) => root.player);
@@ -65,6 +81,13 @@ export function useVimeoSync({
   const [error, setError] = useState<string | null>(null);
   const isApplyingRemoteRef = useRef(false);
   const loadedVideoIdRef = useRef<string | null>(null);
+  // desvio de relógio estimado por ator e maior `ts` já aplicado (last-write-wins)
+  const skewRef = useRef<SkewSamples>({});
+  const lastAppliedTsRef = useRef<number | null>(null);
+  // A resolução é aplicada por efeitos próprios; mantê-la fora das deps do
+  // efeito de criação abaixo é o que impede alternar 720p/480p de RECARREGAR o
+  // vídeo (e de deixar `isReady` preso em false no meio do caminho).
+  const targetResolutionRef = useRef(targetResolution);
 
   // estado local só pra UI da barra de controles — não participa do sync
   const [isPlayingLocal, setIsPlayingLocal] = useState(false);
@@ -89,6 +112,10 @@ export function useVimeoSync({
   }, []);
 
   useEffect(() => {
+    targetResolutionRef.current = targetResolution;
+  }, [targetResolution]);
+
+  useEffect(() => {
     if (!video?.embedUrl || video.source !== "VIMEO") {
       // saiu do Vimeo pra outra fonte: o container #vimeo-player é desmontado
       // pelo RoomExperience — destrói a ref presa agora, senão um load futuro
@@ -105,18 +132,50 @@ export function useVimeoSync({
     const videoId = video.embedUrl;
     let cancelled = false;
 
+    // posição da sala no momento em que o player fica pronto. Compartilhado
+    // entre o primeiro load e o reload, porque os dois precisam terminar no
+    // mesmo lugar — antes só o primeiro aplicava o snapshot, e um reload
+    // deixava a sala tocando do zero.
+    const applySnapshot = (target: Player) => {
+      const snapshot = playerStorageRef.current;
+      if (!snapshot) return;
+      target.getDuration().then((total) => {
+        const { time, shouldPlay } = expectedPlaybackTime(
+          snapshot,
+          total || 0,
+          skewFor(skewRef.current, snapshot.lastActorId),
+        );
+        applyRemote(async () => {
+          await target.setCurrentTime(time);
+          if (shouldPlay) await target.play();
+          else await target.pause();
+        });
+        setIsPlayingLocal(shouldPlay);
+      });
+    };
+
     if (playerRef.current) {
       // loadedAt muda a cada "carregar" mesmo pra URL idêntica — sem
       // depender só de loadedVideoIdRef, recarregar o mesmo link virava
       // no-op silencioso.
+      //
+      // O `setIsReady(true)` e o reaplicar do snapshot aqui não são
+      // decoração: sem eles, um reload que interrompesse o `ready()` do load
+      // inicial (o cleanup marca `cancelled`, e o handler do ready desiste no
+      // `if (cancelled) return`) deixava `isReady` preso em `false` para
+      // sempre — a sala ficava em "carregando player..." até recarregar a
+      // página.
       setError(null);
       applyRemote(() =>
         playerRef.current!.loadVideo(videoId).then(
           () => {
+            if (cancelled) return;
             setError(null);
-            capQuality(playerRef.current!, targetResolution);
+            setIsReady(true);
+            capQuality(playerRef.current!, targetResolutionRef.current);
+            applySnapshot(playerRef.current!);
           },
-          (err) => setError(err?.message || "não foi possível reproduzir este vídeo."),
+          (err) => setError(vimeoErrorMessage(err?.message)),
         ),
       );
       loadedVideoIdRef.current = videoId;
@@ -136,7 +195,7 @@ export function useVimeoSync({
     playerRef.current = player;
 
     player.on("error", (data) => {
-      setError(data.message || "não foi possível reproduzir este vídeo.");
+      setError(vimeoErrorMessage(data.message));
     });
 
     player.ready().then(() => {
@@ -146,20 +205,8 @@ export function useVimeoSync({
       player.getDuration().then(setDuration);
       player.getVolume().then(setVolumeLocal);
       player.getMuted().then(setIsMutedLocal);
-      capQuality(player, targetResolution);
-
-      const snapshot = playerStorageRef.current;
-      if (snapshot) {
-        player.getDuration().then((total) => {
-          const { time, shouldPlay } = expectedPlaybackTime(snapshot, total || 0);
-          applyRemote(async () => {
-            await player.setCurrentTime(time);
-            if (shouldPlay) await player.play();
-            else await player.pause();
-          });
-          setIsPlayingLocal(shouldPlay);
-        });
-      }
+      capQuality(player, targetResolutionRef.current);
+      applySnapshot(player);
     });
 
     player.on("timeupdate", (data: { seconds: number; duration: number }) => {
@@ -170,7 +217,14 @@ export function useVimeoSync({
     player.on("play", (data) => {
       setIsPlayingLocal(true);
       if (isApplyingRemoteRef.current) return;
-      const evt: PlayerEvent = { type: "PLAY", time: data.seconds, actorId: userId, ts: Date.now() };
+      const evt: PlayerEvent = {
+        type: "PLAY",
+        time: data.seconds,
+        source: "VIMEO",
+        actorId: userId,
+        ts: Date.now(),
+      };
+      lastAppliedTsRef.current = evt.ts;
       commitPlayer({ isPlaying: true, currentTime: data.seconds, updatedAt: evt.ts, lastActorId: userId });
       broadcast(evt);
     });
@@ -178,7 +232,14 @@ export function useVimeoSync({
     player.on("pause", (data) => {
       setIsPlayingLocal(false);
       if (isApplyingRemoteRef.current) return;
-      const evt: PlayerEvent = { type: "PAUSE", time: data.seconds, actorId: userId, ts: Date.now() };
+      const evt: PlayerEvent = {
+        type: "PAUSE",
+        time: data.seconds,
+        source: "VIMEO",
+        actorId: userId,
+        ts: Date.now(),
+      };
+      lastAppliedTsRef.current = evt.ts;
       commitPlayer({ isPlaying: false, currentTime: data.seconds, updatedAt: evt.ts, lastActorId: userId });
       broadcast(evt);
     });
@@ -186,7 +247,14 @@ export function useVimeoSync({
     player.on("seeked", (data) => {
       if (isApplyingRemoteRef.current) return;
       const base = playerStorageRef.current;
-      const evt: PlayerEvent = { type: "SEEK", time: data.seconds, actorId: userId, ts: Date.now() };
+      const evt: PlayerEvent = {
+        type: "SEEK",
+        time: data.seconds,
+        source: "VIMEO",
+        actorId: userId,
+        ts: Date.now(),
+      };
+      lastAppliedTsRef.current = evt.ts;
       commitPlayer({
         isPlaying: base?.isPlaying ?? false,
         currentTime: data.seconds,
@@ -199,8 +267,12 @@ export function useVimeoSync({
     return () => {
       cancelled = true;
     };
+    // `targetResolution` fora das deps DE PROPÓSITO: com ela aqui, alternar
+    // resolução (botão dos controles ou modo economy) reexecutava este efeito,
+    // e o ramo de reload acima recarregava o vídeo do zero no meio da sessão
+    // de todo mundo. O valor corrente é lido de `targetResolutionRef`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [video?.embedUrl, video?.source, video?.loadedAt, containerId, userId, targetResolution]);
+  }, [video?.embedUrl, video?.source, video?.loadedAt, containerId, userId]);
 
   useEffect(() => {
     return () => {
@@ -216,27 +288,43 @@ export function useVimeoSync({
   }, [targetResolution]);
 
   useEventListener(({ event }) => {
-    if (event.type !== "PLAY" && event.type !== "PAUSE" && event.type !== "SEEK") return;
-    if (event.actorId === userId) return;
+    // O payload chega de outro cliente e vira `setCurrentTime` direto: passa
+    // por validação de formato antes de qualquer coisa (lib/playback/events).
+    const parsed = parsePlayerEvent(event);
+    if (!parsed) return;
+
+    // Alimenta a estimativa de desvio de relógio com o `ts` do remetente.
+    skewRef.current = updateSkew(skewRef.current, parsed.actorId, parsed.ts, Date.now());
 
     const player = playerRef.current;
     if (!player) return;
 
-    if (event.type === "PLAY") {
+    if (
+      !shouldApplyPlayerEvent(parsed, {
+        selfId: userId,
+        localSource: "VIMEO",
+        lastAppliedTs: lastAppliedTsRef.current,
+      })
+    ) {
+      return;
+    }
+    lastAppliedTsRef.current = parsed.ts;
+
+    if (parsed.type === "PLAY") {
       applyRemote(async () => {
-        await player.setCurrentTime(event.time);
+        await player.setCurrentTime(parsed.time);
         await player.play();
         setIsPlayingLocal(true);
       });
-    } else if (event.type === "PAUSE") {
+    } else if (parsed.type === "PAUSE") {
       applyRemote(async () => {
-        await player.setCurrentTime(event.time);
+        await player.setCurrentTime(parsed.time);
         await player.pause();
         setIsPlayingLocal(false);
       });
-    } else if (event.type === "SEEK") {
-      applyRemote(() => player.setCurrentTime(event.time));
-      setCurrentTime(event.time);
+    } else if (parsed.type === "SEEK") {
+      applyRemote(() => player.setCurrentTime(parsed.time));
+      setCurrentTime(parsed.time);
     }
   });
 
@@ -251,7 +339,11 @@ export function useVimeoSync({
       if (snapshot.lastActorId === userId) return;
 
       player.getCurrentTime().then((localTime) => {
-        const { time: expected, stale } = expectedPlaybackTime(snapshot, duration);
+        const { time: expected, stale } = expectedPlaybackTime(
+          snapshot,
+          duration,
+          skewFor(skewRef.current, snapshot.lastActorId),
+        );
         if (stale) return; // snapshot abandonado: não arrasta ninguém
         if (Math.abs(localTime - expected) > DRIFT_THRESHOLD_NATIVE_S) {
           applyRemote(() => player.setCurrentTime(expected));
@@ -290,7 +382,14 @@ export function useVimeoSync({
       // piscava duas vezes).
       applyRemote(() => player.setCurrentTime(seconds));
       setCurrentTime(seconds);
-      const evt: PlayerEvent = { type: "SEEK", time: seconds, actorId: userId, ts: Date.now() };
+      const evt: PlayerEvent = {
+        type: "SEEK",
+        time: seconds,
+        source: "VIMEO",
+        actorId: userId,
+        ts: Date.now(),
+      };
+      lastAppliedTsRef.current = evt.ts;
       commitPlayer({
         isPlaying: isPlayingLocal,
         currentTime: seconds,
@@ -328,9 +427,7 @@ export function useVimeoSync({
     isMuted: isMutedLocal,
     error,
     resolution: targetResolution,
-    setResolution: undefined,
     fpsLimit: "auto",
-    setFpsLimit: undefined,
     play,
     pause,
     togglePlay,
