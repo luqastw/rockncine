@@ -107,7 +107,7 @@ O produto é um site estilo Rave: alguém cola o link de um vídeo numa sala e o
 - **FR-046** O sistema DEVE aplicar o anel de sync com três tratamentos estruturais: borda sólida `--line` (idle), borda sólida `--outline-strong` com pulso (`isPlaying`) e borda tracejada `--line` (`GENERIC_IFRAME`); a cada evento `LOAD_VIDEO`/`PLAY`/`PAUSE`/`SEEK` recebido, DEVE emitir um flash breve.
 - **FR-047** Em desktop (`lg`), o layout DEVE ser ~80% vídeo / ~20% chat+presença (`lg:basis-[80%]`/`lg:basis-[20%]`), com `+` no cabeçalho de presença abrindo o modal de carregar link (não um form fixo abaixo do vídeo).
 - **FR-048** Em tela cheia, o vídeo DEVE ocupar 100% por padrão; um botão (`TheaterIcon`, só visível em fullscreen) DEVE alternar o "modo teatro" (~80% de vídeo + chat/presença à direita, dentro da própria tela cheia), resetando para vídeo-só ao sair.
-- **FR-049** Abaixo de `lg`, o layout DEVE ser coluna única, com o vídeo primeiro e chat/presença abaixo; a página DEVE ser uma casca de altura fixa (`h-dvh`, `overflow-hidden`) com a caixa do vídeo limitada a `38dvh` e o `aside` em `flex-1 min-h-0`, de modo que quem rola é o log do chat, não a página.
+- **FR-049** Abaixo de `lg`, o layout DEVE ser coluna única, com o vídeo primeiro e chat/presença abaixo; a página DEVE ser uma casca de altura fixa (`h-dvh`, `overflow-hidden`) com a caixa do vídeo limitada ao que **sobra** da altura depois do chrome fixo (paddings do `main`, header e os dois `gap`) e do mínimo da `aside` (presença + emojis + composer), e o `aside` em `flex-1 min-h-0`, de modo que quem rola é o log do chat, não a página. **Exceção obrigatória:** com a viewport abaixo de `32em` de altura (o que inclui o texto do usuário a 200%, porque a unidade é `em`), a casca DEVE virar altura mínima (`min-height: 100dvh`, `overflow: visible`) e a PÁGINA DEVE rolar — espremer abaixo disso perdia conteúdo (o composer e o vídeo). *(Até a revisão de design do achado 10 esta cláusula exigia um teto fixo de `38dvh`; até a do achado 12 não tinha exceção nenhuma.)*
 - **FR-050** Todo elemento interativo DEVE ter estado de foco visível (anel duplo em `--outline-strong`), inclusive em navegação por teclado.
 - **FR-051** SE `prefers-reduced-motion` estiver ativo, ENTÃO o sistema DEVE desligar o pulso do anel de sync e qualquer transição não-essencial, restando só o flash instantâneo de estado.
 
@@ -143,7 +143,7 @@ O produto é um site estilo Rave: alguém cola o link de um vídeo numa sala e o
 - **NFR-004** Timeout de carga do script da IFrame API do YouTube: 10 s.
 - **NFR-005** Snapshot de player considerado obsoleto (`STALE_SNAPSHOT_MS`): 300000 ms (5 min).
 - **NFR-006** Código de sala: 8 caracteres; até 5 tentativas em colisão antes do fallback `cuid` (25 caracteres).
-- **NFR-007** Caixa do vídeo em mobile limitada a 38dvh de altura.
+- **NFR-007** Caixa do vídeo em mobile limitada pela altura restante (`min(100%, max(16rem, calc((100dvh - 22rem) * 16/9)))`): o `max()` é piso, para o vídeo não colapsar a 0×0 em janela curta (ver FR-049). Não há mais teto fixo em `dvh`.
 - **NFR-008** Proporção desktop: ~80% vídeo / ~20% chat+presença; container entre `max-w-6xl` (antigo) e `max-w-[1800px]`.
 
 ## 7. Dados e contratos
