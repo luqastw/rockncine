@@ -60,7 +60,17 @@ export function PlayerLoadStatus({
           )}
         </div>
       ) : (
-        "carregando player..."
+        // `role="status"` e fundo OPACO: o ramo de erro logo acima já tinha os
+        // dois. Sem o fundo, o texto ficava direto sobre o scrim de 70% e o
+        // contraste passava a depender do quadro do vídeo atrás (5,5:1 sobre
+        // quadro escuro, ~2,2:1 sobre quadro claro) — e mudança de estado sem
+        // anúncio nenhum (achado 5 da revisão de design).
+        <span
+          role="status"
+          className="rounded-md bg-[var(--bg-void)] px-3 py-2 text-[var(--ink-muted)]"
+        >
+          carregando player...
+        </span>
       )}
     </div>
   );

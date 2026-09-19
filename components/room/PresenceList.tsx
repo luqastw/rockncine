@@ -36,24 +36,32 @@ export function PresenceList({ myName }: { myName: string }) {
           className={`ml-auto h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
         />
       </button>
-      {expanded ? (
-        <ul id="presence-list" className="flex max-h-[30dvh] flex-col gap-2 overflow-y-auto">
-          <li className="flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--ink)]">
+      {/* A lista fica sempre montada e só troca de display: com render
+          condicional, `aria-controls` apontava para um id que não existia
+          enquanto recolhida (o valor de um `aria-controls` tem que resolver
+          sempre). `hidden` nativo não bastaria — o `display: flex` do Tailwind
+          vence a regra `[hidden]` do browser. */}
+      <ul
+        id="presence-list"
+        className={`max-h-[30dvh] flex-col gap-2 overflow-y-auto ${
+          expanded ? "flex" : "hidden"
+        }`}
+      >
+        <li className="flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--ink)]">
+          <span className="h-2 w-2 rounded-full bg-[var(--ink)]" aria-hidden />
+          <span className="min-w-0 truncate">{myPresence.name || myName}</span>
+          <span className="text-xs text-[var(--ink-muted)]">(você)</span>
+        </li>
+        {[...uniqueOthers].map(([userId, name]) => (
+          <li
+            key={userId}
+            className="flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--ink)]"
+          >
             <span className="h-2 w-2 rounded-full bg-[var(--ink)]" aria-hidden />
-            <span className="min-w-0 truncate">{myPresence.name || myName}</span>
-            <span className="text-xs text-[var(--ink-muted)]">(você)</span>
+            <span className="min-w-0 truncate">{name}</span>
           </li>
-          {[...uniqueOthers].map(([userId, name]) => (
-            <li
-              key={userId}
-              className="flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--ink)]"
-            >
-              <span className="h-2 w-2 rounded-full bg-[var(--ink)]" aria-hidden />
-              <span className="min-w-0 truncate">{name}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+        ))}
+      </ul>
     </div>
   );
 }

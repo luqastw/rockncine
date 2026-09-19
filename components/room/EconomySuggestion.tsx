@@ -16,26 +16,35 @@ export function EconomySuggestion({
   if (!isLowEnd || hasSeenSuggestion) return null;
 
   return (
-    <div className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2">
-      <div className="flex flex-col gap-3 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-4 py-3 text-sm text-[var(--ink)] shadow-lg">
+    // `inset-x-4` + wrapper `pointer-events-none`: antes era `left-1/2` com
+    // `-translate-x-1/2` e sem largura, e um elemento fixo com `left` e sem
+    // `right` tem largura shrink-to-fit LIMITADA ao espaço da esquerda até a
+    // borda — ou seja, metade da tela, espremendo a frase numa coluna estreita.
+    // `pointer-events-none` no wrapper porque agora ele ocupa a largura toda e
+    // engoliria os cliques no chat atrás dele; o painel devolve com `auto`.
+    <div className="pointer-events-none fixed inset-x-4 bottom-20 z-50 flex justify-center">
+      <div
+        role="status"
+        className="pointer-events-auto flex w-full max-w-sm flex-col gap-3 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-4 py-3 text-sm text-[var(--ink)] shadow-lg"
+      >
         <p>
-          Detectamos que seu dispositivo pode ter dificuldades com vídeo. Ativar
+          detectamos que seu dispositivo pode ter dificuldades com vídeo. ativar
           modo economy?
         </p>
-        <div className="flex items-center gap-2 self-end">
+        <div className="flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={onDismiss}
-            className="rounded-md border border-[var(--ink-muted)] px-3 py-1.5 text-xs text-[var(--ink-muted)] hover:border-[var(--ink)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+            className="inline-flex min-h-11 items-center rounded-md border border-[var(--ink-muted)] px-4 text-sm text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-surface)]"
           >
-            Agora não
+            agora não
           </button>
           <button
             type="button"
             onClick={onAccept}
-            className="rounded-md bg-[var(--invert-bg)] px-3 py-1.5 text-xs font-medium text-[var(--invert-fg)] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+            className="inline-flex min-h-11 items-center rounded-md bg-[var(--invert-bg)] px-4 text-sm font-medium text-[var(--invert-fg)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-surface)]"
           >
-            Sim
+            ativar economy
           </button>
         </div>
       </div>

@@ -340,15 +340,16 @@ export function RoomExperience({
               ao vivo
             </span>
           )}
+          {/* Indicador, não controle: quem liga/desliga é o botão de
+              `RoomActions` (44px, com `aria-pressed`). Esta pílula era um
+              segundo botão para a mesma preferência, com outro tratamento, sem
+              estado anunciado e 22px de altura — o menor alvo do app (achado 4
+              da revisão de design). Agora é status, no mesmo idioma do chip
+              "sync limitado" do `SyncRing`. */}
           {economyMode && (
-            <button
-              type="button"
-              onClick={toggleEconomy}
-              aria-label="desativar modo economy"
-              className="shrink-0 cursor-pointer rounded-full bg-[var(--bg-surface)] px-2 py-0.5 text-xs text-[var(--ink-muted)] border border-[var(--line)] transition-colors hover:border-[var(--ink-muted)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
-            >
+            <span className="shrink-0 rounded-full border border-[var(--line)] bg-[var(--bg-surface)] px-2 py-0.5 text-xs text-[var(--ink-muted)]">
               economy
-            </button>
+            </span>
           )}
         </div>
         <div className="flex items-center gap-4">
@@ -493,7 +494,7 @@ export function RoomExperience({
                       nenhum vídeo carregado
                     </p>
                     <p className="text-sm text-[var(--ink-muted)]">
-                      use &quot;carregar vídeo&quot; ao lado da presença pra começar
+                      use &quot;carregar vídeo&quot; pra começar
                     </p>
                   </div>
                 )}
