@@ -392,9 +392,15 @@ export function RoomExperience({
           // (box-shadow que sangra ~15px pra fora da caixa) era recortado
           // nos três lados em vez de vazar pro gap. A margem negativa
           // cancela o respiro na largura ocupada pelos irmãos flex.
-          className={`relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4 -m-4 ${
+          // `justify-safe-center` (ver globals.css): centraliza a caixa do vídeo
+          // no eixo vertical da coluna — em tela alta ela ficava colada no topo
+          // com todo o vazio embaixo (medido a 1440x1200: 16px acima contra
+          // 450px abaixo). O `safe` é o que impede o recorte clássico de `center`
+          // num contêiner que rola: se o conteúdo passar da caixa, o alinhamento
+          // volta a ser pelo início.
+          className={`relative flex min-h-0 flex-col gap-4 justify-safe-center overflow-y-auto p-4 -m-4 ${
             showAside ? "lg:basis-[80%]" : "w-full"
-          } ${isFullscreen ? "flex-1 justify-center" : "max-lg:shrink-0"}`}
+          } ${isFullscreen ? "flex-1" : "max-lg:shrink-0"}`}
         >
           {isFullscreen && !isTheater && (
             <div className="absolute right-3 top-3 z-20 opacity-60 transition-opacity hover:opacity-100 focus-within:opacity-100">

@@ -9,7 +9,7 @@ export default function RoomLoading() {
         <span className="h-3 w-24 rounded-full bg-[var(--line)]" aria-hidden />
       </div>
       <div className="flex flex-1 flex-col gap-6 lg:flex-row">
-        <div className="lg:basis-[80%]">
+        <div className="flex flex-col justify-safe-center lg:basis-[80%]">
           <div
             className="aspect-video w-full rounded-md border border-[var(--line)] bg-[var(--bg-surface)]"
             aria-hidden

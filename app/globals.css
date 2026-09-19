@@ -262,3 +262,13 @@ button,
 #liveblocks-badge {
   z-index: 40 !important;
 }
+
+/* Centralização vertical que não recorta. `safe center` se comporta como
+   `center` enquanto o conteúdo cabe e cai para `start` quando ele passa da
+   caixa — por isso serve em contêiner que também rola, onde `center` puro
+   empurra o começo do conteúdo para fora da área rolável. Existe como classe
+   porque o Tailwind v4 não gera `justify-[safe_center]` (verificado: o
+   `justify-content` computado ficava em `normal`). */
+.justify-safe-center {
+  justify-content: safe center;
+}
