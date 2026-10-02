@@ -6,10 +6,13 @@ Live at [rockncine.vercel.app](https://rockncine.vercel.app).
 
 ## Features
 
-- **Rooms** — create a room, get a short 8-character code (no `0/O`, `1/I/L`, `U` — easy to read aloud), share the link or code
+- **Public landing page** — the root explains the product before asking for an account. The invite
+  link is the whole funnel, and it used to land on a bare login screen
+- **Rooms** — create a room, get a short 8-character code (no `0/O`, `1/I/L`, `U` — easy to read aloud), share the link or code. Your room list is ordered by room activity, shows what each room is playing, and paginates
 - **Synchronized playback** — play, pause, and seek propagate to every participant in real time via Liveblocks. Every event carries the sender's `ts`, which is validated on arrival and used for last-write-wins ordering plus a clock-skew estimate: a follower compares the storage snapshot against *that actor's* clock, not its own, so a machine whose clock is off by seconds no longer stays permanently out of sync
 - **Multiple video sources** — YouTube (full sync via the player SDK, closed captions off by default regardless of viewer language/account preference) and Vimeo (full sync via their player SDK), direct media (`.mp4`/`.webm`/`.m3u8`, `.m3u8` via `hls.js`), Google Drive previews, and a generic iframe fallback for anything else (load-only, no sync — the source doesn't expose a control API)
-- **Live chat** — ephemeral, scoped to the room session, not persisted to the database; system messages announce when someone joins or leaves (debounced against reconnects/refreshes)
+- **Live chat** — ephemeral, scoped to the room session, not persisted to the database; system messages announce when someone joins or leaves (debounced against reconnects/refreshes). Every broadcast payload is validated at the boundary (`lib/chat-event.ts`, `lib/playback/events.ts`) — a malformed message from one member is dropped, not rendered
+- **Captions** — off by default, with an explicit toggle in the player bar. Only the YouTube source exposes caption control; the button is hidden (not shown-and-inert) elsewhere
 - **Presence** — see who else is in the room in real time, collapsed to a count by default with the full list one click away
 - **Custom player chrome** — native player controls are hidden in favor of a consistent overlay bar (play/pause, seek, volume, fullscreen)
 - **Theater mode** — in fullscreen, shrink the video to make room for chat and presence alongside it
@@ -98,10 +101,37 @@ The script also normalizes two environment traps that cost real debugging time:
 - `NODE_ENV=development` makes `next build` fail while prerendering `/_global-error`.
 
 What the suite covers: video source detection, room code generation, the synchronization core
-(`lib/playback/` — event validation, last-write-wins ordering, clock-skew estimation), playback
-quality preferences and their hydration contract, and the rate limiter. The three hooks that talk to
-the player SDKs (YouTube / Vimeo / `<video>`) are still untested — covering them needs the SDKs
-mocked.
+(`lib/playback/` — event validation with the timestamp plausibility band, last-write-wins ordering,
+clock-skew estimation and its TTL), the playback clock store and its render-isolation contract,
+playback quality preferences and their hydration contract, the shared focus trap, chat payload
+validation, the HLS buffer-length shim, the room list query and both write routes (`DELETE
+/api/rooms/[code]`, `PATCH /rooms/[code]/video` — origin check and rate limit included), and the rate
+limiter. The three hooks that talk to the player SDKs (YouTube / Vimeo / `<video>`) are still
+untested — covering them needs the SDKs mocked.
+
+## Bundle
+
+Player SDKs are loaded on demand, not eagerly. `lib/hls.ts` and `lib/vimeo.ts` declare the surface
+each hook uses and expose the package through `import()`, behind `isHlsUrl(url)` and the active
+source. The three sync hooks are instantiated unconditionally by `RoomExperience`, so a top-level
+`import` put every player in the critical path of every room.
+
+Measured on the production build of `/rooms/[code]`: **278 KB → 108 KB gzip** of initial JavaScript.
+`hls.js` (174 KB gzip) and the Vimeo SDK (8 KB) are now separate chunks fetched only when a room
+actually plays an HLS manifest or a Vimeo video.
+
+The playhead lives outside React (`hooks/usePlaybackClock.ts`). It updates at 2,5–4 Hz, and as
+component state it re-rendered the room — chat, presence, header — on every tick. Only
+`PlayerControls` subscribes to the playhead now; play/pause and duration are a separate
+notification group.
+
+## Security headers
+
+`next.config.ts` sets `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`,
+`Permissions-Policy`, HSTS (production only) and disables `X-Powered-By`. There is no CSP: the room
+embeds an arbitrary third-party iframe by design and runs the YouTube player SDK, so a closed
+`script-src` would break the product without adding protection the origin doesn't already have —
+`embedUrl` is protocol-checked at render time and every broadcast payload is validated.
 
 ## License
 

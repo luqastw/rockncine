@@ -10,6 +10,7 @@ de redirecionamento; histórico completo do monolito continua disponível no git
 
 | # | Spec | Status |
 |---|---|---|
+| 11 | [Fechamento da auditoria](11-fechamento-auditoria/spec.md) — validação de payload, banda de `ts`, store do playhead, import sob demanda, legenda, focus trap, rate limit, lista de salas, página pública | implementado |
 | 01 | [Fundação do MVP](01-fundacao-mvp/spec.md) — modelo de dados, contratos Liveblocks, rotas, auth, fases, fontes de vídeo, direção visual | implementado |
 | 02 | [Tela cheia centrada, diagnóstico de lag e teto de qualidade](02-fullscreen-lag-qualidade/spec.md) | implementado (itens 3, 4 e 6 da seção 9.3 seguem sem medição — ver `research.md`) |
 | 03 | [Auditoria UI/UX](03-auditoria-ui-ux/spec.md) — achados e correções, rodada 1 | implementado |
