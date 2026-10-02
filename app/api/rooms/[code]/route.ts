@@ -2,23 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-// Compara o host do `Origin` com o da requisição. Um `Origin` presente que não
-// seja interpretável (inclui `null`, de iframe em sandbox) não pode ser
-// confirmado como mesma origem, então conta como divergência.
-function sameOrigin(req: Request): boolean {
-  const origin = req.headers.get("origin");
-  if (origin === null) return true;
-
-  try {
-    // `host` antes de `req.url`: atrás de proxy é o cabeçalho que carrega o
-    // host público usado pelo browser para montar o `Origin`.
-    const requestHost = req.headers.get("host") ?? new URL(req.url).host;
-    return new URL(origin).host === requestHost;
-  } catch {
-    return false;
-  }
-}
+import { sameOrigin } from "@/lib/request";
 
 export async function DELETE(
   req: Request,

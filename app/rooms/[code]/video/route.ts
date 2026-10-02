@@ -3,15 +3,42 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveVideoUrl } from "@/lib/video-source";
+import { sameOrigin } from "@/lib/request";
+import { rateLimitRequest } from "@/lib/rate-limit";
 
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ code: string }> },
 ) {
+  // Mesma checagem do DELETE em app/api/rooms/[code]/route.ts. O risco de CSRF
+  // aqui é baixo (o corpo precisa ser JSON, o que exige preflight) mas não
+  // zero: um `Content-Type` não-simples num fetch cross-origin passa sem
+  // preflight em alguns caminhos, e a rota é de escrita. A assimetria não se
+  // justifica — as duas rotas mexem em dados do dono.
+  if (!sameOrigin(req)) {
+    return NextResponse.json({ error: "origem não permitida." }, { status: 403 });
+  }
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "não autenticado." }, { status: 401 });
   }
+
+  // `resolveVideoUrl` faz fetch de saída (o oEmbed do Vimeo) — exatamente o
+  // que o limite de `/api/resolve-embed` cobre. Esta rota chega na mesma
+  // operação por um caminho que estava sem limite: um membro autenticado
+  // batendo aqui em laço virava amplificador de requisições contra o Vimeo,
+  // com o rate limit do outro endpoint não valendo nada.
+  //
+  // O limite é por usuário, não por IP: a operação é autenticada, e o IP
+  // compartilhado de uma casa/escritório não deve esgotar o limite de todo
+  // mundo atrás do mesmo roteador.
+  const limited = rateLimitRequest(req, {
+    scope: "room-video",
+    limit: 20,
+    windowMs: 60_000,
+  });
+  if (limited) return limited;
 
   const { code } = await params;
   const body = await req.json().catch(() => null);
