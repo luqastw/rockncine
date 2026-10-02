@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useOthersListener } from "@liveblocks/react";
-import type { ChatFeedItem } from "@/hooks/useChat";
+import { parseChatEvent, type ChatFeedItem } from "@/lib/chat-event";
 
 // refresh de página ou queda de rede breve gera um "leave" seguido de um
 // "enter" do mesmo userId em poucos segundos — sem segurar o "leave", cada F5
@@ -53,12 +53,17 @@ export function useRoomLeaveAnnouncement(
       const name = event.user.presence?.name || "alguém";
       const timeoutId = setTimeout(() => {
         pendingRef.current.delete(userId);
-        appendMessage({
+        // `name` vem da presence do outro cliente, que é escrita pelo próprio
+        // cliente daquele participante. Passa pelo validador pelo mesmo motivo
+        // que o broadcast passa: é entrada não confiável, e o texto vai
+        // direto pro `Chat`.
+        const event = parseChatEvent({
           type: "SYSTEM_MESSAGE",
           id: crypto.randomUUID(),
           text: `${name} saiu da sala`,
           ts: Date.now(),
         });
+        if (event) appendMessage(event);
       }, LEAVE_DEBOUNCE_MS);
       pendingRef.current.set(userId, timeoutId);
       return;

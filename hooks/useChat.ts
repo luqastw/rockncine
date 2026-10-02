@@ -2,11 +2,16 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useBroadcastEvent, useEventListener } from "@liveblocks/react";
-import type { ChatEvent, SystemEvent } from "@/liveblocks.config";
+import type { ChatEvent } from "@/liveblocks.config";
+import { MAX_TEXT_LENGTH, parseChatEvent, type ChatFeedItem } from "@/lib/chat-event";
+
+// Reexportado para os consumidores que já importavam daqui (Chat.tsx,
+// useRoomLeaveAnnouncement.ts). A definição mora em `lib/chat-event.ts` junto
+// do validador, porque `ChatFeedItem` e o que o validador devolve precisam ser
+// o mesmo tipo por construção.
+export type { ChatFeedItem } from "@/lib/chat-event";
 
 const MAX_MESSAGES = 30;
-
-export type ChatFeedItem = ChatEvent | SystemEvent;
 
 // Chat não persiste (decisão travada) — histórico vive só neste estado React,
 // reconstituído a zero pra quem entra depois (ver docs/specs/01-fundacao-mvp/spec.md, seção 2). Mensagens
@@ -33,8 +38,13 @@ export function useChat({ userId, userName }: { userId: string; userName: string
   }, []);
 
   useEventListener(({ event }) => {
-    if (event.type !== "CHAT_MESSAGE" && event.type !== "SYSTEM_MESSAGE") return;
-    appendUnique(event);
+    // O payload vem de outro cliente e é renderizado direto no `Chat`. Sem
+    // esta validação, um `{ text: {...} }` derrubava o React inteiro
+    // ("Objects are not valid as a React child") e cada participante perdia a
+    // sala — não havia `error.tsx` no segmento para conter a falha.
+    const parsed = parseChatEvent(event);
+    if (!parsed) return;
+    appendUnique(parsed);
   });
 
   const sendMessage = useCallback(
@@ -47,7 +57,10 @@ export function useChat({ userId, userName }: { userId: string; userName: string
         id: crypto.randomUUID(),
         authorId: userId,
         authorName: userName,
-        text: trimmed,
+        // Corta no mesmo teto que o validador de entrada aplica. Sem isto, a
+        // própria UI produzia um payload que seria descartado do lado de
+        // todos os outros — a mensagem sumiria depois de um round-trip.
+        text: trimmed.slice(0, MAX_TEXT_LENGTH),
         ts: Date.now(),
       };
 
