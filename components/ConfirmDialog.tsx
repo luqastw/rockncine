@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, type RefObject } from "react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 // Dialog de confirmação para ação irreversível. Mesmo padrão de acessibilidade
 // já validado em LoadVideoModal (overlay, role=dialog, aria-modal, trap de Tab,
@@ -72,30 +73,18 @@ export function ConfirmDialog({
     return () => window.clearTimeout(t);
   }, [open]);
 
+  // Tab/Shift+Tab preso no painel. Depende só de `open` — o `onClose` do pai
+  // é função inline e usá-lo como dependência re-inscreveria o listener a
+  // cada render.
+  useFocusTrap(panelRef, open);
+
   useEffect(() => {
     if (!open) return;
-    // Escape fecha; Tab/Shift+Tab fica preso no painel. Depende só de `open`.
+    // Escape fecha. Separado do trap (que só cuida de Tab) para que o
+    // `onClose` continue vindo da ref, sem entrar nas dependências.
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onCloseRef.current();
-        return;
-      }
-      if (e.key !== "Tab" || !panelRef.current) return;
-      const focusables = Array.from(
-        panelRef.current.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), input:not(:disabled), [href], [tabindex]:not([tabindex="-1"])',
-        ),
-      );
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
+      if (e.key !== "Escape") return;
+      onCloseRef.current();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);

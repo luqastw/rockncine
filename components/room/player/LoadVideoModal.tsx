@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLoadVideo } from "@/hooks/useLoadVideo";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { CloseIcon } from "@/components/room/player/icons";
 
 // Dialog próprio, sem dependência nova — overlay + painel, Escape/clique-fora
@@ -57,33 +58,20 @@ export function LoadVideoModal({
     return () => window.clearTimeout(t);
   }, [open]);
 
+  // Tab/Shift+Tab preso no painel. Trap simples (só o painel tem elementos
+  // focáveis nesta tela, então basta ciclar entre o primeiro e o último) e
+  // compartilhado com o `ConfirmDialog` — a versão anterior desta lista de
+  // focáveis era cópia literal da dele.
+  useFocusTrap(panelRef, open);
+
   useEffect(() => {
     if (!open) return;
-    // Escape fecha; Tab/Shift+Tab fica preso no painel (trap de foco simples
-    // — só o painel tem elementos focáveis nesta tela, então basta ciclar
-    // entre o primeiro e o último). Depende só de `open`: não recria o
-    // listener a cada re-render do pai enquanto o modal segue aberto.
+    // Escape fecha, pelo `onClose` da ref: o chamador passa função inline e
+    // usá-la como dependência re-inscreveria o listener a cada render do pai
+    // enquanto o modal segue aberto.
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onCloseRef.current();
-        return;
-      }
-      if (e.key !== "Tab" || !panelRef.current) return;
-      const focusables = Array.from(
-        panelRef.current.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), input:not(:disabled), [href], [tabindex]:not([tabindex="-1"])',
-        ),
-      );
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
+      if (e.key !== "Escape") return;
+      onCloseRef.current();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
