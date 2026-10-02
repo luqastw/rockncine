@@ -2,8 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@liveblocks/react";
-import Player from "@vimeo/player";
 import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
+import {
+  VIMEO_MODULE,
+  type VimeoPlayer,
+  type VimeoPlayerCtor,
+  type VimeoQuality,
+} from "@/lib/vimeo";
+import {
+  getPlaybackSnapshot,
+  resetPlaybackClock,
+  setPlayback,
+} from "@/hooks/usePlaybackClock";
 import {
   expectedPlaybackTime,
   DRIFT_THRESHOLD_NATIVE_S,
@@ -36,11 +46,11 @@ function vimeoErrorMessage(raw: unknown): string {
 // (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.4) — não está garantido que max_quality sobrevive a um
 // loadVideo(), então reaplica aqui. Silencioso de propósito: rejeitar é o
 // caso comum em vídeo de conta free, não um erro real pro usuário.
-function capQuality(player: Player, resolution: Resolution = "720p") {
+function capQuality(player: VimeoPlayer, resolution: Resolution = "720p") {
   const maxHeight = RESOLUTION_MAX_HEIGHT[resolution];
   player
     .getQualities()
-    .then((qualities) => {
+    .then((qualities: VimeoQuality[]) => {
       const capped = qualities
         .filter((q) => {
           const height = Number.parseInt(q.id, 10);
@@ -76,9 +86,14 @@ export function useVimeoSync({
     storage.update({ player });
   }, []);
 
-  const playerRef = useRef<Player | null>(null);
+  const playerRef = useRef<VimeoPlayer | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Instância em construção, para que o cleanup do efeito possa abortar um
+  // carregamento do SDK que ainda não voltou. Sem isto, trocar de fonte durante
+  // o `import()` deixaria o player ser criado contra um container já
+  // desmontado.
+  const buildTokenRef = useRef(0);
   const isApplyingRemoteRef = useRef(false);
   const loadedVideoIdRef = useRef<string | null>(null);
   // desvio de relógio estimado por ator e maior `ts` já aplicado (last-write-wins)
@@ -89,12 +104,22 @@ export function useVimeoSync({
   // vídeo (e de deixar `isReady` preso em false no meio do caminho).
   const targetResolutionRef = useRef(targetResolution);
 
-  // estado local só pra UI da barra de controles — não participa do sync
-  const [isPlayingLocal, setIsPlayingLocal] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolumeLocal] = useState(1);
-  const [isMutedLocal, setIsMutedLocal] = useState(false);
+  // Estado do player vai para a store externa (`usePlaybackClock`), não para
+  // `useState` aqui dentro.
+  //
+  // A diferença é o efeito em cascata: o evento `timeupdate` do SDK do Vimeo
+  // chega ~4 Hz, e um `useState` aqui re-renderizaria `RoomExperience` e a
+  // subárvore inteira — chat com 30 itens, presença, sync ring — quatro vezes
+  // por segundo, sem nada naqueles componentes ter mudado. Ver
+  // `hooks/usePlaybackClock.ts`.
+  const setIsPlayingLocal = useCallback((isPlaying: boolean) => setPlayback({ isPlaying }), []);
+  const setCurrentTime = useCallback((currentTime: number) => setPlayback({ currentTime }), []);
+  const setDuration = useCallback((duration: number) => setPlayback({ duration }), []);
+  const setVolumeLocal = useCallback((volume: number) => setPlayback({ volume }), []);
+  const setIsMutedLocal = useCallback((isMuted: boolean) => setPlayback({ isMuted }), []);
+
+  // Zera o relógio ao desmontar: a store é de módulo e sobrevive à sala.
+  useEffect(() => resetPlaybackClock, []);
 
   // API do Vimeo é baseada em Promise — o cooldown termina quando a promise
   // resolve, não num timeout fixo (evita reabrir a janela cedo demais).
@@ -136,7 +161,7 @@ export function useVimeoSync({
     // entre o primeiro load e o reload, porque os dois precisam terminar no
     // mesmo lugar — antes só o primeiro aplicava o snapshot, e um reload
     // deixava a sala tocando do zero.
-    const applySnapshot = (target: Player) => {
+    const applySnapshot = (target: VimeoPlayer) => {
       const snapshot = playerStorageRef.current;
       if (!snapshot) return;
       target.getDuration().then((total) => {
@@ -182,87 +207,113 @@ export function useVimeoSync({
       return;
     }
 
-    const container = document.getElementById(containerId);
-    if (!container) return;
+    // A construção do player virou assíncrona porque o SDK virou import()
+    // dinâmico (ver lib/vimeo.ts). Isolar num IIFE mantém o cleanup do efeito
+    // como retorno SÍNCRONO — o efeito precisa marcar `cancelled` no cleanup, e
+    // um `await` no corpo do efeito registraria o cleanup tarde demais.
+    const token = ++buildTokenRef.current;
+    void (async () => {
+      let Player: VimeoPlayerCtor;
+      try {
+        Player = await VIMEO_MODULE();
+      } catch {
+        if (cancelled || token !== buildTokenRef.current) return;
+        setError("falha ao carregar o player do Vimeo. tente carregar o vídeo de novo.");
+        return;
+      }
 
-    const player = new Player(container, {
-      id: videoId,
-      controls: false,
-      // teto de 720p (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.4) — best-effort: o gate real é o
-      // plano de quem subiu o vídeo, não o nosso. Não é contrato garantido.
-      max_quality: "720p",
-    });
-    playerRef.current = player;
+      // Re-checagem depois do await: entre a partida e a chegada do módulo a
+      // fonte pode ter mudado, o efeito pode ter rodado de novo (loadedAt) ou
+      // o componente pode ter desmontado. `cancelled` cobre o cleanup;
+      // `token` cobre a corrida entre duas execuções do efeito.
+      if (cancelled || token !== buildTokenRef.current) return;
 
-    player.on("error", (data) => {
-      setError(vimeoErrorMessage(data.message));
-    });
+      const container = document.getElementById(containerId);
+      if (!container) return;
 
-    player.ready().then(() => {
-      if (cancelled) return;
-      loadedVideoIdRef.current = videoId;
-      setIsReady(true);
-      player.getDuration().then(setDuration);
-      player.getVolume().then(setVolumeLocal);
-      player.getMuted().then(setIsMutedLocal);
-      capQuality(player, targetResolutionRef.current);
-      applySnapshot(player);
-    });
-
-    player.on("timeupdate", (data: { seconds: number; duration: number }) => {
-      setCurrentTime(data.seconds);
-      if (data.duration) setDuration(data.duration);
-    });
-
-    player.on("play", (data) => {
-      setIsPlayingLocal(true);
-      if (isApplyingRemoteRef.current) return;
-      const evt: PlayerEvent = {
-        type: "PLAY",
-        time: data.seconds,
-        source: "VIMEO",
-        actorId: userId,
-        ts: Date.now(),
-      };
-      lastAppliedTsRef.current = evt.ts;
-      commitPlayer({ isPlaying: true, currentTime: data.seconds, updatedAt: evt.ts, lastActorId: userId });
-      broadcast(evt);
-    });
-
-    player.on("pause", (data) => {
-      setIsPlayingLocal(false);
-      if (isApplyingRemoteRef.current) return;
-      const evt: PlayerEvent = {
-        type: "PAUSE",
-        time: data.seconds,
-        source: "VIMEO",
-        actorId: userId,
-        ts: Date.now(),
-      };
-      lastAppliedTsRef.current = evt.ts;
-      commitPlayer({ isPlaying: false, currentTime: data.seconds, updatedAt: evt.ts, lastActorId: userId });
-      broadcast(evt);
-    });
-
-    player.on("seeked", (data) => {
-      if (isApplyingRemoteRef.current) return;
-      const base = playerStorageRef.current;
-      const evt: PlayerEvent = {
-        type: "SEEK",
-        time: data.seconds,
-        source: "VIMEO",
-        actorId: userId,
-        ts: Date.now(),
-      };
-      lastAppliedTsRef.current = evt.ts;
-      commitPlayer({
-        isPlaying: base?.isPlaying ?? false,
-        currentTime: data.seconds,
-        updatedAt: evt.ts,
-        lastActorId: userId,
+      const player = new Player(container, {
+        id: videoId,
+        controls: false,
+        // teto de 720p (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.4) — best-effort: o gate real é o
+        // plano de quem subiu o vídeo, não o nosso. Não é contrato garantido.
+        max_quality: "720p",
       });
-      broadcast(evt);
-    });
+      playerRef.current = player;
+
+      player.on("error", (data) => {
+        if (cancelled) return;
+        setError(vimeoErrorMessage(data.message));
+      });
+
+      player.ready().then(() => {
+        if (cancelled) return;
+        loadedVideoIdRef.current = videoId;
+        setIsReady(true);
+        player.getDuration().then(setDuration);
+        player.getVolume().then(setVolumeLocal);
+        player.getMuted().then(setIsMutedLocal);
+        capQuality(player, targetResolutionRef.current);
+        applySnapshot(player);
+      });
+
+      player.on("timeupdate", ({ seconds, duration: total }) => {
+        setCurrentTime(seconds ?? 0);
+        if (total) setDuration(total);
+      });
+
+      player.on("play", ({ seconds }) => {
+        const at = seconds ?? 0;
+        setIsPlayingLocal(true);
+        if (isApplyingRemoteRef.current) return;
+        const evt: PlayerEvent = {
+          type: "PLAY",
+          time: at,
+          source: "VIMEO",
+          actorId: userId,
+          ts: Date.now(),
+        };
+        lastAppliedTsRef.current = evt.ts;
+        commitPlayer({ isPlaying: true, currentTime: at, updatedAt: evt.ts, lastActorId: userId });
+        broadcast(evt);
+      });
+
+      player.on("pause", ({ seconds }) => {
+        const at = seconds ?? 0;
+        setIsPlayingLocal(false);
+        if (isApplyingRemoteRef.current) return;
+        const evt: PlayerEvent = {
+          type: "PAUSE",
+          time: at,
+          source: "VIMEO",
+          actorId: userId,
+          ts: Date.now(),
+        };
+        lastAppliedTsRef.current = evt.ts;
+        commitPlayer({ isPlaying: false, currentTime: at, updatedAt: evt.ts, lastActorId: userId });
+        broadcast(evt);
+      });
+
+      player.on("seeked", ({ seconds }) => {
+        const at = seconds ?? 0;
+        if (isApplyingRemoteRef.current) return;
+        const base = playerStorageRef.current;
+        const evt: PlayerEvent = {
+          type: "SEEK",
+          time: at,
+          source: "VIMEO",
+          actorId: userId,
+          ts: Date.now(),
+        };
+        lastAppliedTsRef.current = evt.ts;
+        commitPlayer({
+          isPlaying: base?.isPlaying ?? false,
+          currentTime: at,
+          updatedAt: evt.ts,
+          lastActorId: userId,
+        });
+        broadcast(evt);
+      });
+    })();
 
     return () => {
       cancelled = true;
@@ -341,7 +392,10 @@ export function useVimeoSync({
       player.getCurrentTime().then((localTime) => {
         const { time: expected, stale } = expectedPlaybackTime(
           snapshot,
-          duration,
+          // Lido da store no instante do tick, não de um `duration` capturado
+          // no render: com o estado fora do React, um valor de closure ficaria
+          // congelado e o clamp por duração pararia de valer.
+          getPlaybackSnapshot().duration,
           skewFor(skewRef.current, snapshot.lastActorId),
         );
         if (stale) return; // snapshot abandonado: não arrasta ninguém
@@ -352,7 +406,8 @@ export function useVimeoSync({
     }, CHECK_INTERVAL_MS);
 
     return () => window.clearInterval(interval);
-  }, [isReady, userId, duration, applyRemote]);
+    // `duration` sai das deps de propósito: lido da store dentro do tick.
+  }, [isReady, userId, applyRemote]);
 
   // controles imperativos — chamados pela nossa própria barra (chrome nativo
   // do Vimeo fica escondido via controls:false). Os listeners 'play'/'pause'
@@ -366,9 +421,11 @@ export function useVimeoSync({
     playerRef.current?.pause();
   }, []);
   const togglePlay = useCallback(() => {
-    if (isPlayingLocal) playerRef.current?.pause();
+    // Lido da store, não de um valor de closure: o comando decide pelo estado
+    // real no instante do clique, e o `play`/`pause` do SDK resolve assíncrono.
+    if (getPlaybackSnapshot().isPlaying) playerRef.current?.pause();
     else playerRef.current?.play();
-  }, [isPlayingLocal]);
+  }, []);
 
   const seek = useCallback(
     (seconds: number) => {
@@ -391,40 +448,57 @@ export function useVimeoSync({
       };
       lastAppliedTsRef.current = evt.ts;
       commitPlayer({
-        isPlaying: isPlayingLocal,
+        isPlaying: getPlaybackSnapshot().isPlaying,
         currentTime: seconds,
         updatedAt: evt.ts,
         lastActorId: userId,
       });
       broadcast(evt);
     },
-    [userId, commitPlayer, broadcast, isPlayingLocal, applyRemote],
+    [userId, commitPlayer, broadcast, applyRemote, setCurrentTime],
   );
 
-  const setVolume = useCallback((v: number) => {
-    playerRef.current?.setVolume(v);
-    setVolumeLocal(v);
-    if (v > 0) {
-      playerRef.current?.setMuted(false);
-      setIsMutedLocal(false);
-    }
-  }, []);
+  const setVolume = useCallback(
+    (v: number) => {
+      playerRef.current?.setVolume(v);
+      setVolumeLocal(v);
+      if (v > 0) {
+        playerRef.current?.setMuted(false);
+        setIsMutedLocal(false);
+      }
+    },
+    [setVolumeLocal, setIsMutedLocal],
+  );
 
   const toggleMute = useCallback(() => {
     const player = playerRef.current;
     if (!player) return;
-    const next = !isMutedLocal;
+    const next = !getPlaybackSnapshot().isMuted;
     player.setMuted(next);
     setIsMutedLocal(next);
-  }, [isMutedLocal]);
+  }, [setIsMutedLocal]);
 
+  // Campos de estado como GETTERS sobre a store, não valores copiados: a
+  // leitura imperativa (teclado, drift correction) tem que ver o valor do
+  // instante da chamada, e quem precisa REAGIR assina a store por hook.
+  // Ver `hooks/usePlaybackClock.ts`.
   const controller: PlaybackController = {
     isReady,
-    isPlaying: isPlayingLocal,
-    currentTime,
-    duration,
-    volume,
-    isMuted: isMutedLocal,
+    get isPlaying() {
+      return getPlaybackSnapshot().isPlaying;
+    },
+    get currentTime() {
+      return getPlaybackSnapshot().currentTime;
+    },
+    get duration() {
+      return getPlaybackSnapshot().duration;
+    },
+    get volume() {
+      return getPlaybackSnapshot().volume;
+    },
+    get isMuted() {
+      return getPlaybackSnapshot().isMuted;
+    },
     error,
     resolution: targetResolution,
     fpsLimit: "auto",

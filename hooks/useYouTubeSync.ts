@@ -5,6 +5,11 @@ import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@l
 import { loadYouTubeIframeApi } from "@/lib/youtube-iframe";
 import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
 import {
+  getPlaybackSnapshot,
+  resetPlaybackClock,
+  setPlayback,
+} from "@/hooks/usePlaybackClock";
+import {
   expectedPlaybackTime,
   DRIFT_THRESHOLD_YOUTUBE_S,
   CHECK_INTERVAL_MS,
@@ -32,9 +37,14 @@ function youtubeErrorMessage(code: YT.PlayerError): string {
 export function useYouTubeSync({
   containerId,
   userId,
+  captions = false,
 }: {
   containerId: string;
   userId: string;
+  // Preferência local de legenda. Fica no hook (e não no `controller`) porque
+  // não é controle do player: é uma chave de playerVar + um efeito sobre a
+  // API, com dono no `useVideoQuality` — igual a resolução/FPS.
+  captions?: boolean;
 }) {
   const video = useStorage((root) => root.video);
   const playerStorage = useStorage((root) => root.player);
@@ -58,12 +68,25 @@ export function useYouTubeSync({
   const skewRef = useRef<SkewSamples>({});
   const lastAppliedTsRef = useRef<number | null>(null);
 
-  // estado local só pra UI da barra de controles — não participa do sync
-  const [isPlayingLocal, setIsPlayingLocal] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolumeLocal] = useState(1);
-  const [isMutedLocal, setIsMutedLocal] = useState(false);
+  // Estado do player vai para a store externa (`usePlaybackClock`), não para
+  // `useState` aqui dentro.
+  //
+  // A diferença é o efeito em cascata: o polling abaixo roda a cada 400 ms
+  // (a API do YouTube não emite `timeupdate`), e um `useState` aqui
+  // re-renderizaria `RoomExperience` e a subárvore inteira — chat com 30 itens,
+  // presença, sync ring — 2,5 vezes por segundo, sem nada naqueles
+  // componentes ter mudado. Ver `hooks/usePlaybackClock.ts`.
+  //
+  // `isReady` e `error` continuam em `useState`: mudam em transições, não em
+  // fluxo, e `RoomExperience` precisa deles no render para escolher a tela.
+  const setIsPlayingLocal = useCallback((isPlaying: boolean) => setPlayback({ isPlaying }), []);
+  const setCurrentTime = useCallback((currentTime: number) => setPlayback({ currentTime }), []);
+  const setDuration = useCallback((duration: number) => setPlayback({ duration }), []);
+  const setVolumeLocal = useCallback((volume: number) => setPlayback({ volume }), []);
+  const setIsMutedLocal = useCallback((isMuted: boolean) => setPlayback({ isMuted }), []);
+
+  // Zera o relógio ao desmontar: a store é de módulo e sobrevive à sala.
+  useEffect(() => resetPlaybackClock, []);
 
   // YouTube IFrame API não retorna Promise — timeout de fallback (1500ms)
   // garante que o flag não fica preso se onStateChange não disparar (spec 08, CA1.2).
@@ -75,6 +98,9 @@ export function useYouTubeSync({
     }, REMOTE_APPLY_COOLDOWN_MS);
   }, []);
 
+  // Desligar legenda e LIGAR legenda são dois casos, e o de desligar é o que
+  // exige os reforços:
+  //
   // unloadModule sozinho não é suficiente: a API pode recarregar o módulo
   // "captions" com uma faixa auto-selecionada (ASR, pelo idioma do
   // navegador) depois do unload, sem disparar `onApiChange` de novo —
@@ -82,9 +108,28 @@ export function useYouTubeSync({
   // uma faixa ativa mesmo após o unload (achado pós-deploy, 14.7). Limpar a
   // faixa explicitamente com `setOption('captions', 'track', {})` é o que
   // de fato zera a exibição.
-  const disableCaptions = useCallback(() => {
+  //
+  // O comportamento era fixo e sem volta: o app é cinematico e o desligamento
+  // forçado tirava de quem precisa de legenda o único caminho para obtê-la
+  // (WCAG 1.2.2). Agora `captions` decide o alvo e o efeito abaixo reage à
+  // virada — o default continua sendo desligado, que é o comportamento que o
+  // produto escolheu.
+  const captionsRef = useRef(captions);
+  useEffect(() => {
+    captionsRef.current = captions;
+  }, [captions]);
+
+  const applyCaptionPreference = useCallback(() => {
     const player = playerRef.current;
     if (!player) return;
+    if (captionsRef.current) {
+      // `loadModule` é o caminho documentado para tornar o módulo de legenda
+      // (e o botão de CC) disponível. `track` fica vazio: o YouTube escolhe a
+      // faixa preferida, e a lista de opções continua acessível pelo botão
+      // nativo que este módulo habilita.
+      player.loadModule("captions");
+      return;
+    }
     player.unloadModule("captions");
     player.setOption("captions", "track", {});
   }, []);
@@ -141,7 +186,7 @@ export function useYouTubeSync({
           onApiChange: () => {
             // dispara sempre que um módulo com API exposta (ex. "captions")
             // fica disponível — inclusive de novo a cada loadVideoById.
-            disableCaptions();
+            applyCaptionPreference();
           },
           onReady: () => {
             loadedVideoIdRef.current = videoId;
@@ -169,8 +214,8 @@ export function useYouTubeSync({
               // snapshot/seek; falhava pra quem entra depois com o vídeo já
               // tocando — achado pós-deploy, 14.7). Reforça logo após o seek
               // e de novo com atraso, pro caso do reload ser assíncrono.
-              disableCaptions();
-              window.setTimeout(disableCaptions, 500);
+              applyCaptionPreference();
+              window.setTimeout(applyCaptionPreference, 500);
             }
           },
           onError: (e) => {
@@ -182,7 +227,7 @@ export function useYouTubeSync({
               // reforço final: a faixa de legenda pareceu ser reselecionada
               // em pontos não previstos pelos dois reforços acima (achado
               // pós-deploy, 14.7) — chamada idempotente, sem custo real.
-              disableCaptions();
+              applyCaptionPreference();
             } else if (e.data === window.YT.PlayerState.PAUSED) {
               setIsPlayingLocal(false);
             }
@@ -251,6 +296,21 @@ export function useYouTubeSync({
     };
   }, []);
 
+  // Virada da preferência de legenda em runtime. `onApiChange` sozinho não
+  // basta: ele só dispara quando um módulo fica disponível, e quem LIGA
+  // legenda precisa de `loadModule`, que é exatamente o que dispara o
+  // `onApiChange` — mas o efeito de criação do player não roda de novo, então
+  // este é o caminho que responde ao clique no botão.
+  //
+  // Fica fora das deps do efeito de criação de propósito: com `captions` lá,
+  // alternar a preferência recriaria o player e recarregaria o vídeo no meio
+  // da sessão de todo mundo.
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player || !isReady) return;
+    applyCaptionPreference();
+  }, [captions, isReady, applyCaptionPreference]);
+
   // aplica PLAY/PAUSE/SEEK vindos de outros participantes
   useEventListener(({ event }) => {
     // O payload chega de outro cliente e vira `seekTo` direto: passa por
@@ -305,7 +365,7 @@ export function useYouTubeSync({
       }
     }, TIME_POLL_MS);
     return () => window.clearInterval(interval);
-  }, [isReady]);
+  }, [isReady, setCurrentTime, setDuration]);
 
   // drift correction (seguidores) + detecção de seek-enquanto-pausado (quem controla)
   useEffect(() => {
@@ -324,7 +384,11 @@ export function useYouTubeSync({
 
       const { time: expected, stale } = expectedPlaybackTime(
         snapshot,
-        duration,
+        // Lido da store no instante do tick, e não de um `duration` capturado
+        // no render: com o estado fora do React, um valor de closure ficaria
+        // congelado e o clamp por duração pararia de valer depois do primeiro
+        // load.
+        getPlaybackSnapshot().duration,
         skewFor(skewRef.current, snapshot.lastActorId),
       );
       if (stale) return; // snapshot abandonado: não arrasta ninguém (ver playerController)
@@ -357,7 +421,10 @@ export function useYouTubeSync({
     }, CHECK_INTERVAL_MS);
 
     return () => window.clearInterval(interval);
-  }, [isReady, userId, duration, commitPlayer, broadcast, applyRemote]);
+    // `duration` sai das deps de propósito: com o estado do player na store
+    // externa, este efeito não re-assina a cada tick — e `expectedPlaybackTime`
+    // já é clampado pela duração que o próprio player fornece.
+  }, [isReady, userId, commitPlayer, broadcast, applyRemote]);
 
   // controles imperativos — chamados pela nossa própria barra (chrome nativo
   // do YouTube fica escondido via controls:0/disablekb:1). Os listeners acima
@@ -367,9 +434,14 @@ export function useYouTubeSync({
   const play = useCallback(() => playerRef.current?.playVideo(), []);
   const pause = useCallback(() => playerRef.current?.pauseVideo(), []);
   const togglePlay = useCallback(() => {
-    if (isPlayingLocal) playerRef.current?.pauseVideo();
+    // Lido da store, não de `isPlayingLocal`: o comando tem que decidir pelo
+    // estado real no instante do clique. `onStateChange` do YouTube é
+    // assíncrono, então entre o clique e o evento existe uma janela em que o
+    // estado local mente — e era nessa janela que um clique duplo invertia a
+    // reprodução duas vezes em vez de parar.
+    if (getPlaybackSnapshot().isPlaying) playerRef.current?.pauseVideo();
     else playerRef.current?.playVideo();
-  }, [isPlayingLocal]);
+  }, []);
 
   const seek = useCallback(
     (seconds: number) => {
@@ -393,37 +465,55 @@ export function useYouTubeSync({
       });
       broadcast(evt);
     },
-    [userId, commitPlayer, broadcast],
+    [userId, commitPlayer, broadcast, setCurrentTime],
   );
 
-  const setVolume = useCallback((v: number) => {
-    playerRef.current?.setVolume(Math.round(v * 100));
-    setVolumeLocal(v);
-    if (v > 0) {
-      playerRef.current?.unMute();
-      setIsMutedLocal(false);
-    }
-  }, []);
+  const setVolume = useCallback(
+    (v: number) => {
+      playerRef.current?.setVolume(Math.round(v * 100));
+      setVolumeLocal(v);
+      if (v > 0) {
+        playerRef.current?.unMute();
+        setIsMutedLocal(false);
+      }
+    },
+    [setVolumeLocal, setIsMutedLocal],
+  );
 
   const toggleMute = useCallback(() => {
     const player = playerRef.current;
     if (!player) return;
-    if (isMutedLocal) {
+    // Lido da store no instante do clique, não de um valor de closure.
+    if (getPlaybackSnapshot().isMuted) {
       player.unMute();
       setIsMutedLocal(false);
     } else {
       player.mute();
       setIsMutedLocal(true);
     }
-  }, [isMutedLocal]);
+  }, [setIsMutedLocal]);
 
+  // Campos de estado como GETTERS sobre a store, não valores copiados: a
+  // leitura imperativa (teclado, drift correction) tem que ver o valor do
+  // instante da chamada, e quem precisa REAGIR assina a store por hook.
+  // Ver `hooks/usePlaybackClock.ts`.
   const controller: PlaybackController = {
     isReady,
-    isPlaying: isPlayingLocal,
-    currentTime,
-    duration,
-    volume,
-    isMuted: isMutedLocal,
+    get isPlaying() {
+      return getPlaybackSnapshot().isPlaying;
+    },
+    get currentTime() {
+      return getPlaybackSnapshot().currentTime;
+    },
+    get duration() {
+      return getPlaybackSnapshot().duration;
+    },
+    get volume() {
+      return getPlaybackSnapshot().volume;
+    },
+    get isMuted() {
+      return getPlaybackSnapshot().isMuted;
+    },
     error,
     play,
     pause,

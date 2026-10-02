@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import type { PlaybackController } from "@/hooks/playerController";
+import { useCurrentTime, usePlaybackState } from "@/hooks/usePlaybackClock";
 import type { FpsLimit, Resolution } from "@/lib/playback/types";
 import type { VideoSourceKind } from "@/lib/video-source";
 import {
+  CaptionsIcon,
   FullscreenEnterIcon,
   FullscreenExitIcon,
   PauseIcon,
@@ -66,6 +68,8 @@ export function PlayerControls({
   onToggleFps,
   sourceType,
   isSafari,
+  captions,
+  onToggleCaptions,
 }: {
   controller: PlaybackController;
   isFullscreen: boolean;
@@ -76,14 +80,29 @@ export function PlayerControls({
   onToggleFps?: () => void;
   sourceType?: VideoSourceKind | null;
   isSafari?: boolean;
+  // `null` = esta fonte não tem controle de legenda (só o YouTube tem);
+  // `undefined` = o chamador não se manifestou, e o botão não é oferecido.
+  captions?: boolean | null;
+  onToggleCaptions?: () => void;
 }) {
+  // O playhead vem da store externa, não de `controller.currentTime`.
+  //
+  // `controller` é estável e seus campos de estado são getters sobre a store
+  // (ver `usePlaybackClock.ts`), então ler `controller.currentTime` aqui daria
+  // o valor do ÚLTIMO render deste componente — e este componente só re-renderiza
+  // quando o próprio estado muda. O relógio ficaria congelado. Assinar a store
+  // é o que re-renderiza a cada tick, e como a assinatura é local, só a barra
+  // re-renderiza: o chat, a presença e o cabeçalho saem do caminho de 4 Hz.
+  const currentTime = useCurrentTime();
+  const { duration, isPlaying, volume, isMuted } = usePlaybackState();
+
   // valor local do scrubber durante o arraste — só chama seek() no soltar,
   // não a cada tick, pra não gerar um broadcast por pixel arrastado.
   const [dragTime, setDragTime] = useState<number | null>(null);
-  const displayTime = dragTime ?? controller.currentTime;
-  const max = Math.max(controller.duration, 0.01);
+  const displayTime = dragTime ?? currentTime;
+  const max = Math.max(duration, 0.01);
   const progressPct = Math.min(100, Math.max(0, (displayTime / max) * 100));
-  const volumePct = (controller.isMuted ? 0 : controller.volume) * 100;
+  const volumePct = (isMuted ? 0 : volume) * 100;
 
   // commit do seek acontecia só em mouseup/touchend: alterar o range pelo
   // teclado (setas/Home/End) mudava o número, nunca buscava no vídeo, e
@@ -120,10 +139,10 @@ export function PlayerControls({
         type="button"
         onClick={controller.togglePlay}
         disabled={!controller.isReady}
-        aria-label={controller.isPlaying ? "pausar" : "tocar"}
+        aria-label={isPlaying ? "pausar" : "tocar"}
         className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full bg-[var(--invert-bg)] text-[var(--invert-fg)] disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
-        {controller.isPlaying ? (
+        {isPlaying ? (
           <PauseIcon className="h-4 w-4" />
         ) : (
           <PlayIcon className="h-4 w-4" />
@@ -135,7 +154,7 @@ export function PlayerControls({
         {/* duração total sai abaixo de sm: a barra tem ~370px de itens de
             largura fixa e estourava a caixa do vídeo em tela de 360px
             (achado 22). */}
-        <span className="hidden sm:inline"> / {formatTime(controller.duration)}</span>
+        <span className="hidden sm:inline"> / {formatTime(duration)}</span>
       </span>
 
       <input
@@ -155,7 +174,7 @@ export function PlayerControls({
           if (dragTime !== null) commitSeek(Number(e.target.value));
         }}
         aria-label="progresso do vídeo"
-        aria-valuetext={`${formatTime(displayTime)} de ${formatTime(controller.duration)}`}
+        aria-valuetext={`${formatTime(displayTime)} de ${formatTime(duration)}`}
         style={trackStyle(progressPct)}
         // O anel de foco entra aqui porque os dois ranges eram os ÚNICOS
         // controles do app sem ele: sobrava o `outline: auto` do browser, de
@@ -168,10 +187,10 @@ export function PlayerControls({
       <button
         type="button"
         onClick={controller.toggleMute}
-        aria-label={controller.isMuted ? "reativar áudio" : "mutar"}
+        aria-label={isMuted ? "reativar áudio" : "mutar"}
         className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
-        {controller.isMuted ? (
+        {isMuted ? (
           <VolumeMutedIcon className="h-4 w-4" />
         ) : (
           <VolumeHighIcon className="h-4 w-4" />
@@ -183,7 +202,7 @@ export function PlayerControls({
         min={0}
         max={1}
         step={0.05}
-        value={controller.isMuted ? 0 : controller.volume}
+        value={isMuted ? 0 : volume}
         onChange={(e) => controller.setVolume(Number(e.target.value))}
         aria-label="volume"
         style={trackStyle(volumePct)}
@@ -221,6 +240,28 @@ export function PlayerControls({
           className={`hidden sm:flex ${toggleButtonClass(!onToggleFps)}`}
         >
           {fpsLimit === "auto" ? "Auto" : `${fpsLimit}fps`}
+        </button>
+      )}
+
+      {/* Legenda: só aparece quando a fonte tem controle dela (`captions`
+          não é `null`/`undefined`). O estado vai por `aria-pressed` e o
+          rótulo diz o que o botão faz, não o que o player está — o mesmo
+          contrato de `RoomActions` com o modo economy. */}
+      {captions !== null && captions !== undefined && (
+        <button
+          type="button"
+          onClick={onToggleCaptions}
+          disabled={!onToggleCaptions}
+          aria-pressed={captions}
+          aria-label={captions ? "desativar legenda" : "ativar legenda"}
+          title={captions ? "desativar legenda" : "ativar legenda"}
+          className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-md border ${
+            captions
+              ? "border-[var(--ink)] bg-[var(--bg-surface)] text-[var(--ink)]"
+              : "border-[var(--ink-muted)] text-[var(--ink)] hover:border-[var(--ink)]"
+          } disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]`}
+        >
+          <CaptionsIcon className="h-4 w-4" />
         </button>
       )}
 

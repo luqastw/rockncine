@@ -2,8 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@liveblocks/react";
-import Hls from "hls.js";
 import { isHlsUrl } from "@/lib/video-source";
+import { HLS_MODULE, setMaxBufferLength, type Hls, type HlsStatic } from "@/lib/hls";
+import {
+  getPlaybackSnapshot,
+  resetPlaybackClock,
+  setPlayback,
+} from "@/hooks/usePlaybackClock";
 import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
 import {
   expectedPlaybackTime,
@@ -48,6 +53,17 @@ export function useNativeVideoSync({
   const hlsRef = useRef<Hls | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Se o hls.js está disponível neste browser. `null` = ainda não sabemos (o
+  // módulo é carregado sob demanda); `false` = carregou e não dá para usar, ou
+  // o import falhou.
+  //
+  // Existe estado em vez de uma chamada síncrona a `Hls.isSupported()` porque o
+  // módulo virou `import()` dinâmico: a capability só é consultável DEPOIS
+  // que o chunk chega, e a resposta é a mesma para a sessão inteira. O botão de
+  // resolução usa isto como gate, então um `null` inicial o mantém fora de cena
+  // até haver resposta — que é o comportamento correto para um controle
+  // inerte.
+  const [hlsSupported, setHlsSupported] = useState<boolean | null>(null);
   const isApplyingRemoteRef = useRef(false);
   const loadedUrlRef = useRef<string | null>(null);
   const targetResolutionRef = useRef(targetResolution);
@@ -56,11 +72,21 @@ export function useNativeVideoSync({
   const skewRef = useRef<SkewSamples>({});
   const lastAppliedTsRef = useRef<number | null>(null);
 
-  const [isPlayingLocal, setIsPlayingLocal] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolumeLocal] = useState(1);
-  const [isMutedLocal, setIsMutedLocal] = useState(false);
+  // Estado do player vai para a store externa (`usePlaybackClock`), não para
+  // `useState` aqui dentro. A diferença é o efeito em cascata: `timeupdate` do
+  // `<video>` dispara ~4 Hz, e um `useState` aqui re-renderizaria
+  // `RoomExperience` e a subárvore inteira (chat, presença, sync ring) quatro
+  // vezes por segundo, sem nada naqueles componentes ter mudado. Ver
+  // `hooks/usePlaybackClock.ts`.
+  //
+  // `isReady` e `error` continuam em `useState`: mudam em transições, não em
+  // fluxo, e `RoomExperience` precisa do valor no render para escolher a tela
+  // do player.
+  const setIsPlayingLocal = useCallback((isPlaying: boolean) => setPlayback({ isPlaying }), []);
+  const setCurrentTime = useCallback((currentTime: number) => setPlayback({ currentTime }), []);
+  const setDuration = useCallback((duration: number) => setPlayback({ duration }), []);
+  const setVolumeLocal = useCallback((volume: number) => setPlayback({ volume }), []);
+  const setIsMutedLocal = useCallback((isMuted: boolean) => setPlayback({ isMuted }), []);
 
   const applyRemote = useCallback((fn: () => void) => {
     isApplyingRemoteRef.current = true;
@@ -69,6 +95,9 @@ export function useNativeVideoSync({
       isApplyingRemoteRef.current = false;
     }, REMOTE_APPLY_COOLDOWN_MS);
   }, []);
+
+  // Zera o relógio ao desmontar: a store é de módulo e sobrevive à sala.
+  useEffect(() => resetPlaybackClock, []);
 
   // Manter refs atualizados com os valores atuais para usar dentro dos
   // handlers do hls.js sem recriar a instância.
@@ -87,6 +116,11 @@ export function useNativeVideoSync({
         loadedUrlRef.current = null;
         setIsReady(false);
       }
+      // `hlsSupported` NÃO é zerado aqui de propósito: ele descreve uma
+      // capability do browser, não da fonte, e zerá-lo exigiria um setState no
+      // corpo do efeito (render em cascata, proibido pelo lint). O botão de
+      // resolução já exige `isHlsUrl(...)` além de `hlsSupported`, então uma
+      // sala sem hls.js não o mostra de qualquer forma.
       return;
     }
 
@@ -119,12 +153,54 @@ export function useNativeVideoSync({
       hlsRef.current = null;
     }
 
-    if (isHlsUrl(url) && Hls.isSupported()) {
-      const hls = new Hls();
-      hlsRef.current = hls;
-      hls.on(Hls.Events.ERROR, (_evt, data) => {
+    // Não-HLS (.mp4/.webm) e HLS-nativo do Safari vão direto pelo atributo
+    // `src` — nenhum módulo involved. O hls.js só é buscado quando a URL é
+    // mesmo um manifest e o browser precisa dele.
+    if (!isHlsUrl(url)) {
+      videoEl.src = url;
+      loadedUrlRef.current = url;
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // O caminho assíncrono é isolado numa função para que o cleanup do efeito
+    // continue sendo uma função de retorno síncrona: o efeito precisa poder
+    // marcar `cancelled` no cleanup, e `await` no meio do corpo do efeito
+    // faria o cleanup ser registrado tarde demais.
+    void (async () => {
+      let HlsCtor: HlsStatic;
+      try {
+        HlsCtor = await HLS_MODULE();
+      } catch {
+        // Falha de rede/CDN no chunk: cai no HLS nativo do elemento, que
+        // funciona no Safari e em qualquer browser com suporte nativo. Sem
+        // isto, a sala ficava em "carregando" para sempre.
         if (cancelled) return;
-        if (data.fatal) {
+        setHlsSupported(false);
+        videoElRef.current = null;
+        const el = document.getElementById(containerId) as HTMLVideoElement | null;
+        if (!el) return;
+        el.src = url;
+        loadedUrlRef.current = url;
+        return;
+      }
+
+      if (cancelled) return;
+      if (!HlsCtor.isSupported()) {
+        setHlsSupported(false);
+        videoEl.src = url;
+        loadedUrlRef.current = url;
+        return;
+      }
+      setHlsSupported(true);
+
+      const hls = new HlsCtor();
+      hlsRef.current = hls;
+      hls.on(HlsCtor.Events.ERROR, (_evt, data) => {
+        if (cancelled) return;
+        const fatal = (data as { fatal?: boolean } | null)?.fatal;
+        if (fatal) {
           setError("falha ao carregar o stream (manifest/rede). tente carregar de novo.");
         }
       });
@@ -134,7 +210,7 @@ export function useNativeVideoSync({
       // ruim). Registrado antes de loadSource: MANIFEST_PARSED dispara antes
       // da escolha do primeiro fragmento, então o teto já vale de cara.
       const heightForTarget = (t: Resolution) => (t === "480p" ? 480 : 720);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      hls.on(HlsCtor.Events.MANIFEST_PARSED, () => {
         const maxHeight = heightForTarget(targetResolutionRef.current);
         const cap = hls.levels.reduce(
           (best, lvl, i) =>
@@ -143,25 +219,13 @@ export function useNativeVideoSync({
         );
         hls.autoLevelCapping = cap;
         if (fpsLimitRef.current === "30") {
-          // RISCO: maxMaxBufferLength é propriedade interna do config do hls.js, não API pública.
-          // Funciona em hls.js 1.7.x (o config é objeto mutável lido pelo stream controller a
-          // cada ciclo), mas pode quebrar em updates. Monitorar mudanças em:
-          // https://github.com/video-dev/hls.js/blob/master/src/config.ts
-          // Fallback: se removida, a limitação de FPS via buffer deixa de funcionar (sem impacto
-          // na resolução ou no ABR — apenas mais frames processados).
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (hls.config as any).maxMaxBufferLength = 2;
+          setMaxBufferLength(hls, 2);
         }
       });
       hls.loadSource(url);
       hls.attachMedia(videoEl);
-    } else {
-      // Safari suporta HLS nativo via video.src direto, sem hls.js; mp4/webm
-      // puro também vai direto.
-      videoEl.src = url;
-    }
-
-    loadedUrlRef.current = url;
+      loadedUrlRef.current = url;
+    })();
 
     return () => {
       cancelled = true;
@@ -289,7 +353,19 @@ export function useNativeVideoSync({
       videoEl.removeEventListener("error", onError);
       videoEl.removeEventListener("volumechange", onVolumeChange);
     };
-  }, [video?.embedUrl, video?.loadedAt, userId, commitPlayer, broadcast, applyRemote]);
+  }, [
+    video?.embedUrl,
+    video?.loadedAt,
+    userId,
+    commitPlayer,
+    broadcast,
+    applyRemote,
+    setCurrentTime,
+    setDuration,
+    setVolumeLocal,
+    setIsMutedLocal,
+    setIsPlayingLocal,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -327,14 +403,10 @@ export function useNativeVideoSync({
   useEffect(() => {
     const hls = hlsRef.current;
     if (!hls) return;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cfg = hls.config as any;
-    if (fpsLimit === "30") {
-      cfg.maxMaxBufferLength = 2;
-    } else {
-      cfg.maxMaxBufferLength = undefined;
-    }
+    // `null` restaura o DEFAULT do hls.js, não `undefined` — ver
+    // `setMaxBufferLength` em lib/hls.ts para por que a diferença importa
+    // (o buffer-controller faz `Math.min(x, undefined)` = `NaN`).
+    setMaxBufferLength(hls, fpsLimit === "30" ? 2 : null);
   }, [fpsLimit]);
 
   useEventListener(({ event }) => {
@@ -451,15 +523,38 @@ export function useNativeVideoSync({
   // botão tem que sair desabilitado com o motivo certo, em vez de habilitado e
   // inerte. A versão anterior gateava por `Hls.isSupported()` (capacidade do
   // navegador), então um `.mp4` no Chrome anunciava suporte a resolução.
-  const canCapResolution = isHlsUrl(video?.embedUrl ?? "") && Hls.isSupported();
+  //
+  // `hlsSupported === null` (módulo ainda não carregado) conta como "não": o
+  // botão fica `null` e o `PlayerControls` o esconde. O efeito que carrega o
+  // módulo roda na mesma Mount, então a resposta chega antes de o usuário
+  // conseguir clicar em qualquer coisa.
+  const canCapResolution = isHlsUrl(video?.embedUrl ?? "") && hlsSupported === true;
 
+  // Os campos de estado são GETTERS sobre a store, não valores copiados.
+  //
+  // É o que mantém a leitura correta sem re-render: `controller.currentTime`
+  // usado pelo handler de teclado ou pelo drift correction tem que ser o valor
+  // do instante da chamada, e um valor copiado no render carregaria o
+  // playhead de até 4 Hz atrás. O componente que precisa REAGIR ao valor
+  // assina a store por hook (`useCurrentTime` / `usePlaybackState`), não por
+  // este objeto — ver `hooks/usePlaybackClock.ts`.
   const controller: PlaybackController = {
     isReady,
-    isPlaying: isPlayingLocal,
-    currentTime,
-    duration,
-    volume,
-    isMuted: isMutedLocal,
+    get isPlaying() {
+      return getPlaybackSnapshot().isPlaying;
+    },
+    get currentTime() {
+      return getPlaybackSnapshot().currentTime;
+    },
+    get duration() {
+      return getPlaybackSnapshot().duration;
+    },
+    get volume() {
+      return getPlaybackSnapshot().volume;
+    },
+    get isMuted() {
+      return getPlaybackSnapshot().isMuted;
+    },
     error,
     resolution: canCapResolution ? targetResolution : null,
     fpsLimit,

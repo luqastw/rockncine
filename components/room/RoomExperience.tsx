@@ -24,6 +24,7 @@ import { LastActionNote } from "@/components/room/LastActionNote";
 import { PlayIcon } from "@/components/room/player/icons";
 import { Chat } from "@/components/room/Chat";
 import { useVideoQuality } from "@/hooks/useVideoQuality";
+import { usePlaybackState } from "@/hooks/usePlaybackClock";
 import { EconomySuggestion } from "@/components/room/EconomySuggestion";
 
 type VideoQuality = ReturnType<typeof useVideoQuality>;
@@ -86,8 +87,20 @@ export function RoomExperience({
   });
   useRoomLeaveAnnouncement(appendMessage, userId);
 
-  const { resolution, fpsLimit, economyMode, setResolution, setEconomyMode, setFpsLimit, isLowEnd, isSafari, hasSeenSuggestion, dismissSuggestion } =
-    videoQuality;
+  const {
+    resolution,
+    fpsLimit,
+    economyMode,
+    setResolution,
+    setEconomyMode,
+    setFpsLimit,
+    isLowEnd,
+    isSafari,
+    hasSeenSuggestion,
+    dismissSuggestion,
+    captions,
+    setCaptions,
+  } = videoQuality;
   const effectiveResolution = economyMode && resolution === "720p" ? "480p" : resolution;
 
   useEffect(() => {
@@ -164,6 +177,7 @@ export function RoomExperience({
     setFpsLimit(next);
   }, [fpsLimit, setFpsLimit]);
   const toggleEconomy = useCallback(() => setEconomyMode(!economyMode), [economyMode, setEconomyMode]);
+  const toggleCaptions = useCallback(() => setCaptions(!captions), [captions, setCaptions]);
 
   // Alterna a preferência global de resolução (quem é dono do estado é
   // useVideoQuality; os hooks de sync só informam se a fonte aceita).
@@ -172,7 +186,7 @@ export function RoomExperience({
   }, [resolution, setResolution]);
 
   const { isReady: youtubeReady, error: youtubeError, controller: youtubeController } =
-    useYouTubeSync({ containerId: YT_CONTAINER_ID, userId });
+    useYouTubeSync({ containerId: YT_CONTAINER_ID, userId, captions });
   const { isReady: vimeoReady, error: vimeoError, controller: vimeoController } = useVimeoSync({
     containerId: VIMEO_CONTAINER_ID,
     userId,
@@ -214,14 +228,26 @@ export function RoomExperience({
   // storage: ninguém escreve `isPlaying:false` ao fechar a aba, então uma sala
   // reaberta exibia "AO VIVO" com o anel pulsando sobre um vídeo parado
   // (achado 10). Com sync funcionando, estado local == estado da sala.
-  const isPlayingNow = activeController?.isPlaying ?? false;
+  //
+  // Assinado pela store, e não por `activeController.isPlaying`: o controller
+  // expõe o estado por getter sobre a store (ver `usePlaybackClock.ts`), então
+  // ler o getter aqui devolveria o valor do último render DESTE componente —
+  // que não re-renderiza a cada tick. A assinatura é o que re-renderiza, e
+  // como `isPlaying` muda em transição (não a 4 Hz), o custo é irrelevante
+  // frente ao que a assinatura do playhead trazia junto.
+  const { isPlaying: playingFromClock } = usePlaybackState();
+  const isPlayingNow = activeController ? playingFromClock : false;
 
-  // Os hooks de sync recriam o objeto `controller` a cada render, e eles
-  // re-renderizam a ~2,5-4 Hz enquanto o vídeo toca (polling do YouTube,
-  // timeupdate do <video>). Com `activeController` nas deps do listener de
-  // teclado abaixo, o handler global era removido e re-adicionado a cada
-  // render durante toda a sessão. A ref mantém o valor corrente sem entrar no
-  // ciclo de inscrição.
+  // Os hooks de sync recriam o objeto `controller` a cada render. Com
+  // `activeController` nas deps do listener de teclado abaixo, o handler
+  // global seria removido e re-adicionado a cada render durante toda a sessão.
+  // A ref mantém o valor corrente sem entrar no ciclo de inscrição.
+  //
+  // O comentário original citava os 2,5–4 Hz de re-render como o motivo
+  // (polling do YouTube, `timeupdate` do `<video>`) — essa frequência saiu do
+  // caminho quando o playhead foi para a store externa, mas a troca de
+  // identidade do objeto a cada render continua valendo, e o sintoma (listener
+  // global re-inscrito o tempo todo) é o mesmo.
   const controllerRef = useRef(activeController);
   useEffect(() => {
     controllerRef.current = activeController;
@@ -463,6 +489,13 @@ export function RoomExperience({
                     ? toggleResolution
                     : undefined
                 }
+                // Só o YouTube expõe um módulo de legenda com API. Vimeo e
+                // mídia direta usam o chrome nativo (que está escondido) ou
+                // não têm controle de legenda — o botão sairia habilitado e
+                // inerte, que é o defeito que o gate de resolução/FPS já
+                // evitou.
+                captions={hasYouTube ? captions : null}
+                onToggleCaptions={hasYouTube ? toggleCaptions : undefined}
               >
                 {hasYouTube ? (
                   <>
