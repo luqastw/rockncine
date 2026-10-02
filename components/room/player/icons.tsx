@@ -134,6 +134,29 @@ export function PlusIcon({ className }: IconProps) {
   );
 }
 
+// Legendas — retângulo com duas linhas internas, o glifo consagrado de CC.
+// O estado ligado/desligado é comunicado por `aria-pressed` e pela borda do
+// botão (ver PlayerControls), não por um ícone diferente: dois glifos para
+// dois estados duplicaria o vocabulary visual sem ganhar informação.
+export function CaptionsIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M10 10.5a2.5 2.5 0 1 0 0 3" />
+      <path d="M18 10.5a2.5 2.5 0 1 0 0 3" />
+    </svg>
+  );
+}
+
 export function ChevronDownIcon({ className }: IconProps) {
   return (
     <svg

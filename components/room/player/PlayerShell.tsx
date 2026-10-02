@@ -24,6 +24,8 @@ export function PlayerShell({
   fpsLimit,
   onToggleFps,
   onToggleResolution,
+  captions,
+  onToggleCaptions,
   children,
 }: {
   controller: PlaybackController | null;
@@ -43,6 +45,10 @@ export function PlayerShell({
   // de cima pra baixo. O controller só informa `resolution` (ou `null` quando a
   // fonte não permite limitar qualidade), e é isso que habilita o botão.
   onToggleResolution?: () => void;
+  // Mesma regra para legenda: `captions` é `null` quando a fonte não tem
+  // controle de legenda (só o YouTube tem), e é o que habilita o botão.
+  captions?: boolean | null;
+  onToggleCaptions?: () => void;
   children: ReactNode;
 }) {
   const hideTimerRef = useRef<number | null>(null);
@@ -128,6 +134,8 @@ export function PlayerShell({
               onToggleFps={onToggleFps}
               sourceType={sourceType}
               isSafari={isSafari}
+              captions={captions}
+              onToggleCaptions={onToggleCaptions}
             />
           ) : (
             <div
