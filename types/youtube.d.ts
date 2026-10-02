@@ -59,6 +59,10 @@ declare global {
       mute(): void;
       unMute(): void;
       isMuted(): boolean;
+      // `loadModule`/`unloadModule` controlam a disponibilidade de um módulo
+      // com API exposta ("captions", "annotations"). Lado a lado porque a
+      // preferência de legenda liga pelo primeiro e desliga pelo segundo.
+      loadModule(module: string): void;
       unloadModule(module: string): void;
       setOption(module: string, option: string, value: unknown): void;
       destroy(): void;
