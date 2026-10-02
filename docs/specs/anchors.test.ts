@@ -21,13 +21,26 @@ import { describe, expect, it } from "vitest";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "../..");
 const CODE_DIRS = ["app", "components", "hooks", "lib", "prisma"];
-const CODE_EXT = /\.(ts|tsx)$/;
+// `.css` entrou na lista por causa de `app/globals.css`, que carrega citações
+// de spec em comentário — e que a `docs/specs/README.md` registra como já
+// tendo sido corrigido à mão uma vez (a migração da spec 04 para 05/06, em
+// 2026-09-18). A regra é "toda citação do código é verificada"; o CSS é código.
+//
+// ASpecify de escopo: os dois testes de cobertura abaixo existem para que
+// remover o `css` daqui não passe em silêncio. Foi exatamente esse o buraco
+// original: o guard existia, era verde, e não alcançava o arquivo com mais
+// citações do repo.
+const CODE_EXT = /\.(ts|tsx|css)$/;
 
 // O repo escreve a âncora nos dois sentidos:
 //   `docs/specs/02-.../spec.md, seção 9.1`      (caminho primeiro)
 //   `(achado 5, docs/specs/05-.../spec.md)`     (âncora primeiro)
 // Então a âncora é procurada depois E antes do caminho.
 const PATH_RE = /docs\/specs\/([a-z0-9-]+)\/((?:spec|tasks)\.md)/gi;
+// A forma pós-migração: `FR-004`, `AC-017`, `CA-1.8`, `US-003`. Não leva
+// `kind`, então não entra na validação numérica abaixo — a checagem de que o
+// caminho existe é o que importa para ela.
+const FR_AC_RE = /\b((?:FR|AC|CA|US)-\d+(?:\.\d+)*)\b/;
 const ANCHOR_AT_START_RE = /^(seção|achado|item)\s+([\d./]+)/i;
 // Distância máxima entre a âncora e o caminho para considerá-los ligados
 // (cobre ", ", " de ", " da "). Sem isso, uma âncora solta na mesma linha
@@ -59,6 +72,8 @@ type Reference = {
   specFile: string;
   kind?: string;
   anchor?: string;
+  // Identificador no formato SDD (`FR-004`), quando a citação usa essa forma.
+  requirement?: string;
 };
 
 function walk(dir: string): string[] {
@@ -92,11 +107,20 @@ function collectReferences(): Reference[] {
       lines.forEach((text, index) => {
         for (const match of text.matchAll(PATH_RE)) {
           const start = match.index ?? 0;
+          const before = text.slice(0, start);
+          // A forma `FR-004` costuma vir logo DEPOIS do caminho
+          // (`spec.md). O dono do requisito é o FR-004 da spec 03`); a
+          // numérica vem ANTES (`achado 5, spec.md`). Procura nos dois lados.
+          const after = text.slice(start + match[0].length);
+          const requirement =
+            before.match(FR_AC_RE)?.[1] ?? after.slice(0, 80).match(FR_AC_RE)?.[1];
+
           refs.push({
             file: path.relative(ROOT, file),
             line: index + 1,
             specFolder: match[1],
             specFile: match[2],
+            requirement,
             ...anchorAround(text, start, start + match[0].length),
           });
         }
@@ -109,6 +133,15 @@ function collectReferences(): Reference[] {
 
 const references = collectReferences();
 
+function readSpec(ref: Reference): string | null {
+  const target = path.join(ROOT, "docs", "specs", ref.specFolder, ref.specFile);
+  try {
+    return readFileSync(target, "utf8");
+  } catch {
+    return null;
+  }
+}
+
 describe("âncoras de docs/specs citadas pelo código", () => {
   it("encontra referências para validar (o coletor não pode estar quebrado)", () => {
     // Sem isto, um erro no walk/regex deixaria o teste verde por vacuidade.
@@ -120,14 +153,7 @@ describe("âncoras de docs/specs citadas pelo código", () => {
 
   it("todo arquivo de spec citado existe", () => {
     const missing = references
-      .filter((ref) => {
-        const target = path.join(ROOT, "docs", "specs", ref.specFolder, ref.specFile);
-        try {
-          return !statSync(target).isFile();
-        } catch {
-          return true;
-        }
-      })
+      .filter((ref) => readSpec(ref) === null)
       .map((ref) => `${ref.file}:${ref.line} → docs/specs/${ref.specFolder}/${ref.specFile}`);
 
     expect(missing).toEqual([]);
@@ -138,14 +164,8 @@ describe("âncoras de docs/specs citadas pelo código", () => {
 
     for (const ref of references) {
       if (!ref.kind || !ref.anchor) continue;
-
-      const target = path.join(ROOT, "docs", "specs", ref.specFolder, ref.specFile);
-      let content: string;
-      try {
-        content = readFileSync(target, "utf8");
-      } catch {
-        continue; // já reprovado no teste de existência
-      }
+      const content = readSpec(ref);
+      if (content === null) continue; // já reprovado no teste de existência
 
       // `seção 3/8` cita duas seções; `item 14.6` cita um item numerado.
       const values = ref.anchor.split("/").filter(Boolean);
@@ -166,5 +186,49 @@ describe("âncoras de docs/specs citadas pelo código", () => {
     }
 
     expect(broken).toEqual([]);
+  });
+
+  // `FR-004`/`AC-017` é a forma que a migração para SDD tornou canônica, e é o
+  // que sobrevive à renumeração: um `achado 2` morre quando a spec é reescrita,
+  // um `FR-004` não. As citações em CSS foram convertidas para essa forma
+  // porque a numeração legada já não existia no `spec.md`.
+  it("todo requisito citado na forma FR-/AC- existe na spec", () => {
+    const broken: string[] = [];
+
+    for (const ref of references) {
+      if (!ref.requirement) continue;
+      // `tasks.md` é o plano executado, não o contrato: ele referencia os
+      // requisitos mas não é onde eles são declarados.
+      if (ref.specFile !== "spec.md") continue;
+
+      const content = readSpec(ref);
+      if (content === null) continue;
+
+      if (!content.includes(ref.requirement)) {
+        broken.push(
+          `${ref.file}:${ref.line} → docs/specs/${ref.specFolder}/spec.md não contém "${ref.requirement}"`,
+        );
+      }
+    }
+
+    expect(broken).toEqual([]);
+  });
+});
+
+// Cobertura do CSS, explicitada. Sem estes dois testes, remover o `css` de
+// `CODE_EXT` faria o guard acima passar em silêncio — que é o buraco original
+// que a spec 11 fecha: `app/globals.css` é o arquivo com mais citações de spec
+// do repositório, e ele não era varrido.
+describe("cobertura do coletor", () => {
+  it("as citações de app/globals.css são coletadas", () => {
+    const doCss = references.filter((ref) => ref.file === "app/globals.css");
+    expect(doCss.length).toBeGreaterThanOrEqual(3);
+    // E de mais de uma spec, para não ser coincidência de uma linha só.
+    expect(new Set(doCss.map((ref) => ref.specFolder)).size).toBeGreaterThanOrEqual(2);
+  });
+
+  it("alguma citação em CSS usa a forma FR-/AC-", () => {
+    const doCss = references.filter((ref) => ref.file === "app/globals.css");
+    expect(doCss.some((ref) => Boolean(ref.requirement))).toBe(true);
   });
 });
