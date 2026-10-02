@@ -42,6 +42,7 @@ const DEFAULTS = {
   fpsLimit: "auto",
   economyMode: false,
   economySuggestionDismissed: false,
+  captions: false,
 } as const;
 
 describe("default state (CA-1.8)", () => {
@@ -72,6 +73,7 @@ describe("persistence (CA-2.4)", () => {
       fpsLimit: "60" as const,
       economyMode: true,
       economySuggestionDismissed: true,
+      captions: true,
     };
     saveStoredQuality(data);
     expect(readStorage()).toEqual(data);
@@ -224,6 +226,16 @@ describe("hook — estado inicial, hidratação e setters", () => {
     expect(getServerSnapshot()).toEqual(DEFAULTS);
   });
 
+  // `useSyncExternalStore` compara o resultado do snapshot com `Object.is` a
+  // cada render e a cada mudança de store. O `getServerSnapshot` devolvia um
+  // literal novo por chamada, e o React 19 avisava na hidratação de toda sala:
+  // "The result of getServerSnapshot should be cached to avoid an infinite
+  // loop". O `getClientSnapshot` já era cacheado por string crua; o irmão do
+  // servidor não era.
+  it("getServerSnapshot devolve a MESMA referência a cada chamada", () => {
+    expect(getServerSnapshot()).toBe(getServerSnapshot());
+  });
+
   it("no cliente, já expõe o valor salvo", () => {
     saveStoredQuality({ ...DEFAULTS, resolution: "480p" });
     const { result } = renderHook(() => useVideoQuality());
@@ -252,6 +264,26 @@ describe("hook — estado inicial, hidratação e setters", () => {
 
     expect(result.current.economyMode).toBe(true);
     expect(readStorage().economyMode).toBe(true);
+  });
+
+  it("setCaptions persiste", () => {
+    const { result } = renderHook(() => useVideoQuality());
+    expect(result.current.captions).toBe(false);
+
+    act(() => {
+      result.current.setCaptions(true);
+    });
+
+    expect(result.current.captions).toBe(true);
+    expect(readStorage().captions).toBe(true);
+  });
+
+  it("um valor de captions corrompido no storage cai no default", () => {
+    localStorage.setItem(
+      "rockncine-video-quality",
+      JSON.stringify({ ...DEFAULTS, captions: "sim" }),
+    );
+    expect(readStorage().captions).toBe(false);
   });
 
   it("setters preservam os outros campos", () => {

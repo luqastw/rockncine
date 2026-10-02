@@ -10,7 +10,23 @@ interface StoredQuality {
   fpsLimit: FpsLimit;
   economyMode: boolean;
   economySuggestionDismissed: boolean;
+  captions: boolean;
 }
+
+// O snapshot do servidor PRECISA ser a mesma referência em todas as chamadas.
+// `useSyncExternalStore` compara o resultado com `Object.is` a cada render e
+// cada mudança de store: um literal novo aqui produzia o aviso do React 19
+// "The result of getServerSnapshot should be cached to avoid an infinite loop"
+// na hidratação de toda sala. O `getClientSnapshot` já era cacheado (o
+// comentário abaixo explica); o irmão do servidor ficou de fora e produzia
+// exatamente o mesmo defeito. `Object.freeze` porque é um valor de módulo.
+const SERVER_SNAPSHOT: StoredQuality = Object.freeze({
+  resolution: "720p",
+  fpsLimit: "auto",
+  economyMode: false,
+  economySuggestionDismissed: false,
+  captions: false,
+});
 
 export function detectLowEndDevice(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -26,7 +42,7 @@ export function detectSafari(): boolean {
 }
 
 export function getServerSnapshot(): StoredQuality {
-  return { resolution: "720p", fpsLimit: "auto", economyMode: false, economySuggestionDismissed: false };
+  return SERVER_SNAPSHOT;
 }
 
 // Valida o que veio do localStorage em vez de confiar num cast. Um valor
@@ -54,6 +70,7 @@ export function parseStoredQuality(raw: unknown): StoredQuality {
       typeof value.economySuggestionDismissed === "boolean"
         ? value.economySuggestionDismissed
         : base.economySuggestionDismissed,
+    captions: typeof value.captions === "boolean" ? value.captions : base.captions,
   };
 }
 
@@ -167,6 +184,13 @@ export function useVideoQuality() {
     updateStorage({ economySuggestionDismissed: true });
   }, [updateStorage]);
 
+  const setCaptions = useCallback(
+    (on: boolean) => {
+      updateStorage({ captions: on });
+    },
+    [updateStorage],
+  );
+
   return {
     resolution: state.resolution,
     fpsLimit: state.fpsLimit,
@@ -178,5 +202,10 @@ export function useVideoQuality() {
     isSafari,
     hasSeenSuggestion: state.economySuggestionDismissed,
     dismissSuggestion,
+    // Legendas: default desligado (o comportamento de sempre), mas com
+    // controle. Ver `useYouTubeSync.ts` — o desligamento era forçado e sem
+    // volta, o que é uma regressão de acessibilidade num app de cinema.
+    captions: state.captions,
+    setCaptions,
   };
 }
