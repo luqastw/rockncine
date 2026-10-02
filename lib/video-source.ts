@@ -130,6 +130,16 @@ export function isSafeEmbedUrl(value: string): boolean {
   }
 }
 
+// Rótulo curto de cada fonte, para a UI. `null` de propósito quando não há
+// fonte carregada: a lista de salas mostra "código · youtube" e o estado sem
+// vídeo é information, não string vazia.
+export const SOURCE_LABEL: Record<VideoSourceKind, string> = {
+  YOUTUBE: "youtube",
+  VIMEO: "vimeo",
+  DIRECT_MEDIA: "mídia direta",
+  GENERIC_IFRAME: "link externo",
+};
+
 export async function resolveVideoUrl(rawUrl: string): Promise<ResolvedVideo | null> {
   const url = parseUrl(rawUrl);
   if (!url) return null;
