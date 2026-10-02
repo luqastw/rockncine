@@ -26,8 +26,14 @@ import { Chat } from "@/components/room/Chat";
 import { useVideoQuality } from "@/hooks/useVideoQuality";
 import { usePlaybackState } from "@/hooks/usePlaybackClock";
 import { EconomySuggestion } from "@/components/room/EconomySuggestion";
+import { BroadcastControls } from "@/components/room/BroadcastControls";
+import { ScreenSharePlayer } from "@/components/room/ScreenSharePlayer";
+import { parseBroadcast } from "@/lib/broadcast";
 
-type VideoQuality = ReturnType<typeof useVideoQuality>;
+// Exportado porque `RoomExperience` é o único consumidor do retorno de
+// `useVideoQuality`, e o teste da sala monta a prop a partir daqui em vez de
+// duplicar a forma.
+export type VideoQuality = ReturnType<typeof useVideoQuality>;
 
 // respiro em tela cheia — declarado uma vez, usado no padding do stage e no
 // cálculo de altura máxima da caixa do vídeo (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.1).
@@ -59,15 +65,60 @@ export function RoomExperience({
   userId,
   userName,
   videoQuality,
+  livekitUrl,
 }: {
   roomCode: string;
   roomName: string | null;
   userId: string;
   userName: string;
   videoQuality: VideoQuality;
+  // `null` quando o Livekit não está configurado no deploy. O botão de
+  // transmissão não renderiza nesse caso: sem SFU não há para onde publicar, e
+  // um botão que falha ao ser clicado é pior do que botão nenhum
+  // (FR-010, degradação em lib/livekit.ts).
+  livekitUrl: string | null;
 }) {
   const video = useStorage((root) => root.video);
   const player = useStorage((root) => root.player);
+  // Estado de transmissão, no storage do Liveblocks e não em memória: é o que
+  // chega para quem entra depois sem esperar evento
+  // (FR-014, docs/specs/12-transmissao-screen-share/spec.md). O valor cru pode
+  // ser `undefined` numa sala criada antes deste campo existir, e pode ser
+  // qualquer coisa se um cliente escrever malformado — o parser é a fronteira e
+  // devolve `null` (AC-009), que é o modo player.
+  const rawBroadcast = useStorage((root) => root.broadcast);
+  const broadcast = parseBroadcast(rawBroadcast);
+  // O `livekitUrl` entra no gate junto com o storage, e não só para esconder o
+  // botão: `ScreenSharePlayer` usa `useTracks`, que exige o contexto de room e
+  // LANÇA sem ele. O storage sobrevive à queda do Livekit — ele é o que
+  // sobrevive —, então `broadcast !== null` sozinho não prova que o SFU está de
+  // pé neste cliente. Sem wrapper, o modo player é o estado correto e é o que a
+  // sala mostra.
+  const isBroadcasting = broadcast !== null && livekitUrl !== null;
+
+  // "Desisti de esperar a transmissão" é estado LOCAL de quem assiste, não
+  // estado da sala: o storage continua dizendo que há transmissão, e se a track
+  // chegar depois ela volta a ser exibida. Só o transmissor encerra transmissão
+  // (FR-017/FR-019) — um espectador que sai da espera não cancela a transmissão
+  // de outra pessoa, e mexer no storage aqui seria tomar uma decisão que não é
+  // dele.
+  //
+  // Zera sozinha quando a transmissão termina ou quando outra começa, sem
+  // efeito: a escotilha guarda A QUAL transmissão ela se refere, e a validade é
+  // derivada comparando com a chave da transmissão atual. Uma escotilha é
+  // decisão sobre UMA transmissão — sobreviver à seguinte seria prender o
+  // espectador numa sala que ele já escolheu não ver.
+  //
+  // `startedAt` entra na chave porque ele é escrito uma vez por transmissão, ao
+  // contrário de `broadcasterId`: só o id não distinguiria "desisti da
+  // transmissão do bruno" de "desisti da transmissão do bruno", quando a segunda
+  // é uma transmissão nova e a escotilha antiga não vale. Reset por `useEffect`
+  // resolveria, mas cascateia render e o valor é derivável — derivar é mais
+  // barato que sincronizar.
+  const broadcastKey = broadcast === null ? null : `${broadcast.broadcasterId}:${broadcast.startedAt}`;
+  const [gaveUpFor, setGaveUpFor] = useState<string | null>(null);
+  const gaveUpOnBroadcast = gaveUpFor !== null && gaveUpFor === broadcastKey;
+  const giveUpOnBroadcast = useCallback(() => setGaveUpFor(broadcastKey), [broadcastKey]);
   const othersCount = useOthers((others) => others.length);
   const lastEvent = useLastRoomEvent();
   const status = useStatus();
@@ -309,6 +360,12 @@ export function RoomExperience({
       const controller = controllerRef.current;
       if (!controller?.isReady) return;
 
+      // No modo transmissão o player não está na tela: os frames são a
+      // sincronização (docs/specs/12-transmissao-screen-share/spec.md, seção 1).
+      // Sem esta guarda, espaço/m/f agiram sobre o player escondido que ainda
+      // está montado por baixo — e mudavam o volume de um vídeo que ninguém vê.
+      if (isBroadcasting) return;
+
       if (e.key === " " || e.key === "k") {
         e.preventDefault();
         controller.togglePlay();
@@ -325,7 +382,7 @@ export function RoomExperience({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [cssFullscreen, loadModalOpen, toggleFullscreen]);
+  }, [cssFullscreen, loadModalOpen, toggleFullscreen, isBroadcasting]);
 
   // YouTube não tem parâmetro oficial pra desligar a tela de sugestões que
   // desenha por cima ao pausar (ver docs/specs/01-fundacao-mvp/spec.md, seção 7) — cobrimos com um
@@ -365,7 +422,11 @@ export function RoomExperience({
             </h1>
             <LastActionNote lastEvent={lastEvent} userId={userId} />
           </div>
-          {isPlayingNow && !syncLimited && (
+          {/* `!isBroadcasting`: este selo descreve o player, e no modo
+              transmissão o player não está na tela. Deixá-lo aceso sobre a
+              transmissão seria um status mentindo sobre o que as pessoas estão
+              vendo. */}
+          {isPlayingNow && !syncLimited && !isBroadcasting && (
             <span className="shrink-0 rounded-full bg-[var(--invert-bg)] px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-[var(--invert-fg)]">
               ao vivo
             </span>
@@ -461,9 +522,15 @@ export function RoomExperience({
                 : "mx-auto max-w-[min(100%,max(16rem,calc((100dvh-22rem)*16/9)))] lg:max-w-[min(100%,calc((100dvh-10rem)*16/9))]"
             }`}
           >
+            {/* `isPlaying` e `source` zerados no modo transmissão: a moldura de
+                sync e o selo "sync limitado — controle manual" descrevem o
+                sync layer, e no modo transmissão o sync layer não participa
+                (FR-004, docs/specs/12-transmissao-screen-share/spec.md, seção 1).
+                Um anel pulsando sobre a transmissão dos outros seria um
+                affordance de controle que não existe. */}
             <SyncRing
-              isPlaying={isPlayingNow}
-              source={video?.source ?? null}
+              isPlaying={isBroadcasting ? false : isPlayingNow}
+              source={isBroadcasting ? null : (video?.source ?? null)}
               lastEvent={lastEvent}
               isFullscreen={isFullscreen}
               economyMode={economyMode}
@@ -472,92 +539,128 @@ export function RoomExperience({
                   atrás do vídeo, não uma superfície da UI — ver revisão de
                   consistência, achado 5 de docs/specs/06-consistencia-design/spec.md. */}
               <div className="relative aspect-video w-full overflow-hidden rounded-md bg-black">
-              <PlayerShell
-                controller={activeController}
-                isFullscreen={isFullscreen}
-                onToggleFullscreen={toggleFullscreen}
-                showFullscreenOnly={hasGeneric}
-                sourceType={video?.source ?? null}
-                isSafari={isSafari}
-                fpsLimit={fpsLimit}
-                // FPS só existe no caminho HLS (hls.js), então o botão só é
-                // oferecido em DIRECT_MEDIA — antes ele aparecia habilitado
-                // também em YouTube/Vimeo, onde não faz nada (spec 09, CA-2.3).
-                onToggleFps={hasDirectMedia ? toggleFps : undefined}
-                onToggleResolution={
-                  activeController && activeController.resolution !== null
-                    ? toggleResolution
-                    : undefined
-                }
-                // Só o YouTube expõe um módulo de legenda com API. Vimeo e
-                // mídia direta usam o chrome nativo (que está escondido) ou
-                // não têm controle de legenda — o botão sairia habilitado e
-                // inerte, que é o defeito que o gate de resolução/FPS já
-                // evitou.
-                captions={hasYouTube ? captions : null}
-                onToggleCaptions={hasYouTube ? toggleCaptions : undefined}
-              >
-                {hasYouTube ? (
-                  <>
-                    <div id={YT_CONTAINER_ID} className="h-full w-full" />
-                    {showYoutubePauseOverlay && (
-                      <button
-                        type="button"
-                        onClick={() => youtubeController.play()}
-                        aria-label="tocar"
-                        // z-20: acima da camada que captura ponteiro sobre o
-                        // iframe (z-10 em PlayerShell) e ABAIXO da barra de
-                        // controles (z-30) — antes era z-10 e cobria a barra
-                        // inteira sempre que o vídeo estava pausado, deixando
-                        // tela cheia/scrubber/volume inclicáveis (achado 2).
-                        // anel de foco: era `focus:outline-none` sem anel
-                        // nenhum, num alvo que ocupa a tela inteira do player
-                        // (achado 17). `ring-inset` porque o botão sangra até
-                        // a borda da caixa.
-                        className="absolute inset-0 z-20 flex items-center justify-center bg-[var(--bg-void)] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[var(--outline-strong)]"
-                      >
-                        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--invert-bg)] text-[var(--invert-fg)]">
-                          <PlayIcon className="h-7 w-7" />
-                        </span>
-                      </button>
-                    )}
-                  </>
-                ) : hasVimeo ? (
-                  <div id={VIMEO_CONTAINER_ID} className="h-full w-full" />
-                ) : hasDirectMedia ? (
-                  <NativeVideoPlayer containerId={NATIVE_CONTAINER_ID} />
-                ) : hasGeneric ? (
-                  <GenericIframe src={video.embedUrl!} />
-                ) : storageLoading ? (
-                  <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6">
-                    <span className="h-2 w-40 rounded-full bg-[var(--line)]" aria-hidden />
-                    <span className="h-2 w-24 rounded-full bg-[var(--line)]" aria-hidden />
-                    <span className="sr-only" role="status">
-                      carregando a sala
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-6 text-center">
-                    <p className="text-xl font-semibold tracking-tight text-[var(--ink)]">
-                      nenhum vídeo carregado
-                    </p>
-                    <p className="text-sm text-[var(--ink-muted)]">
-                      use &quot;carregar vídeo&quot; pra começar
-                    </p>
-                  </div>
-                )}
-              </PlayerShell>
+              {/* FR-004/FR-005: o storage de transmissão é autoritativo sobre o
+                  que a área de vídeo exibe. Com transmissão, nada de
+                  `PlayerShell`/`PlayerControls` — os frames SÃO a
+                  sincronização. Sem, a sala volta ao estado de player normal,
+                  inclusive o "nenhum vídeo carregado": `video` e `player` não
+                  foram tocados, então o vídeo que já estava carregado está
+                  intacto. */}
+              {isBroadcasting && !gaveUpOnBroadcast ? (
+                // `broadcast` é não-nulo sempre que `isBroadcasting` é: o gate
+                // só acrescenta a condição do Livekit. O `!` fica explícito
+                // porque um `null` aqui renderizaria um player com um
+                // `ScreenSharePlayer` sem nome, que é pior que o fallback.
+                <ScreenSharePlayer
+                  broadcast={broadcast!}
+                  onGiveUp={giveUpOnBroadcast}
+                />
+              ) : (
+                <PlayerShell
+                  controller={activeController}
+                  isFullscreen={isFullscreen}
+                  onToggleFullscreen={toggleFullscreen}
+                  showFullscreenOnly={hasGeneric}
+                  sourceType={video?.source ?? null}
+                  isSafari={isSafari}
+                  fpsLimit={fpsLimit}
+                  // FPS só existe no caminho HLS (hls.js), então o botão só é
+                  // oferecido em DIRECT_MEDIA — antes ele aparecia habilitado
+                  // também em YouTube/Vimeo, onde não faz nada (spec 09, CA-2.3).
+                  onToggleFps={hasDirectMedia ? toggleFps : undefined}
+                  onToggleResolution={
+                    activeController && activeController.resolution !== null
+                      ? toggleResolution
+                      : undefined
+                  }
+                  // Só o YouTube expõe um módulo de legenda com API. Vimeo e
+                  // mídia direta usam o chrome nativo (que está escondido) ou
+                  // não têm controle de legenda — o botão sairia habilitado e
+                  // inerte, que é o defeito que o gate de resolução/FPS já
+                  // evitou.
+                  captions={hasYouTube ? captions : null}
+                  onToggleCaptions={hasYouTube ? toggleCaptions : undefined}
+                >
+                  {hasYouTube ? (
+                    <>
+                      <div id={YT_CONTAINER_ID} className="h-full w-full" />
+                      {showYoutubePauseOverlay && (
+                        <button
+                          type="button"
+                          onClick={() => youtubeController.play()}
+                          aria-label="tocar"
+                          // z-20: acima da camada que captura ponteiro sobre o
+                          // iframe (z-10 em PlayerShell) e ABAIXO da barra de
+                          // controles (z-30) — antes era z-10 e cobria a barra
+                          // inteira sempre que o vídeo estava pausado, deixando
+                          // tela cheia/scrubber/volume inclicáveis (achado 2).
+                          // anel de foco: era `focus:outline-none` sem anel
+                          // nenhum, num alvo que ocupa a tela inteira do player
+                          // (achado 17). `ring-inset` porque o botão sangra até
+                          // a borda da caixa.
+                          className="absolute inset-0 z-20 flex items-center justify-center bg-[var(--bg-void)] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[var(--outline-strong)]"
+                        >
+                          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--invert-bg)] text-[var(--invert-fg)]">
+                            <PlayIcon className="h-7 w-7" />
+                          </span>
+                        </button>
+                      )}
+                    </>
+                  ) : hasVimeo ? (
+                    <div id={VIMEO_CONTAINER_ID} className="h-full w-full" />
+                  ) : hasDirectMedia ? (
+                    <NativeVideoPlayer containerId={NATIVE_CONTAINER_ID} />
+                  ) : hasGeneric ? (
+                    <GenericIframe src={video.embedUrl!} />
+                  ) : storageLoading ? (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6">
+                      <span className="h-2 w-40 rounded-full bg-[var(--line)]" aria-hidden />
+                      <span className="h-2 w-24 rounded-full bg-[var(--line)]" aria-hidden />
+                      <span className="sr-only" role="status">
+                        carregando a sala
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-6 text-center">
+                      <p className="text-xl font-semibold tracking-tight text-[var(--ink)]">
+                        nenhum vídeo carregado
+                      </p>
+                      <p className="text-sm text-[var(--ink-muted)]">
+                        use &quot;carregar vídeo&quot; pra começar
+                      </p>
+                    </div>
+                  )}
+                </PlayerShell>
+              )}
+              {/* O scrim de carregamento/erro pertence ao player. Sobre a
+                  transmissão ele anunciaria um erro que não existe — o
+                  `ScreenSharePlayer` tem o próprio estado de espera. */}
+              {!isBroadcasting && (
                 <PlayerLoadStatus
                   key={`${video?.embedUrl}-${video?.loadedAt}`}
                   loading={playerLoading}
                   error={playerError}
                   sourceUrl={video?.sourceUrl ?? null}
                 />
+              )}
               </div>
             </SyncRing>
+
+            {/* Ações da área de vídeo. Ficam aqui, e não na fileira de
+                `RoomActions` dentro da aside, porque aquela fileira já lota a
+                256px do painel (ver o comentário de medição em `RoomActions`):
+                mais um botão de 44px espremia o resto. */}
+            {livekitUrl !== null && (
+              <BroadcastControls
+                broadcast={broadcast}
+                userId={userId}
+                userName={userName}
+                videoSourceUrl={video?.sourceUrl ?? null}
+              />
+            )}
           </div>
 
-          {hasGeneric && isSafeEmbedUrl(video!.embedUrl!) && (
+          {!isBroadcasting && hasGeneric && isSafeEmbedUrl(video!.embedUrl!) && (
             <p className="text-xs text-[var(--ink-muted)]">
               se a prévia não aparecer, o site pode não permitir incorporação —{" "}
               <a

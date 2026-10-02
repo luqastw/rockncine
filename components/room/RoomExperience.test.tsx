@@ -1,0 +1,707 @@
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useCallback } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Track } from "livekit-client";
+import type { BroadcastState } from "@/liveblocks.config";
+
+// O que este teste cobre: o gate do player. Com `storage.broadcast === null` a
+// sala mostra o player normal; com o storage preenchido, `PlayerShell` e
+// `PlayerControls` somem e entra a tela da transmissão (FR-004/FR-005,
+// AC-001/AC-002).
+//
+// O que ele NÃO cobre, e o motivo de os módulos de mídia estarem mockados: os
+// frames do SFU chegando, a captura real de tela e o áudio. `getDisplayMedia`
+// e o `LiveKitRoom` não existem em jsdom — `MediaStreamTrack` nem
+// `HTMLMediaElement.srcObject` têm comportamento que valha testar ali.
+
+// `root` é o estado do storage que os seletores leem; `storage` é o proxy de
+// escrita que o `useMutation` recebe. São coisas separadas no Liveblocks
+// (seletor de leitura × `storage.set` de escrita) e separadas aqui também.
+const mocks = vi.hoisted(() => {
+  const root: { video: unknown; player: unknown; broadcast: unknown } = {
+    video: null,
+    player: null,
+    broadcast: null,
+  };
+  const writes: [string, unknown][] = [];
+
+  // O `Room` do Livekit, reduzido ao que o `BroadcastControls` usa: `on`/`off`
+  // de evento. `emitir` é o que dispara `LocalTrackUnpublished` — o caminho de
+  // FR-018, que não é testável pelo botão.
+  const livekitRoom = {
+    on: vi.fn(),
+    off: vi.fn(),
+  };
+
+  return {
+    root,
+    writes,
+    setScreenShareEnabled: vi.fn(),
+    useTracksReturn: [] as unknown[],
+    livekitRoom,
+    emitirLiveKitRoom: (evento: string, payload: unknown) => {
+      for (const call of livekitRoom.on.mock.calls) {
+        if (call[0] === evento) call[1](payload);
+      }
+    },
+    // Espelho do storage do Liveblocks, o bastante para o `storage.set` do
+    // `useMutation` não explodir. As escritas em si não são o que este teste
+    // verifica — quem valida a forma do estado é `lib/broadcast.test.ts`.
+    storage: {
+      get: (key: string) => root[key as keyof typeof root],
+      set: (key: string, value: unknown) => {
+        writes.push([key, value]);
+        root[key as keyof typeof root] = value;
+      },
+      update: (patch: Record<string, unknown>) => {
+        for (const [key, value] of Object.entries(patch)) {
+          writes.push([key, value]);
+          root[key as keyof typeof root] = value;
+        }
+      },
+    },
+    // Vive no `vi.hoisted` porque as factories de `vi.mock` são içadas acima
+    // dos `const` do módulo: um controller declarado aqui fora seria acessado
+    // antes da inicialização.
+    controller: {
+      isReady: true,
+      isPlaying: true,
+      currentTime: 10,
+      duration: 100,
+      volume: 1,
+      isMuted: false,
+      error: null,
+      resolution: null,
+      fpsLimit: "auto",
+      play: vi.fn(),
+      pause: vi.fn(),
+      togglePlay: vi.fn(),
+      seek: vi.fn(),
+      setVolume: vi.fn(),
+      toggleMute: vi.fn(),
+    },
+  };
+});
+
+vi.mock("@liveblocks/react", () => ({
+  useStorage: (selector: (root: Record<string, unknown>) => unknown) => selector(mocks.root),
+  // `useOthers` aceita seletor opcional: `RoomExperience` passa um, o
+  // `LastActionNote` não passa nenhum.
+  useOthers: (selector?: (others: unknown[]) => unknown) => (selector ? selector([]) : []),
+  useStatus: () => "connected",
+  // O `useMutation` real é estável por `deps` e injeta o contexto de mutação
+  // como primeiro argumento. A imitação precisa das duas coisas: o
+  // `BroadcastControls` depende da estabilidade (o cleanup do efeito de saída
+  // roda `clearBroadcast`, e uma referência nova a cada render limparia o
+  // storage no primeiro passe) e o `storage.set` precisa existir para o
+  // callback não estourar quando o efeito dispara.
+  //
+  // `useCallback` com `deps` não literal é o que o pacote real faz, e o
+  // `react-hooks` não consegue verificar isso estaticamente — daí o disable
+  // dos dois diagnósticos, e não de todos.
+  useMutation: (callback: (ctx: unknown, ...args: unknown[]) => unknown, deps: unknown[]) =>
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useCallback((...args: unknown[]) => callback({ storage: mocks.storage }, ...args), deps),
+  useBroadcastEvent: () => vi.fn(),
+  useEventListener: () => {},
+}));
+
+// Os três hooks de sync devolvem um `controller` sempre presente (é o contrato
+// de `PlaybackController`), então o mock entrega um controller pronto. É ele que
+// faz `PlayerShell` montar a barra de controles — o marcador de "modo player"
+// que AC-001 e AC-002 pedem.
+vi.mock("@/hooks/useYouTubeSync", () => ({
+  useYouTubeSync: () => ({ isReady: true, error: null, controller: mocks.controller }),
+}));
+vi.mock("@/hooks/useVimeoSync", () => ({
+  useVimeoSync: () => ({ isReady: true, error: null, controller: mocks.controller }),
+}));
+vi.mock("@/hooks/useNativeVideoSync", () => ({
+  useNativeVideoSync: () => ({ isReady: true, error: null, controller: mocks.controller }),
+}));
+vi.mock("@/hooks/useLastRoomEvent", () => ({ useLastRoomEvent: () => null }));
+vi.mock("@/hooks/useRoomJoinAnnouncement", () => ({ useRoomJoinAnnouncement: () => {} }));
+vi.mock("@/hooks/useRoomLeaveAnnouncement", () => ({ useRoomLeaveAnnouncement: () => {} }));
+vi.mock("@/hooks/useChat", () => ({
+  useChat: () => ({ messages: [], sendMessage: vi.fn(), appendMessage: vi.fn() }),
+}));
+// Chat, presença e oval de carga são chrome: existe player embaixo deles e o
+// que está sob teste aqui.
+vi.mock("@/components/room/Chat", () => ({ Chat: () => <div data-testid="chat" /> }));
+vi.mock("@/components/room/PresenceList", () => ({ PresenceList: () => <div data-testid="presence" /> }));
+
+vi.mock("@livekit/components-react", () => ({
+  LiveKitRoom: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  useTracks: () => mocks.useTracksReturn,
+  useLocalParticipant: () => ({
+    localParticipant: { setScreenShareEnabled: mocks.setScreenShareEnabled },
+  }),
+  // `on`/`off` registrados para o teste poder disparar `LocalTrackUnpublished`
+  // e exercitar FR-018.
+  useMaybeRoomContext: () => mocks.livekitRoom,
+}));
+
+import { RoomExperience, type VideoQuality } from "./RoomExperience";
+
+const VIDEO = {
+  source: "YOUTUBE" as const,
+  embedUrl: "dQw4w9WgXcQ",
+  sourceUrl: "https://youtu.be/dQw4w9WgXcQ",
+  loadedAt: 1,
+};
+
+const PLAYER = { isPlaying: true, currentTime: 10, updatedAt: Date.now(), lastActorId: "outro" };
+
+const broadcast: BroadcastState = {
+  broadcasterId: "outro",
+  broadcasterName: "bruno",
+  startedAt: Date.now(),
+  heartbeatAt: Date.now(),
+};
+
+// `RoomExperience` recebe `videoQuality` por prop, então este teste monta o
+// objeto em vez de chamar o hook — e o `RoomExperience` é o único consumidor
+// dele, o que torna esse o contrato estável da prop.
+const quality: VideoQuality = {
+  resolution: "720p",
+  fpsLimit: "auto",
+  economyMode: false,
+  setResolution: vi.fn(),
+  setEconomyMode: vi.fn(),
+  setFpsLimit: vi.fn(),
+  isLowEnd: false,
+  isSafari: false,
+  hasSeenSuggestion: true,
+  dismissSuggestion: vi.fn(),
+  captions: false,
+  setCaptions: vi.fn(),
+};
+
+// O tipo explícito importa: com o default inferido, passar `livekitUrl: null`
+// seria um erro de tipo, e é exatamente o caso de degradação que este arquivo
+// precisa exercitar.
+function renderRoom({ livekitUrl = "wss://teste.livekit.cloud" }: { livekitUrl?: string | null } = {}) {
+  return render(
+    <RoomExperience
+      roomCode="SALA1234"
+      roomName="sala"
+      userId="eu"
+      userName="ana"
+      videoQuality={quality}
+      livekitUrl={livekitUrl ?? null}
+    />,
+  );
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  Object.assign(mocks.root, { video: VIDEO, player: PLAYER, broadcast: null });
+  mocks.writes.length = 0;
+  mocks.useTracksReturn = [];
+  // jsdom não implementa `mediaDevices` nem `getDisplayMedia`; o botão depende
+  // dele existir (FR-010). O comportamento de captura de verdade — o seletor do
+  // SO, a `MediaStream` real — não é testável aqui, e este stub existe só para
+  // o caminho de renderização ser alcançado.
+  Object.defineProperty(navigator, "mediaDevices", {
+    writable: true,
+    configurable: true,
+    value: { getDisplayMedia: () => Promise.resolve({}) },
+  });
+});
+
+function removeDisplayMedia() {
+  Object.defineProperty(navigator, "mediaDevices", {
+    writable: true,
+    configurable: true,
+    value: {},
+  });
+}
+
+describe("área de vídeo — modo player (FR-005, AC-001)", () => {
+  it("AC-001: com broadcast null existe o player normal e nenhum elemento de transmissão", () => {
+    renderRoom();
+
+    // O botão de play/pause do `PlayerControls` é o marcador mais preciso de
+    // que a barra de controles está montada.
+    expect(screen.getByRole("button", { name: /pausar|tocar/ })).toBeTruthy();
+    expect(screen.queryByText("conectando à transmissão")).toBeNull();
+    expect(screen.queryByText("transmitindo")).toBeNull();
+  });
+
+  it("sala sem vídeo mostra o estado de nenhum vídeo carregado", () => {
+    mocks.root.video = { source: null, embedUrl: null, sourceUrl: null, loadedAt: null };
+
+    renderRoom();
+
+    expect(screen.getByText("nenhum vídeo carregado")).toBeTruthy();
+  });
+});
+
+describe("área de vídeo — modo transmissão (FR-004, AC-002)", () => {
+  it("AC-002: com broadcast preenchido o PlayerControls some e a transmissão assume", () => {
+    mocks.root.broadcast = broadcast;
+
+    renderRoom();
+
+    // O botão de play/pause é exatamente o que AC-002 nomeia.
+    expect(screen.queryByRole("button", { name: /pausar|tocar/ })).toBeNull();
+    expect(screen.queryByRole("slider", { name: "progresso do vídeo" })).toBeNull();
+    expect(screen.getByText("conectando à transmissão")).toBeTruthy();
+    expect(screen.getByText("bruno")).toBeTruthy();
+  });
+
+  it("AC-009: broadcast malformado não tira a sala do modo player", () => {
+    // `broadcasterName` como objeto é o vetor que quebraria o React da sala
+    // inteira se o valor fosse repassado para a tela.
+    mocks.root.broadcast = { ...broadcast, broadcasterName: { first: "bruno" } };
+
+    renderRoom();
+
+    expect(screen.getByRole("button", { name: /pausar|tocar/ })).toBeTruthy();
+    expect(screen.queryByText("conectando à transmissão")).toBeNull();
+  });
+
+  // O heartbeat parado é o que expira — não o `startedAt`. Um host que transmite
+  // há horas sem morrer tem `startedAt` antigo e `heartbeatAt` recente, e a sala
+  // tem que continuar no modo transmissão.
+  it("sessão longa com heartbeat vivo continua no modo transmissão", () => {
+    const agora = Date.now();
+    mocks.root.broadcast = {
+      ...broadcast,
+      startedAt: agora - 3 * 60 * 60 * 1000,
+      heartbeatAt: agora - 20_000,
+    };
+
+    renderRoom();
+
+    expect(screen.getByText("conectando à transmissão")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /pausar|tocar/ })).toBeNull();
+  });
+
+  it("broadcast com heartbeat parado (transmissor que sumiu) devolve ao player normal", () => {
+    mocks.root.broadcast = { ...broadcast, heartbeatAt: Date.now() - 60 * 60 * 1000 };
+
+    renderRoom();
+
+    expect(screen.getByRole("button", { name: /pausar|tocar/ })).toBeTruthy();
+  });
+
+  it("o único <video> da tela é o da transmissão, com playsInline, autoPlay e muted", () => {
+    mocks.root.broadcast = broadcast;
+
+    renderRoom();
+
+    // `<video>` é o marcador de que o `PlayerShell` — que é quem cria o
+    // container do backend ativo — não está montado. `muted` é obrigatório:
+    // sem ele o browser bloqueia o autoplay e o espectador vê um quadro
+    // congelado (FR-012).
+    const videos = document.querySelectorAll("video");
+    expect(videos).toHaveLength(1);
+    expect(videos[0].getAttribute("autoplay")).not.toBeNull();
+    expect(videos[0].getAttribute("playsinline")).not.toBeNull();
+    expect((videos[0] as HTMLVideoElement).muted).toBe(true);
+  });
+});
+
+describe("botão de transmissão (FR-009, FR-010, AC-004, AC-005)", () => {
+  it("AC-005: sem getDisplayMedia o botão não existe", () => {
+    removeDisplayMedia();
+
+    renderRoom();
+
+    expect(screen.queryByRole("button", { name: /transmissão de tela/ })).toBeNull();
+  });
+
+  it("AC-004: com outra pessoa transmitindo, o botão existe desabilitado e diz quem", () => {
+    mocks.root.broadcast = broadcast;
+
+    renderRoom();
+
+    const button = screen.getByRole("button", { name: "já há alguém transmitindo" });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("bruno está transmitindo")).toBeTruthy();
+  });
+
+  it("sem transmissão, o botão está habilitado e é o de iniciar", () => {
+    renderRoom();
+
+    const button = screen.getByRole("button", { name: "iniciar transmissão de tela" });
+    expect((button as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("o próprio transmissor vê o botão de parar, não o de iniciar", () => {
+    mocks.root.broadcast = { ...broadcast, broadcasterId: "eu" };
+
+    renderRoom();
+
+    expect(screen.getByRole("button", { name: "parar transmissão" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "iniciar transmissão de tela" })).toBeNull();
+  });
+});
+
+describe("iniciar transmissão (FR-006, FR-007, FR-008)", () => {
+  it("FR-006: abre a URL do vídeo em nova aba antes de pedir a captura", async () => {
+    const open = vi.fn();
+    vi.stubGlobal("open", open);
+    mocks.setScreenShareEnabled.mockResolvedValue({});
+    const ordem: string[] = [];
+    open.mockImplementation(() => ordem.push("open"));
+    mocks.setScreenShareEnabled.mockImplementation(() => {
+      ordem.push("captura");
+      return Promise.resolve({});
+    });
+
+    renderRoom();
+    fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
+    await waitFor(() => expect(ordem).toHaveLength(2));
+
+    expect(open).toHaveBeenCalledWith("https://youtu.be/dQw4w9WgXcQ", "_blank", "noopener");
+    // A ordem importa: o seletor do SO precisa ter o que escolher.
+    expect(ordem).toEqual(["open", "captura"]);
+    vi.unstubAllGlobals();
+  });
+
+  it("FR-007: permissão concedida grava o transmissor no storage", async () => {
+    vi.stubGlobal("open", vi.fn());
+    mocks.setScreenShareEnabled.mockResolvedValue({});
+
+    renderRoom();
+    fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
+
+    await waitFor(() => {
+      const write = mocks.writes.find(([key]) => key === "broadcast");
+      expect(write?.[1]).toMatchObject({ broadcasterId: "eu", broadcasterName: "ana" });
+    });
+    vi.unstubAllGlobals();
+  });
+
+  // FR-008: o storage não é tocado e a UI volta ao estado anterior com aviso.
+  // Sem isto, um cancelamento deixaria a sala presa em "modo transmissão"
+  // mostrando um player vazio para todo mundo.
+  it("FR-008: permissão negada não grava nada e avisa", async () => {
+    vi.stubGlobal("open", vi.fn());
+    mocks.setScreenShareEnabled.mockRejectedValue(new Error("NotAllowedError"));
+
+    renderRoom();
+    fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
+
+    expect(
+      await screen.findByText("a captura de tela foi cancelada ou negada."),
+    ).toBeTruthy();
+    expect(mocks.writes.some(([key]) => key === "broadcast")).toBe(false);
+    // O player continua no lugar: a sala não mudou de modo.
+    expect(screen.getByRole("button", { name: /pausar|tocar/ })).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("áudio da transmissão (FR-013, FR-016, AC-006, AC-010)", () => {
+  it("AC-006: só a track de vídeo chegou — o vídeo toca e há aviso de áudio ausente", () => {
+    mocks.root.broadcast = broadcast;
+    mocks.useTracksReturn = [
+      screenShareRef("outro", Track.Source.ScreenShare, fakeTrack(() => {})),
+    ];
+
+    renderRoom();
+
+    expect(document.querySelector("video")).toBeTruthy();
+    expect(screen.getByText(/esta transmissão está sem áudio/i)).toBeTruthy();
+  });
+
+  it("com as duas tracks, nenhum aviso de áudio", () => {
+    mocks.root.broadcast = broadcast;
+    mocks.useTracksReturn = [
+      screenShareRef("outro", Track.Source.ScreenShare, fakeTrack(() => {})),
+      screenShareRef("outro", Track.Source.ScreenShareAudio, fakeTrack(() => {})),
+    ];
+
+    renderRoom();
+
+    expect(screen.queryByText(/sem áudio/i)).toBeNull();
+  });
+
+  // O aviso só vale depois que a track de vídeo existe: antes disso, "sem
+  // áudio" seria uma afirmação que ninguém pode verificar — o storage já diz
+  // que há transmissão, mas os frames ainda estão a caminho.
+  it("sem track de vídeo ainda, o aviso de áudio não aparece", () => {
+    mocks.root.broadcast = broadcast;
+    mocks.useTracksReturn = [];
+
+    renderRoom();
+
+    expect(screen.getByText("conectando à transmissão")).toBeTruthy();
+    expect(screen.queryByText(/sem áudio/i)).toBeNull();
+  });
+});
+
+describe("anexação da track ao elemento (FR-011, FR-012)", () => {
+  // O storage é a autoridade sobre QUEM transmite, e a identidade do Livekit é
+  // o mesmo `userId`. Com duas telas na sala, a do transmissor declarado é a
+  // que vai para o `<video>`.
+  it("a track do transmissor declarado tem prioridade sobre a de outro", () => {
+    mocks.root.broadcast = broadcast;
+    const anexados: Element[] = [];
+    const doOutro = screenShareRef("outro", Track.Source.ScreenShare, fakeTrack((el) => anexados.push(el)));
+    const doTerceiro = screenShareRef("terceiro", Track.Source.ScreenShare, fakeTrack((el) => anexados.push(el)));
+    // O transmissor declarado por último de propósito: a busca não pode
+    // simplesmente pegar a primeira.
+    mocks.useTracksReturn = [doTerceiro, doOutro];
+
+    renderRoom();
+
+    expect(anexados).toHaveLength(1);
+    expect(anexados[0]).toBeInstanceOf(HTMLVideoElement);
+  });
+
+  it("o áudio vai para o <audio>, nunca para o <video>", () => {
+    mocks.root.broadcast = broadcast;
+    const anexados: string[] = [];
+    const video = screenShareRef("outro", Track.Source.ScreenShare, fakeTrack((el) => anexados.push(el.tagName)));
+    const audio = screenShareRef("outro", Track.Source.ScreenShareAudio, fakeTrack((el) => anexados.push(el.tagName)));
+    mocks.useTracksReturn = [video, audio];
+
+    renderRoom();
+
+    expect(anexados).toEqual(["VIDEO", "AUDIO"]);
+  });
+});
+
+// `useTracks` devolve referências com `participant`, `source` e `publication`.
+// Só o que `ScreenSharePlayer` lê. `track` é `null` quando a publicação ainda
+// não foi assinada — por isso o tipo é `unknown` e o teste preenche quando
+// quer exercitar o `attach`.
+//
+// `Track.Source` vem do pacote real (não de mock): os valores do enum são
+// strings específicas (`screen_share`, `screen_share_audio`) e o
+// `ScreenSharePlayer` compara por igualdade — um literal inventado aqui
+// passaria como "nenhuma track encontrada" e o teste viraria vacuidade.
+function screenShareRef(identity: string, source: Track.Source, track: unknown = null) {
+  return {
+    participant: { identity, isLocal: false },
+    source,
+    publication: { source, track, isMuted: false, trackSid: `${identity}-${source}` },
+  };
+}
+
+// `MediaStreamTrack` real não existe em jsdom; o que importa aqui é qual
+// elemento a track foi anexada, e o `ScreenSharePlayer` só chama `attach`/`detach`.
+function fakeTrack(registrar: (element: Element) => void) {
+  return {
+    attach: (element: Element) => {
+      registrar(element);
+      return element;
+    },
+    detach: vi.fn(),
+  };
+}
+
+describe("encerramento (FR-017, FR-018, FR-019)", () => {
+  it("FR-017: parar transmissão desliga a track e zera o storage", () => {
+    mocks.root.broadcast = { ...broadcast, broadcasterId: "eu" };
+    mocks.setScreenShareEnabled.mockResolvedValue(undefined);
+
+    renderRoom();
+    fireEvent.click(screen.getByRole("button", { name: "parar transmissão" }));
+
+    expect(mocks.setScreenShareEnabled).toHaveBeenCalledWith(false);
+    expect(mocks.writes).toContainEqual(["broadcast", null]);
+  });
+
+  // FR-018: revogação de permissão pelo SO, fim da aba compartilhada, crash —
+  // todos chegam pelo mesmo evento, e o caminho tem de ser o do botão, senão a
+  // sala fica presa em "modo transmissão" com um player vazio para todo mundo.
+  it("FR-018: track do transmissor despublicada limpa o storage", () => {
+    mocks.root.broadcast = { ...broadcast, broadcasterId: "eu" };
+    mocks.setScreenShareEnabled.mockResolvedValue(undefined);
+
+    renderRoom();
+    mocks.emitirLiveKitRoom("localTrackUnpublished", {
+      source: Track.Source.ScreenShare,
+    });
+
+    expect(mocks.setScreenShareEnabled).toHaveBeenCalledWith(false);
+    expect(mocks.writes).toContainEqual(["broadcast", null]);
+  });
+
+  it("track de outro despublicada não mexe no estado", () => {
+    mocks.root.broadcast = { ...broadcast, broadcasterId: "eu" };
+
+    renderRoom();
+    mocks.emitirLiveKitRoom("localTrackUnpublished", { source: Track.Source.Camera });
+
+    expect(mocks.writes).not.toContainEqual(["broadcast", null]);
+  });
+
+  it("FR-019: quem não é transmissor não limpa o storage de quem é", () => {
+    mocks.root.broadcast = broadcast;
+
+    renderRoom();
+    mocks.emitirLiveKitRoom("localTrackUnpublished", { source: Track.Source.ScreenShare });
+
+    expect(mocks.writes).not.toContainEqual(["broadcast", null]);
+  });
+});
+
+describe("degradação sem SFU configurado", () => {
+  it("sem LIVEKIT_URL o botão de transmissão não renderiza", () => {
+    renderRoom({ livekitUrl: null });
+
+    expect(screen.queryByRole("button", { name: /transmissão/ })).toBeNull();
+    // O modo player segue inteiro — a sala não depende do Livekit.
+    expect(screen.getByRole("button", { name: /pausar|tocar/ })).toBeTruthy();
+  });
+
+  // O storage sobrevive à queda do Livekit — é ele que sobrevive. Um cliente
+  // sem wrapper recebendo `broadcast !== null` e montando o `ScreenSharePlayer`
+  // derrubaria o React da sala inteira no `useTracks`, que exige o contexto de
+  // room. O modo player é o estado correto aí.
+  it("broadcast no storage mas sem Livekit: modo player, sem crash", () => {
+    mocks.root.broadcast = broadcast;
+
+    renderRoom({ livekitUrl: null });
+
+    expect(screen.getByRole("button", { name: /pausar|tocar/ })).toBeTruthy();
+    expect(screen.queryByText("conectando à transmissão")).toBeNull();
+  });
+});
+
+// As constraints de captura não são detalhe de implementação: cada uma delas
+// fecha um modo de falha que só aparece com duas pessoas reais na sala. O
+// Livekit repassa `options` literal para o `getDisplayMedia`
+// (`screenCaptureToDisplayMediaStreamOptions` no bundle dele), então verificar
+// o que chega em `setScreenShareEnabled` é verificar o que chega no SO.
+describe("constraints de captura (FR-006, FR-015)", () => {
+  async function iniciar() {
+    vi.stubGlobal("open", vi.fn());
+    mocks.setScreenShareEnabled.mockResolvedValue({});
+    renderRoom();
+    fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
+    await waitFor(() => expect(mocks.setScreenShareEnabled).toHaveBeenCalled());
+    return mocks.setScreenShareEnabled.mock.calls[0][1] as Record<string, unknown>;
+  }
+
+  // O SALÃO DE MIRROR. Sem isto, o seletor oferece a aba da própria sala e quem
+  // compartilha a sala transmite a sala — recursivamente, com o atraso do SFU
+  // a cada geração. O espectador assiste uma sala se multiplicando, e o host
+  // que tentou compartilhar um vídeo está transmitindo o produto inteiro.
+  it('impede o compartilhamento da própria aba: selfBrowserSurface "exclude"', async () => {
+    const options = await iniciar();
+    expect(options.selfBrowserSurface).toBe("exclude");
+    vi.unstubAllGlobals();
+  });
+
+  // "com som" só existe se o seletor oferecer a caixa de áudio. A constraint é
+  // o que garante que a opção apareça — o requisito do usuário não sobrevive
+  // sem ela.
+  it('expõe a captura de áudio no seletor: systemAudio "include"', async () => {
+    const options = await iniciar();
+    expect(options.systemAudio).toBe("include");
+    expect(options.audio).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  // Trocar o que está sendo transmitido pela UI do Chrome sem derrubar a
+  // transmissão. É o que sustenta "vídeo rola em outra aba" quando a sessão
+  // muda de filme.
+  it('permite trocar a aba compartilhada: surfaceSwitching "include"', async () => {
+    const options = await iniciar();
+    expect(options.surfaceSwitching).toBe("include");
+    vi.unstubAllGlobals();
+  });
+
+  // `contentHint: "detail"` porque o conteúdo é vídeo. Sem a dica o encoder
+  // reduz resolução para segurar taxa de quadros e o espectador recebe a tela
+  // borrada em banda apertada — que é o caso comum desta feature.
+  it('marca o conteúdo como detail para o encoder não borrar o vídeo', async () => {
+    const options = await iniciar();
+    expect(options.contentHint).toBe("detail");
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("escotilha quando os quadros não chegam", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('diz "conectando" enquanto há prazo, e nunca antes de o prazo', () => {
+    mocks.root.broadcast = broadcast;
+
+    renderRoom();
+    act(() => vi.advanceTimersByTime(11_000));
+
+    expect(screen.getByText("conectando à transmissão")).toBeTruthy();
+    expect(screen.queryByText("a transmissão não chegou")).toBeNull();
+  });
+
+  it('passado o prazo, diz que NÃO chegou e oferece voltar ao player', () => {
+    mocks.root.broadcast = broadcast;
+
+    renderRoom();
+    act(() => vi.advanceTimersByTime(12_000));
+
+    expect(screen.queryByText("conectando à transmissão")).toBeNull();
+    expect(screen.getByText("a transmissão não chegou")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "voltar ao player" })).toBeTruthy();
+  });
+
+  // A queda é manual e LOCAL: quem assiste deixa de esperar, sem cancelar a
+  // transmissão de outra pessoa. Mexer no storage aqui seria tomar uma decisão
+  // que não é dele — e o storage continua dizendo que há transmissão, então se
+  // os quadros voltarem, a sala volta sozinha.
+  it("voltar ao player é local: não encerra a transmissão de quem transmite", () => {
+    mocks.root.broadcast = broadcast;
+
+    renderRoom();
+    act(() => vi.advanceTimersByTime(12_000));
+    fireEvent.click(screen.getByRole("button", { name: "voltar ao player" }));
+
+    expect(screen.getByRole("button", { name: /pausar|tocar/ })).toBeTruthy();
+    expect(mocks.writes).toHaveLength(0);
+  });
+
+  // A escotilha se refere a UMA transmissão. Uma transmissão nova — mesmo
+  // transmissor — é outra espera, e não pode herdar a espera vencida.
+  it("uma transmissão nova recomeça a espera do zero", () => {
+    mocks.root.broadcast = broadcast;
+
+    const { rerender } = renderRoom();
+    act(() => vi.advanceTimersByTime(12_000));
+    expect(screen.getByText("a transmissão não chegou")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "voltar ao player" }));
+    mocks.root.broadcast = { ...broadcast, startedAt: broadcast.startedAt + 1 };
+    rerender(
+      <RoomExperience
+        roomCode="SALA1234"
+        roomName="sala"
+        userId="eu"
+        userName="ana"
+        videoQuality={quality}
+        livekitUrl="wss://teste.livekit.cloud"
+      />,
+    );
+
+    expect(screen.getByText("conectando à transmissão")).toBeTruthy();
+  });
+
+  // Se os quadros chegarem, a espera termina e o player de transmissão assume.
+  // Sem isto, o espectador ficaria vendo "não chegou" por cima de um vídeo que
+  // está tocando.
+  it("com a track presente, nenhuma das duas mensagens de espera aparece", () => {
+    mocks.root.broadcast = broadcast;
+    mocks.useTracksReturn = [
+      screenShareRef("outro", Track.Source.ScreenShare, fakeTrack(() => {})),
+      screenShareRef("outro", Track.Source.ScreenShareAudio, fakeTrack(() => {})),
+    ];
+
+    renderRoom();
+    act(() => vi.advanceTimersByTime(12_000));
+
+    expect(screen.queryByText("conectando à transmissão")).toBeNull();
+    expect(screen.queryByText("a transmissão não chegou")).toBeNull();
+  });
+});

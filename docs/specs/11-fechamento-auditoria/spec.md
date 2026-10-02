@@ -175,6 +175,11 @@ Dez itens, em três classes:
 
 - **NFR-001** Payload JavaScript inicial de `/rooms/[code]`: ≤ 120 KB gzip (medido: 107,6 KB; era
   278,3 KB).
+  **Revogado pela spec 12**, que adiciona o cliente de SFU (LiveKit) à rota da sala e leva o número
+  a 260,1 KB gzip. O teto de 120 KB foi cumprido e medido no escopo desta spec; a regressão é
+  documentada, medida e explicada em `docs/specs/12-transmissao-screen-share/spec.md`, seção 9 —
+  inclusive a alternativa que a mitigaria e por que ela não foi escolhida. As demais rotas
+  (`/`, `/login`, `/register`, `/rooms`) seguem fora dele.
 - **NFR-002** Ticks de playhead por segundo: 4 (inalterado). Renderizações da árvore da sala por
   tick: 0.
 - **NFR-003** Custo de `parseChatEvent` e `parsePlayerEvent`: O(1), sem alocação além do objeto

@@ -21,6 +21,7 @@ de redirecionamento; histórico completo do monolito continua disponível no git
 | 08 | [Otimização de sync de vídeo e scroll do chat](08-otimizacao-sync-video-scroll-chat/spec.md) — redução de rollback e remoção da barra de scroll | implementado (CA1.2 parcial) |
 | 09 | [Resolução client-side, FPS e modo economy](09-resolucao-client/spec.md) | implementado |
 | 10 | [Exclusão de sala pelo dono e limite de histórico do chat](10-exclusao-sala-limite-chat/spec.md) | implementado (verificação manual em navegador pendente) |
+| 12 | [Transmissão por screen share](12-transmissao-screen-share/spec.md) — modo transmissão via LiveKit Cloud, contornando o sync layer | implementado (captura real, track do SFU, áudio e troca de aba sem verificação em browser) |
 
 A pasta é numerada, não datada — as rodadas 02 a 14 do arquivo original foram todas escritas em
 2026-08-20/21, então uma data não separaria a ordem real de nada.
@@ -78,3 +79,11 @@ continua sendo timeout fixo em vez de resolução por evento); e a 09 não estav
 **Pendências que sobrevivem à migração:** item 14.5 da spec 07 (decisão de produto); CA1.2 da spec
 08 (exige teste com dois navegadores); itens 3/4/6 da seção 9.3 da spec 02 (sem medição); achados 9
 e 22 da spec 04 (sem device de 390px); e a verificação manual em navegador da spec 10.
+
+**O que a spec 12 não tem verificado.** O modo transmissão foi implementado e coberto por teste de
+unidade e de integração em jsdom, mas quatro coisas continuam sem prova: a captura de tela de verdade
+(o seletor do SO, a `MediaStream`, a taxa de quadros com a aba ocluída), a track do SFU chegando no
+`MediaStream` de outro browser, o áudio real da aba compartilhada e a queda do Livekit. O estado de
+transmissão, o gate do player, o comportamento do botão e a emissão do token estão todos testados; o
+que depende de dois browsers e de permissão do sistema operacional, não é testável em jsdom e segue
+pendente de verificação manual.

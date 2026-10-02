@@ -41,6 +41,12 @@ export function RoomLiveblocksProvider({
             updatedAt: mountedAt,
             lastActorId: "",
           },
+          // Nenhuma transmissão no primeiro mount. A porta de entrada do modo
+          // transmissão é sempre uma ação explícita de quem entra
+          // (FR-001, docs/specs/12-transmissao-screen-share/spec.md) — nada
+          // aqui reidrata um transmissor que já existia, e o seed do storage
+          // do Liveblocks é aplicado só quando o storage da sala está vazio.
+          broadcast: null,
         }}
       >
         {children}

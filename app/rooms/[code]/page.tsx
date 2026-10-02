@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { RoomClient } from "@/components/room/RoomClient";
 import { getRoomByCode } from "@/lib/rooms";
+import { livekitServerUrl } from "@/lib/livekit";
 import { requireSession } from "@/lib/session";
 
 // Título com o nome da sala: era o mesmo "rockncine" do layout raiz para toda
@@ -43,6 +44,11 @@ export default async function RoomPage({
         embedUrl: room.embedUrl,
         sourceUrl: room.videoSourceUrl,
       }}
+      // `null` sem `LIVEKIT_URL` no deploy, e a sala degrada para o modo player
+      // sem botão de transmissão. Lido aqui, no servidor, porque só o servidor
+      // enxerga as três variáveis do Livekit e o cliente não pode receber nada
+      // além do `wss://` público (lib/livekit.ts).
+      livekitUrl={livekitServerUrl()}
     />
   );
 }

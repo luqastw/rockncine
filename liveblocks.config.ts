@@ -5,6 +5,28 @@ export type RoomPresence = {
   name: string;
 };
 
+// Quem está transmitindo a própria tela. Vive no storage — e não no data
+// channel do LiveKit nem em memória — porque o app já tem storage por sala, ele
+// já é reconciliado e já chega para quem entra depois
+// (FR-002, docs/specs/12-transmissao-screen-share/spec.md).
+//
+// `null` significa "modo player": com transmissão o storage é autoritativo
+// sobre o que a sala exibe, e encerrar a transmissão devolve a sala ao vídeo
+// que já estava carregado (FR-001/FR-005).
+export type BroadcastState = {
+  // `userId` do transmissor. A identidade no LiveKit é o mesmo id, o que
+  // permite casar a track recebida com o dono declarado aqui.
+  broadcasterId: string;
+  broadcasterName: string;
+  // Quando a transmissão começou. Escrito UMA vez — é o início, e serve para
+  // julgar clock adiantado (que nunca muda).
+  startedAt: number;
+  // Última prova de vida do transmissor, renovada enquanto ele publica. É o
+  // que expira: um teto absoluto sobre `startedAt` mataria toda sessão mais longa
+  // que a janela, e sessão longa é o caso de uso. Ver `lib/broadcast.ts`.
+  heartbeatAt: number;
+};
+
 export type RoomStorage = {
   video: {
     source: VideoSourceKind | null;
@@ -20,6 +42,11 @@ export type RoomStorage = {
     updatedAt: number;
     lastActorId: string;
   };
+  // Deliberadamente separado de `player`: os dois coexistem no storage. Um
+  // cliente que trava o sync do outro (ver risco de `ts` em
+  // docs/specs/11-fechamento-auditoria/spec.md, seção 7) não tranca a
+  // transmissão, e o inverso também não.
+  broadcast: BroadcastState | null;
 };
 
 export type PlayerEvent =
@@ -59,6 +86,14 @@ export type SystemEvent = {
 // atalho de emoji no campo de mensagem do chat — não é um evento de
 // broadcast próprio, só insere no draft (ver components/room/Chat.tsx).
 export const REACTION_EMOJIS = ["❤️", "💔", "🔥", "😢", "🐔", "🍲"] as const;
+
+// Início e parada de transmissão NÃO são eventos de broadcast: são escrita em
+// `storage.broadcast` (FR-002/FR-003, docs/specs/12-transmissao-screen-share/spec.md).
+// A distinção não é estética — o storage é reconciliado e chega para quem entra
+// depois (FR-014), enquanto um broadcast é um evento momentâneo que alguém que
+// não estava conectado nunca recebe. O estado de transmissão é estado, não
+// evento, e é essa a razão de ele morar no storage do Liveblocks e não num data
+// channel do Livekit (seção 7, "onde mora o estado").
 
 export type RoomEvent = PlayerEvent | ChatEvent | SystemEvent;
 
