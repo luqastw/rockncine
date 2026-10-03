@@ -83,6 +83,11 @@ export function BroadcastControls({
       return "servidor de transmissão indisponível";
     }
     if (auth.status !== "ready") return "conectando ao servidor de transmissão";
+    // Um estado por estado. Colapsar `connecting` em "sem conexão" diz ao
+    // usuário que algo quebrou quando o WebSocket pode estar apenas subindo —
+    // e foi exatamente esse o caso que veio do primeiro teste em produção, em que
+    // a sala acusava uma falha que ainda não tinha acontecido.
+    if (connection === ConnectionState.Connecting) return "conectando ao servidor de transmissão";
     if (connection === ConnectionState.Reconnecting) return "reconectando ao servidor de transmissão";
     if (!connected) return "sem conexão com o servidor de transmissão";
     return null;

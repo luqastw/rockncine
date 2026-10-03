@@ -798,6 +798,18 @@ describe("saúde do SFU antes de pedir captura", () => {
     ).toBe(true);
   });
 
+  // Colapsar `connecting` em "sem conexão" diz que algo quebrou quando o
+  // WebSocket pode estar apenas subindo — e a sala fazia isso.
+  it("conectando não se apresenta como falta de conexão", () => {
+    mocks.auth = { status: "ready" };
+    mocks.connection = "connecting";
+
+    renderRoom();
+
+    expect(screen.getByText("conectando ao servidor de transmissão")).toBeTruthy();
+    expect(screen.queryByText("sem conexão com o servidor de transmissão")).toBeNull();
+  });
+
   it("reconectando tem motivo distinto de sem conexão", () => {
     mocks.auth = { status: "ready" };
     mocks.connection = "reconnecting";
