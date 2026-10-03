@@ -153,6 +153,13 @@ sala — está numa aba separada que ele compartilha.
   as chaves precisam ser do mesmo projeto — a falha mais provável e a que mais custou
   tempo de diagnóstico, porque a assinatura do token passa (200 na rota) e só o handshake
   rejeita.
+- **FR-036** QUANDO o texto do servidor nomear um problema de credencial, ENTÃO essa
+  leitura DEVE prevalecer sobre o `reason` do enum. O enum classifica "invalid token" como
+  `ServerUnreachable` (a conexão de sinal não subiu), e a dica resultante — "confira o
+  `LIVEKIT_URL`" — seria errada: o servidor respondeu, só recusou a credencial.
+- **FR-037** QUANDO houver status HTTP, ENTÃO ele DEVE ser exibido como fato observável,
+  separado da dica. A dica é hipótese com ação; o status é o que o servidor respondeu.
+  Fundir os dois faria a dica afirmar um status que não houve.
 
 ### Sessão
 

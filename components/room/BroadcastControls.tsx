@@ -99,10 +99,14 @@ export function BroadcastControls({
   // que não é informação. Vem do `connect` que o `ConnectGate` executa, porque
   // `ConnectionStateChanged` não traz motivo e `LiveKitRoom` não tem `onError`.
   const failure = useLiveKitFailure();
-  const livekitReason =
-    failure && !connected
-      ? [sfuFailureHint(failure), failure.detail].filter(Boolean).join(" · ")
-      : null;
+  const livekitReason = (() => {
+    if (!failure || connected) return null;
+    // O status é um FATO e vai separado da dica: a dica é uma hipótese com ação
+    // (chaves de outro projeto), o status é o que o servidor respondeu. Misturar
+    // os dois numa frase só faria a dica afirmar um 401 que não houve.
+    const status = failure.httpStatus === null ? [] : [`status ${failure.httpStatus}`];
+    return [...status, sfuFailureHint(failure), failure.detail].filter(Boolean).join(" · ");
+  })();
 
   const startBroadcast = useMutation(
     ({ storage }) => {

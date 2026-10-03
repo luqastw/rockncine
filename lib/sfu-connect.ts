@@ -25,14 +25,24 @@ export type SfuFailure = {
   detail: string;
 };
 
-/** Por que a conexão caiu, em pt-BR, com o que o usuário pode fazer. */
+/**
+ * Por que a conexão caiu, em pt-BR, com o que o usuário pode fazer.
+ *
+ * O `detail` do servidor tem precedência sobre o `reason` quando ele nomeia o
+ * problema. O enum não distingue: um token inválido chega como
+ * `ServerUnreachable` (a conexão de sinal não subiu), e a dica "confira o
+ * LIVEKIT_URL" seria errada — o servidor respondeu, só recusou a credencial.
+ * O texto do servidor é mais específico que a classificação, e é o único que
+ * separa "chave de outro projeto" de "projeto fora do ar".
+ */
 export function sfuFailureHint(failure: SfuFailure): string {
-  const { httpStatus, reason } = failure;
+  const { httpStatus, reason, detail } = failure;
+
+  // 401 é sempre credencial recusada, com ou sem detail que confirme.
+  if (httpStatus === 401) return KEYS;
+  if (falaDeCredencial(detail)) return KEYS;
 
   if (reason === ConnectionErrorReason[ConnectionErrorReason.NotAllowed]) {
-    if (httpStatus === 401) {
-      return "credencial recusada (401). o LIVEKIT_URL e as chaves são do mesmo projeto?";
-    }
     if (httpStatus === 403) {
       return "sem permissão para entrar nesta room (403).";
     }
@@ -53,6 +63,22 @@ export function sfuFailureHint(failure: SfuFailure): string {
 
   if (httpStatus !== null) return `o SFU respondeu ${httpStatus}.`;
   return "não foi possível falar com o servidor de transmissão.";
+}
+
+// A causa mais provável de token recusado: a URL e as chaves vêm de páginas
+// diferentes do painel. A rota de token responde 200 porque assinar com as chaves
+// coladas sempre funciona — quem valida a assinatura é o projeto que atende o
+// handshake, e ele não reconhece chaves alheias.
+const KEYS =
+  "token recusado: o LIVEKIT_API_KEY e o LIVEKIT_API_SECRET precisam ser do mesmo projeto do LIVEKIT_URL — copie o par da mesma página do projeto.";
+
+// O servidor nomeia o problema no texto quando ele é de credencial. São as
+// formas que o Livekit usa, mais as variações que aparecem em tradução.
+const CREDENCIAL =
+  /invalid token|token (is )?(invalid|expired|malformed|not valid)|verify\s*token|signature|jwt|unauthorized|forbidden|not allowed/i;
+
+function falaDeCredencial(detail: string): boolean {
+  return CREDENCIAL.test(detail);
 }
 
 const MAX_DETAIL = 180;

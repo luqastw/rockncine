@@ -57,6 +57,51 @@ describe("describeConnectError", () => {
 });
 
 describe("sfuFailureHint", () => {
+  // O caso real que veio da produção: o servidor respondeu recusando o token, mas
+  // o Livekit classificou como `ServerUnreachable` porque a conexão de sinal não
+  // subiu. A dica por reason dizia "confira o LIVEKIT_URL" — a instrução errada.
+  // O `detail` é mais específico que o enum, e é quem tem precedência.
+  it('"invalid token" aponta as chaves, mesmo com reason de servidor fora', () => {
+    const hint = sfuFailureHint({
+      httpStatus: null,
+      reason: "ServerUnreachable",
+      detail: "could not establish signal connection: invalid token",
+    });
+
+    expect(hint).toContain("API_KEY");
+    expect(hint).toContain("API_SECRET");
+    expect(hint).not.toContain("confira o LIVEKIT_URL");
+  });
+
+  it("token expirado é o mesmo problema de credencial", () => {
+    const hint = sfuFailureHint({
+      httpStatus: null,
+      reason: "ServerUnreachable",
+      detail: "token is expired",
+    });
+
+    expect(hint).toContain("API_KEY");
+  });
+
+  it("401 com detail genérico ainda aponta as chaves", () => {
+    expect(sfuFailureHint({ httpStatus: 401, reason: "NotAllowed", detail: "" })).toContain(
+      "API_SECRET",
+    );
+  });
+
+  // Um detail que NÃO é de credencial tem de continuar caindo no caminho do
+  // reason, senão a precedência do detail viraria "qualquer texto vence".
+  it("detail sem menção a credencial não sequestra o reason", () => {
+    const hint = sfuFailureHint({
+      httpStatus: null,
+      reason: "ServerUnreachable",
+      detail: "no route to host",
+    });
+
+    expect(hint).toContain("LIVEKIT_URL");
+  });
+
+
   // A mensagem precisa apontar a AÇÃO, não o sintoma. "sem conexão" não dizia o
   // que fazer; esta diz exatamente qual par de variáveis conferir.
   it("401 aponta a causa provável: URL e chaves de projetos diferentes", () => {
@@ -66,8 +111,8 @@ describe("sfuFailureHint", () => {
       detail: "connection closed",
     });
 
-    expect(hint).toContain("401");
     expect(hint).toContain("mesmo projeto");
+    expect(hint).toContain("API_SECRET");
   });
 
   it("403 é falta de permissão, não credencial errada", () => {

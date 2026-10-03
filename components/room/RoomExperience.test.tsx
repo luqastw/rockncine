@@ -904,7 +904,8 @@ describe("motivo da falha de conexão na tela", () => {
     renderRoom();
 
     expect(screen.getByText(/mesmo projeto/i)).toBeTruthy();
-    expect(screen.getByText(/401/)).toBeTruthy();
+    // O status é fato e a dica é hipótese: os dois aparecem, mas separados.
+    expect(screen.getByText(/status 401/)).toBeTruthy();
   });
 
   it("servidor inalcançável aponta o LIVEKIT_URL", () => {
