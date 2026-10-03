@@ -146,6 +146,13 @@ sala — está numa aba separada que ele compartilha.
 - **FR-033** QUANDO a credencial não puder ser obtida, ENTÃO a sala DEVE exibir a causa
   distinguível por status HTTP — 503 configuração, 403 permissão na sala, 401 sessão —
   em vez de degradar em silêncio para um botão que falha no clique.
+- **FR-034** QUANDO a conexão WebSocket com o SFU falhar, ENTÃO a sala DEVE exibir o status
+  HTTP do handshake e a razão do Livekit (`NotAllowed`, `ServerUnreachable`,
+  `InternalError`), junto do texto do servidor.
+- **FR-035** QUANDO o handshake responder 401, ENTÃO a sala DEVE apontar que `LIVEKIT_URL` e
+  as chaves precisam ser do mesmo projeto — a falha mais provável e a que mais custou
+  tempo de diagnóstico, porque a assinatura do token passa (200 na rota) e só o handshake
+  rejeita.
 
 ### Sessão
 
@@ -194,8 +201,29 @@ sala — está numa aba separada que ele compartilha.
   menção de que o usuário não cancelou.
 - **AC-017** Dado que o seletor foi dispensado, quando o erro sobe, então o aviso diz
   "cancelada ou negada" e nenhuma tentativa de desligar captura é feita.
+- **AC-018** Dado que o handshake volta 401, quando a sala renderiza, então a mensagem diz
+  que URL e chaves devem ser do mesmo projeto.
+- **AC-019** Dado que a conexão está no ar, quando houve falha antes, então o motivo da
+  falha não aparece mais na tela.
 
 ## 7. Decisões de arquitetura
+
+### O motivo da falha de conexão, e por que a conexão é nossa
+
+`RoomEvent.ConnectionStateChanged` emite **só** o estado, sem motivo. `LiveKitRoom` não
+aceita `onError`. O resultado era uma sala dizendo "sem conexão com o servidor de
+transmissão", que é a ausência de informação apresentada como se fosse informação.
+
+Duas saídas foram avaliadas. A primeira, `setLogExtension` do `livekit-client`, existe no
+bundle mas **não é exportada** — é API privada, e a feature nasceria quebrada sem ninguém
+perceber (o guard silencioso esconderia). A segunda, que ficou: o `LiveKitRoom` recebe
+`connect={false}` e um `ConnectGate` dentro dele chama `room.connect()`, capturando a
+promise. A rejeição é um `ConnectionError`, que carrega `.status` (o HTTP do handshake) e
+`.reasonName`.
+
+O `.status` é o que fecha o caso que mais custou tempo: a rota de token responde 200 porque
+assinaram com as chaves coladas, e só o handshake revela que elas não são do projeto que
+respondeu. Um 401 na tela é a diferença entre "URL errada" e "chave de outro projeto".
 
 ### Por que LiveKit Cloud
 

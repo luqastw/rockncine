@@ -31,6 +31,9 @@ const mocks = vi.hoisted(() => {
   const livekitRoom = {
     on: vi.fn(),
     off: vi.fn(),
+    // `ConnectGate` chama `room.connect`; sem isto a promessa quebra e a sala
+    // cai no caminho de erro.
+    connect: vi.fn().mockResolvedValue(undefined),
   };
 
   return {
@@ -66,6 +69,8 @@ const mocks = vi.hoisted(() => {
     // mensagem própria — que é o que torna erro de configuração diagnosticável
     // sem DevTools.
     auth: { status: "ready" } as Record<string, unknown>,
+    // Motivo da falha de conexão, quando o `ConnectGate` capturou um.
+    failure: null as Record<string, unknown> | null,
     connection: "connected" as string,
 
     // Vive no `vi.hoisted` porque as factories de `vi.mock` são içadas acima
@@ -156,6 +161,7 @@ vi.mock("@livekit/components-react", () => ({
 // testes que não falam de configuração precisam.
 vi.mock("@/components/room/LiveKitProvider", () => ({
   useLiveKitAuth: () => mocks.auth,
+  useLiveKitFailure: () => mocks.failure,
 }));
 
 import { RoomExperience, type VideoQuality } from "./RoomExperience";
@@ -217,6 +223,7 @@ beforeEach(() => {
   mocks.useTracksReturn = [];
   mocks.auth = { status: "ready" };
   mocks.connection = "connected";
+  mocks.failure = null;
   // jsdom não implementa `mediaDevices` nem `getDisplayMedia`; o botão depende
   // dele existir (FR-010). O comportamento de captura de verdade — o seletor do
   // SO, a `MediaStream` real — não é testável aqui, e este stub existe só para
@@ -882,5 +889,60 @@ describe("falha depois da captura concedida", () => {
     expect(await screen.findByText("a captura de tela foi cancelada ou negada.")).toBeTruthy();
     expect(mocks.setScreenShareEnabled).not.toHaveBeenCalledWith(false);
     vi.unstubAllGlobals();
+  });
+});
+
+// O motivo da falha de conexão é a única informação que separa "chave de outro
+// projeto" de "URL errada" de "projeto fora do ar", e nenhuma delas é adivinhável
+// pelo sintoma que a tela mostrava: "sem conexão".
+describe("motivo da falha de conexão na tela", () => {
+  it("401 no handshake aponta que URL e chaves devem ser do mesmo projeto", () => {
+    mocks.auth = { status: "ready" };
+    mocks.connection = "disconnected";
+    mocks.failure = { httpStatus: 401, reason: "NotAllowed", detail: "connection closed" };
+
+    renderRoom();
+
+    expect(screen.getByText(/mesmo projeto/i)).toBeTruthy();
+    expect(screen.getByText(/401/)).toBeTruthy();
+  });
+
+  it("servidor inalcançável aponta o LIVEKIT_URL", () => {
+    mocks.auth = { status: "ready" };
+    mocks.connection = "disconnected";
+    mocks.failure = { httpStatus: null, reason: "ServerUnreachable", detail: "no route to host" };
+
+    renderRoom();
+
+    expect(screen.getByText(/LIVEKIT_URL/)).toBeTruthy();
+  });
+
+  // O detalhe do servidor é o texto mais específico que existe — às vezes é ele
+  // que diz "token does not match this project" em vez de 401 genérico.
+  it("inclui o detalhe que o servidor mandou", () => {
+    mocks.auth = { status: "ready" };
+    mocks.connection = "disconnected";
+    mocks.failure = {
+      httpStatus: 401,
+      reason: "NotAllowed",
+      detail: "token does not match this project",
+    };
+
+    renderRoom();
+
+    expect(screen.getByText(/token does not match this project/)).toBeTruthy();
+  });
+
+  // Uma falha antiga na tela com a transmissão funcionando é pior que a
+  // ausência de mensagem: ela descreve um problema que não existe mais.
+  it("conectado, o motivo desaparece mesmo que a falha tenha sido capturada", () => {
+    mocks.auth = { status: "ready" };
+    mocks.connection = "connected";
+    mocks.failure = { httpStatus: 401, reason: "NotAllowed", detail: "connection closed" };
+
+    renderRoom();
+
+    expect(screen.queryByText(/mesmo projeto/i)).toBeNull();
+    expect(screen.queryByText(/connection closed/)).toBeNull();
   });
 });

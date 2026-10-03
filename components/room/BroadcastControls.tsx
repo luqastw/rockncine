@@ -15,6 +15,8 @@ import {
 } from "livekit-client";
 import type { BroadcastState } from "@/liveblocks.config";
 import { useLiveKitAuth } from "@/components/room/LiveKitProvider";
+import { useLiveKitFailure } from "@/components/room/LiveKitProvider";
+import { sfuFailureHint } from "@/lib/sfu-connect";
 import {
   BROADCAST_HEARTBEAT_MS,
   broadcasterLabel,
@@ -92,6 +94,15 @@ export function BroadcastControls({
     if (!connected) return "sem conexão com o servidor de transmissão";
     return null;
   })();
+
+  // O motivo da falha de conexão, quando houve. Sem ele a tela diz "sem conexão",
+  // que não é informação. Vem do `connect` que o `ConnectGate` executa, porque
+  // `ConnectionStateChanged` não traz motivo e `LiveKitRoom` não tem `onError`.
+  const failure = useLiveKitFailure();
+  const livekitReason =
+    failure && !connected
+      ? [sfuFailureHint(failure), failure.detail].filter(Boolean).join(" · ")
+      : null;
 
   const startBroadcast = useMutation(
     ({ storage }) => {
@@ -355,6 +366,7 @@ export function BroadcastControls({
       {blockedReason && !otherBroadcaster && auth.status !== "disabled" && (
         <span role="status" aria-live="polite" className="text-xs text-[var(--ink-muted)]">
           {blockedReason}
+          {livekitReason && ` — ${livekitReason}`}
         </span>
       )}
       {error && (

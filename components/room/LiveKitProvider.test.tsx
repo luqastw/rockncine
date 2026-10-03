@@ -13,27 +13,29 @@ const mocks = vi.hoisted(() => ({
   liveKitRoomProps: [] as Record<string, unknown>[],
   children: [] as unknown[],
   fetch: vi.fn(),
+  // O `Room` que o `ConnectGate` obtém do contexto. `connect` é quem carrega o
+  // motivo da falha, então precisa ser observável.
+  connect: vi.fn(),
 }));
 
-vi.mock("@livekit/components-react", () => ({
-  LiveKitRoom: ({
-    children,
-    ...props
-  }: {
-    children?: unknown;
-    token?: string;
-    serverUrl?: string;
-    connect?: boolean;
-    audio?: boolean;
-    video?: boolean;
-    screen?: boolean;
-    style?: Record<string, string>;
-  }) => {
-    mocks.liveKitRoomProps.push(props);
-    mocks.children.push(children);
-    return <div data-testid="livekit-room">{children as never}</div>;
-  },
-}));
+vi.mock("@livekit/components-react", async () => {
+  const actual = await vi.importActual<Record<string, unknown>>("@livekit/components-react");
+  return {
+    ...actual,
+    LiveKitRoom: ({
+      children,
+      ...props
+    }: {
+      children?: unknown;
+      [key: string]: unknown;
+    }) => {
+      mocks.liveKitRoomProps.push(props);
+      mocks.children.push(children);
+      return <div data-testid="livekit-room">{children as never}</div>;
+    },
+    useMaybeRoomContext: () => ({ connect: mocks.connect }),
+  };
+});
 
 import { LiveKitProvider } from "./LiveKitProvider";
 
@@ -47,6 +49,7 @@ function okResponse(body: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.fetch.mockResolvedValue(okResponse("token.jwt.valido"));
+  mocks.connect.mockResolvedValue(undefined);
   vi.stubGlobal("fetch", mocks.fetch);
 });
 
@@ -126,7 +129,9 @@ describe("LiveKitProvider", () => {
       audio: false,
       video: false,
       screen: false,
-      connect: true,
+      // `false` de propósito: quem conecta é o `ConnectGate`, porque só quem
+      // chama `room.connect()` captura o motivo da falha.
+      connect: false,
     });
   });
 
@@ -157,5 +162,45 @@ describe("LiveKitProvider", () => {
 
     await waitFor(() => expect(mocks.fetch).toHaveBeenCalled());
     expect(screen.getByText("a sala")).toBeTruthy();
+  });
+});
+
+describe("ConnectGate", () => {
+  it("conecta com a url e o token assim que os dois existem", async () => {
+    render(
+      <LiveKitProvider serverUrl={URL_LK} roomCode={ROOM}>
+        <p>a sala</p>
+      </LiveKitProvider>,
+    );
+
+    await waitFor(() => expect(mocks.connect).toHaveBeenCalledWith(URL_LK, "token.jwt.valido"));
+  });
+
+  // Sem token não há o que assinar, e tentar assim seria conectar com
+  // `undefined` e falhar com um erro que não significa nada.
+  it("não tenta conectar antes do token chegar", () => {
+    render(
+      <LiveKitProvider serverUrl={URL_LK} roomCode={ROOM}>
+        <p>a sala</p>
+      </LiveKitProvider>,
+    );
+
+    expect(mocks.connect).not.toHaveBeenCalled();
+  });
+
+  // O motivo da falha é o que torna 401-por-chave-de-outro-projeto
+  // diagnosticável. Uma rejeição tem de virar estado, não sumir.
+  it("uma falha de conexão não derruba a sala", async () => {
+    const falha = new Error("connection closed");
+    mocks.connect.mockRejectedValue(falha);
+
+    render(
+      <LiveKitProvider serverUrl={URL_LK} roomCode={ROOM}>
+        <p>a sala</p>
+      </LiveKitProvider>,
+    );
+
+    await waitFor(() => expect(mocks.connect).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByText("a sala")).toBeTruthy());
   });
 });
