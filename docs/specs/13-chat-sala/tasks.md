@@ -62,6 +62,10 @@ na última onda: typecheck, lint, 379 testes e build OK.
 - [x] **T-022** — dedupe entre envio otimista e eco do servidor. Cobre FR-005. Prova:
   `hooks/useChat.test.tsx` (AC-028).
 
+- [x] **T-023** — bolha da própria mensagem sem inversão: caixa `--bg-void` + fio de borda,
+  alinhamento à direita. Correção vinda de tela real do usuário (produção, 2026-10-03), com o
+  veredito registrado em `research.md` §7. Cobre FR-017. Prova: `Chat.test.tsx` (AC-013).
+
 **Lacunas que sobraram, e por quê** (a spec 13, seção 8, detalha): duas abas reais, navegador de
 verdade (rolagem suave, altura, teclado virtual) e leitor de tela. Não há como fechar nenhuma delas
 por teste neste repositório — exigem device ou socket.

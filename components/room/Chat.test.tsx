@@ -204,6 +204,22 @@ describe("Chat — agrupamento por autor", () => {
     expect(other?.dataset.self).toBeUndefined();
   });
 
+  // A sala é escura e monocromática: a mensagem própria se distingue por
+  // alinhamento e por uma caixa MAIS ESCURA, nunca por inversão. Inverter aqui
+  // foi o que, na tela real, transformou o log numa coluna branca quando havia
+  // uma pessoa só na sala.
+  it("destaca a própria mensagem sem inversão (AC-013, FR-017)", () => {
+    renderChat();
+    emitRemote({ text: "minha", authorId: "eu", authorName: "ana", ts: NOW });
+    const own = screen.getByText("minha").closest("li") as HTMLElement;
+
+    expect(own.innerHTML).toContain("bg-[var(--bg-void)]");
+    expect(own.innerHTML).toContain("text-[var(--ink)]");
+    // a inversão fica reservada a CTA e estado ativo
+    expect(own.innerHTML).not.toContain("invert-bg");
+    expect(own.innerHTML).not.toContain("invert-fg");
+  });
+
   it("dá identidade de iniciais e tom ao autor (AC-014)", () => {
     renderChat();
     emitRemote({ text: "oi", authorId: "u-bruno", authorName: "bruno silva", ts: NOW });

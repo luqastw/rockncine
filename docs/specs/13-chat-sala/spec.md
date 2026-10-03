@@ -122,8 +122,10 @@ contagem de não lidas.
   cabeçalho do chat.
 - **FR-016** O log DEVE indicar que há conteúdo acima enquanto `scrollTop > 0`, já que a barra de
   rolagem é escondida por decisão de design (`app/globals.css`).
-- **FR-017** A mensagem do próprio usuário DEVE ser destacada (bolha invertida, alinhada à direita),
-  com contraste de texto ≥ 4,5:1 entre a bolha e o texto.
+- **FR-017** A mensagem do próprio usuário DEVE ser destacada por alinhamento à direita e por uma
+  caixa mais escura que o log (`--bg-void` sobre `--bg-surface`), com texto `--ink` — contraste de
+  17:1. A mensagem própria NÃO DEVE usar inversão: `--invert-bg` é estado ativo e CTA (contador de
+  não lidas, "novas mensagens", "enviar"), e uma coluna de blocos brancos quebra o tema escuro.
 - **FR-018** Cada participante DEVE ser identificado por iniciais e por um de quatro tons de
   presença derivados do `userId`, sem matiz — a direção visual é monocromática (`app/globals.css`).
 - **FR-019** A rolagem automática DEVE ser suave quando o usuário estava colado no rodapé e
@@ -192,8 +194,9 @@ contagem de não lidas.
   "novas mensagens" no log e o cabeçalho mostra a contagem 1.
 - **AC-012** [FR-016] Given o log com `scrollTop` 0, When o usuário rola para cima, Then o log passa
   a expor estado de "há conteúdo acima".
-- **AC-013** [FR-017] Given uma mensagem do próprio usuário, When renderizada, Then o item tem a
-  classe de destaque e está alinhado à direita.
+- **AC-013** [FR-017] Given uma mensagem do próprio usuário, When renderizada, Then o item está
+  alinhado à direita, com `bg-[var(--bg-void)]` e `text-[var(--ink)]`, e sem nenhum token
+  `--invert-*`.
 - **AC-014** [FR-018] Given dois participantes com `userId` distintos, When renderizados, Then cada
   um tem iniciais e um tom de identidade.
 - **AC-028** [FR-005] Given uma mensagem enviada pelo caminho otimista, When o mesmo id volta pelo
@@ -309,6 +312,13 @@ contagem de não lidas.
   3. **Leitor de tela.** `aria-hidden` nas divisórias e `aria-live="off"` no indicador de digitação
      são as ferramentas documentadas para tirar nós da árvore de anúncios, mas o resultado
      audível só se confirma com NVDA, VoiceOver ou TalkBack.
+- **Correção depois de tela real: a bolha própria não inverte (FR-017).** A primeira versão
+  invertia a mensagem própria para branco. Em produção, com uma pessoa só na sala, quase toda linha
+  do log virou bloco branco e a sala escura passou a parecer clara — o oposto de "monocromático
+  focado no dark". O destaque passou a ser alinhamento + caixa mais escura (`--bg-void`) com fio de
+  borda. A inversão continua onde pertence: contador de não lidas, botão "novas mensagens" e
+  "enviar". Registrado porque a inversão não é um defeito de contraste — é um defeito de
+  hierarquia: sinal forte demais, no elemento que mais se repete na tela.
 - **Divergência: cabeçalho único parcial (FR-021).** O entregue é a remoção do cabeçalho de presença
   e a fileira única gatilho + ações; o `<Chat>` manteve a própria linha de título com o contador de
   não lidas. Juntar os dois exigiria tirar o contador de não lidas do `<Chat>` para fora — uma

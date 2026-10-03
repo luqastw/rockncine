@@ -120,15 +120,27 @@ const MessageItem = memo(function MessageItem({
 }) {
   const time = timeLabel(item.ts);
   return (
-    // `data-self` é o gancho de teste da AC-013 e a âncora de estilo da
-    // inversão: a mensagem própria é a única caixa invertida do log, porque o
-    // painel e o log já são `--bg-surface` e um fundo de superfície não se
-    // distingue de nada.
+    // `data-self` é o gancho de teste da AC-013.
+    //
+    // A mensagem própria é destacada por ALINHAMENTO e por uma caixa mais
+    // escura (`--bg-void` sobre o `--bg-surface` do log) com fio de borda — e
+    // não por inversão. A versão desta spec que invertia para branco mediu
+    // errado na tela real: com uma pessoa só na sala quase toda linha virava
+    // bloco branco, e a sala escura passava a parecer clara. A inversão
+    // (`--invert-bg`) fica reservada para o que é estado ativo e CTA — contador
+    // de não lidas, "novas mensagens", "enviar" — que é como o projeto já a usa
+    // (app/globals.css).
     <li
       data-self={isSelf ? "true" : undefined}
       className={`flex ${isSelf ? "justify-end" : ""} ${grouped ? "mt-0.5" : "mt-2"}`}
     >
-      <div className={isSelf ? "max-w-[85%] rounded-md bg-[var(--invert-bg)] px-3 py-1.5" : "max-w-full"}>
+      <div
+        className={
+          isSelf
+            ? "max-w-[85%] rounded-md border border-[var(--line)] bg-[var(--bg-void)] px-3 py-1.5"
+            : "max-w-full"
+        }
+      >
         {grouped ? (
           // No item agrupado o cabeçalho não está visível (FR-012), então autor e
           // horário precisam continuar disponíveis para o leitor de tela
@@ -149,11 +161,9 @@ const MessageItem = memo(function MessageItem({
             </time>
           </span>
         )}
-        <p
-          className={`break-words text-[15px] leading-relaxed ${
-            isSelf ? "text-[var(--invert-fg)]" : "text-[var(--ink)]"
-          }`}
-        >
+        {/* `--ink` sobre `--bg-void`: 17:1 de contraste, e a caixa é a única
+            diferença estrutural entre falar e falar (FR-017). */}
+        <p className="break-words text-[15px] leading-relaxed text-[var(--ink)]">
           {item.text}
         </p>
       </div>

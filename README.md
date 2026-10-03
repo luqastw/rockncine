@@ -19,9 +19,11 @@ Live at [rockncine.vercel.app](https://rockncine.vercel.app).
 - **Chat that reads like a conversation** — consecutive messages from the same author are grouped
   (no repeated name and timestamp), with day dividers, a "novas mensagens" divider, an unread counter
   in the header, and a soft shadow when there is content above (the scrollbar is hidden by design).
-  Your own message is the only inverted bubble; everyone is identified by initials and one of four
-  gray tones, because the visual language is monochrome. Screen readers get the conversation and
-  nothing else: dividers and the typing indicator are outside the announcement tree
+  Your own message is the only one in a bubble — right-aligned, one shade darker than the log, no
+  inversion, because inversion is reserved for CTAs and active state. Everyone is identified by
+  initials and one of four gray tones, since the visual language is monochrome. Screen readers get
+  the conversation and nothing else: dividers and the typing indicator are outside the announcement
+  tree
 - **Chat you can trust under a bad connection** — messages typed while the socket is down are queued
   (a local queue, not a Liveblocks feature flag) and flushed in order when the socket comes back;
   the composer says so. The feed is ordered by `ts`, so a message that arrives late lands in the

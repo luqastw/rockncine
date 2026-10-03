@@ -65,7 +65,7 @@ Leituras:
 | Aumentar o teto de 30 e virtualizar | Contradiz a decisão de histórico efêmero (spec 01, seção 2) e, com 30 itens, não há ganho. |
 | `content-visibility: auto` no item | Efeito colateral imprevisível em `jsdom`/Safari e sem ganho mensurável em 30 itens. |
 | Ordenar o feed só no envio, não na inserção | Não cobre a fila de reconexão (FR-005), que é justamente onde a ordem se perde. |
-| Escurecer a mensagem própria com `--bg-surface` | Invisível: o log e o painel de teatro já são `--bg-surface`. A inversão (`--invert-bg`) é o mecanismo que o projeto já usa para estado ativo (`app/globals.css:25-26`). |
+| Escurecer a mensagem própria com `--bg-surface` | Invisível: o log e o painel de teatro já são `--bg-surface`. A alternativa seguinte foi a inversão, que **mediu errado em tela real** (ver seção 7). O fundo certo é `--bg-void`, um degrau abaixo do `--bg-surface` do log. |
 | Avatar com cor por participante | Viola a direção visual monocromática (`app/globals.css:4-5`). Diferenciação por forma (iniciais) e por peso (quatro tons). |
 | Recuo do `visualViewport` para o teclado virtual | Trocaria um defeito pequeno (campo fora da vista ao focar) por risco de o campo sair da caixa num caminho sem device de teste. Fica registrado como divergência da spec 13, seção 8. |
 | Busca no histórico / prévia de link | Dependem de histórico persistente (não existe) e de proxy externo (SSRF), respectivamente. Não-objetivos. |
@@ -85,3 +85,21 @@ tecla e leitura do log.
   dobram e a leitura por contador passa a exigir `act` por evento.
 - Comportamento com três ou mais participantes simultâneos e presença mexendo junto com chat: não
   medido.
+
+## 7. Correção pós-deploy: a bolha própria
+
+O que foi implementado e medido errado, visto na tela real em 2026-10-03: a mensagem própria era
+invertida para branco (`--invert-bg` + `--invert-fg`). Com uma pessoa só na sala, quase toda linha
+do log virou bloco branco — a sala escura passava a parecer clara, que é o oposto da direção
+visual (monocromática, dark-first, `docs/specs/01-fundacao-mvp/spec.md` seção 8).
+
+A inversão não é proibida: é o mecanismo de estado ativo e CTA do projeto, e continua nos três
+lugares onde o peso do sinal é pequeno — contador de não lidas, botão "novas mensagens", botão
+"enviar". O que estava errado foi aplicá-la ao elemento que mais se repete na tela.
+
+Substituição: alinhamento à direita + caixa `--bg-void` (um degrau abaixo do `--bg-surface` do log)
+com fio `--line`, texto `--ink`. Contraste de 17:1, e a diferença é estrutural (preenchimento),
+não só de alinhamento — a coluna do log fica legível como texto corrido de um lado e caixa do outro.
+
+Lição para o resto da interface: sinalização por inversão precisa ser limitada a uma ou duas
+ocorrências por tela. Aqui eram vinte.
