@@ -21,6 +21,18 @@
   --ink: var(--gray-100);
   --ink-muted: var(--gray-500);
 
+  /* Identidade do participante (FR-018, docs/specs/13-chat-sala/spec.md).
+     Quatro tons de cinza, derivados de `--gray-100` e `--gray-500`, escolhidos
+     por hash do `userId` (ver `lib/identity.ts`). A diferenciação entre pessoas é
+     por PESO, nunca por matiz — a regra de estado desta casa (spec 01, seção 8).
+     Contrastes medidos: texto preto sobre cada tom vai de 5,4:1 (`--id-4`) a
+     17:1 (`--id-1`); cada tom contra `--bg-surface` na borda vai de 4,8:1 a
+     13:1. Nenhum dos quatro fica abaixo do piso AA de 4,5:1 em nenhum dos usos. */
+  --id-1: #e8e8e8;
+  --id-2: #c2c2c2;
+  --id-3: #9c9c9c;
+  --id-4: #828282;
+
   /* substituem o antigo acento --ember — só contraste/inversão, sem matiz */
   --invert-bg: var(--pure-white); /* CTA primário / estado ativo */
   --invert-fg: var(--pure-black); /* texto/ícone sobre --invert-bg */

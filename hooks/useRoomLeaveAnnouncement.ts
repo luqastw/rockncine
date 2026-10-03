@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { useOthersListener } from "@liveblocks/react";
-import { parseChatEvent, type ChatFeedItem } from "@/lib/chat-event";
+import { parseChatEvent } from "@/lib/chat-event";
+import { appendChatItem } from "@/lib/chat-feed";
 
 // refresh de página ou queda de rede breve gera um "leave" seguido de um
 // "enter" do mesmo userId em poucos segundos — sem segurar o "leave", cada F5
@@ -20,10 +21,12 @@ const LEAVE_DEBOUNCE_MS = 4000;
 // Precisa viver no mesmo nível de RoomExperience (nunca dentro de <Chat>,
 // mesma razão do useRoomJoinAnnouncement): um unmount/remount por toggle de
 // fullscreen/teatro não pode reprocessar o histórico de presence do zero.
-export function useRoomLeaveAnnouncement(
-  appendMessage: (event: ChatFeedItem) => void,
-  myUserId: string,
-) {
+//
+// `appendMessage` deixou de ser parâmetro: o feed mora numa store de módulo
+// (FR-001, docs/specs/13-chat-sala/spec.md) e `appendChatItem` é importado
+// direto. Passar a função como prop obrigaria a sala a ter a assinatura do feed
+// na mão — que é justamente o estado que saiu do componente de sala.
+export function useRoomLeaveAnnouncement(myUserId: string) {
   // userId -> timeout pendente de "saiu", pra poder cancelar se um "enter" do
   // mesmo userId chegar antes do timer estourar (reconexão/F5).
   const pendingRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -63,7 +66,7 @@ export function useRoomLeaveAnnouncement(
           text: `${name} saiu da sala`,
           ts: Date.now(),
         });
-        if (event) appendMessage(event);
+        if (event) appendChatItem(event);
       }, LEAVE_DEBOUNCE_MS);
       pendingRef.current.set(userId, timeoutId);
       return;

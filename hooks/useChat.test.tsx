@@ -1,6 +1,8 @@
 import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useChat } from "./useChat";
+import { useChatFeed } from "./useChatFeed";
+import { appendChatItem, getChatFeed, resetChatFeed } from "@/lib/chat-feed";
 import { MAX_TEXT_LENGTH, parseChatEvent } from "@/lib/chat-event";
 import type { ChatEvent, SystemEvent } from "@/liveblocks.config";
 
@@ -14,15 +16,18 @@ type Listener = (payload: { event: unknown }) => void;
 const listeners: Listener[] = [];
 const broadcastMock = vi.fn();
 
+const statusMock = { current: "connected" };
+
 vi.mock("@liveblocks/react", () => ({
   useBroadcastEvent: () => broadcastMock,
   useEventListener: (fn: Listener) => {
     listeners.push(fn);
   },
+  useStatus: () => statusMock.current,
 }));
 
-// `act` em volta: os dois caminhos tocam `setMessages`, e sem ele o React avisa
-// de atualização fora de act e a asserção roda antes do commit.
+// `act` em volta: os dois caminhos tocam a store do feed, e sem ele o React
+// avisa de atualização fora de act e a asserção roda antes do commit.
 function emit(event: unknown) {
   act(() => {
     for (const fn of listeners) fn({ event });
@@ -32,9 +37,12 @@ function emit(event: unknown) {
 function Probe({ onReady }: { onReady: (api: ReturnType<typeof useChat>) => void }) {
   const api = useChat({ userId: "me", userName: "eu" });
   onReady(api);
+  // O log é quem assina o feed agora (`useChatFeed`, dentro de <Chat>) — o
+  // emissor não devolve mais `messages`. O Probe é esse log.
+  const messages = useChatFeed("SALA1234");
   return (
     <ul>
-      {api.messages.map((m) => (
+      {messages.map((m) => (
         <li key={m.id}>{m.type === "SYSTEM_MESSAGE" ? m.text : `${m.authorName}: ${m.text}`}</li>
       ))}
     </ul>
@@ -120,6 +128,7 @@ describe("useChat — entrada pela rede", () => {
   beforeEach(() => {
     listeners.length = 0;
     broadcastMock.mockClear();
+    resetChatFeed();
     render(<Probe onReady={() => {}} />);
   });
 
@@ -146,6 +155,24 @@ describe("useChat — entrada pela rede", () => {
     emit(event);
     expect(screen.getAllByText("ana: oi")).toHaveLength(1);
   });
+
+  // O caminho otimista (FR-005) é o que cria a interseção entre o que o cliente
+  // já mostrou e o que chega da rede: se o mesmo id voltar pelo broadcast depois
+  // de reconexão, a linha duplica na tela sem este dedupe.
+  it("não duplica quando o mesmo id volta pelo canal depois do envio otimista", () => {
+    let api: ReturnType<typeof useChat>;
+    render(<Probe onReady={(a) => (api = a)} />);
+
+    act(() => api.sendMessage("oi pessoal"));
+    const enviado = broadcastMock.mock.calls[0][0];
+
+    // o servidor devolve exatamente o payload que foi transmitido
+    emit(enviado);
+    // a store tem UM item: nem a linha otimista, nem a que veio da rede. A
+    // asserção é na store e não no DOM porque render() monta mais de um Probe
+    // neste arquivo — cada um com sua própria `<ul>`, ambos corretos.
+    expect(getChatFeed("SALA1234")).toHaveLength(1);
+  });
 });
 
 describe("useChat — envio local", () => {
@@ -154,6 +181,7 @@ describe("useChat — envio local", () => {
   beforeEach(() => {
     listeners.length = 0;
     broadcastMock.mockClear();
+    resetChatFeed();
     render(<Probe onReady={(a) => (api = a)} />);
   });
 
@@ -176,5 +204,46 @@ describe("useChat — envio local", () => {
     const enviado = broadcastMock.mock.calls[0][0] as ChatEvent;
     expect(enviado.text).toHaveLength(MAX_TEXT_LENGTH);
     expect(parseChatEvent(enviado)).not.toBeNull();
+  });
+
+  // AC-005 (FR-005): fora de `connected` a mensagem NÃO é transmitida na hora
+  // (o socket não está pronto e o broadcast seria descartado em silêncio) e
+  // também não se perde: fica numa fila local que despeja quando a conexão volta.
+  it("não transmite fora de conexão e despeja a fila quando ela volta", () => {
+    statusMock.current = "reconnecting";
+    const { rerender } = render(<Probe onReady={(a) => (api = a)} />);
+
+    act(() => api.sendMessage("durante a queda"));
+    act(() => api.sendMessage("e a segunda"));
+    // nada sai com o socket fora — antes, o Liveblocks descartava em silêncio
+    expect(broadcastMock).not.toHaveBeenCalled();
+    // e nada se perde: as duas estão no log local de quem escreveu
+    expect(getChatFeed("SALA1234")).toHaveLength(2);
+
+    statusMock.current = "connected";
+    act(() => {
+      rerender(<Probe onReady={() => {}} />);
+    });
+
+    // a fila despeja inteira e NA ORDEM em que foi escrita
+    expect(broadcastMock).toHaveBeenCalledTimes(2);
+    expect(broadcastMock.mock.calls.map((call) => (call[0] as ChatEvent).text)).toEqual([
+      "durante a queda",
+      "e a segunda",
+    ]);
+  });
+
+  it("appendMessage injeta mensagem de sistema no mesmo feed", () => {
+    act(() => api.appendMessage({ type: "SYSTEM_MESSAGE", id: "s1", text: "bruno saiu", ts: Date.now() }));
+    expect(screen.getByText("bruno saiu")).toBeTruthy();
+  });
+
+  it("appendMessage dedupe por id como o resto do feed", () => {
+    const item = { type: "SYSTEM_MESSAGE" as const, id: "s2", text: "bruno saiu", ts: Date.now() };
+    act(() => {
+      appendChatItem(item);
+      appendChatItem(item);
+    });
+    expect(screen.getAllByText("bruno saiu")).toHaveLength(1);
   });
 });

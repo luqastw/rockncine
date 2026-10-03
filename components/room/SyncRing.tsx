@@ -1,10 +1,14 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import type { RoomEvent } from "@/liveblocks.config";
 import type { VideoSourceKind } from "@/lib/video-source";
 
-export function SyncRing({
+// `memo` com `lastEvent` no lugar de uma flag de "mudou": o objeto só troca de
+// identidade em evento de player, e o log de chat não passa por aqui (FR-010,
+// docs/specs/13-chat-sala/spec.md). Os `children` são elemento React e mudam a
+// cada render do pai, então este memo segura a moldura, não a árvore do player.
+export const SyncRing = memo(function SyncRing({
   isPlaying,
   source,
   lastEvent,
@@ -65,4 +69,4 @@ export function SyncRing({
       )}
     </div>
   );
-}
+});

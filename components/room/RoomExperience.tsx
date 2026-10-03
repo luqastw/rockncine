@@ -9,9 +9,12 @@ import { useNativeVideoSync } from "@/hooks/useNativeVideoSync";
 import { useLastRoomEvent } from "@/hooks/useLastRoomEvent";
 import { useRoomJoinAnnouncement } from "@/hooks/useRoomJoinAnnouncement";
 import { useRoomLeaveAnnouncement } from "@/hooks/useRoomLeaveAnnouncement";
-import { useChat } from "@/hooks/useChat";
 import { SyncRing } from "@/components/room/SyncRing";
-import { PresenceList } from "@/components/room/PresenceList";
+import {
+  PresenceList,
+  PresenceTrigger,
+  usePresenceDisclosure,
+} from "@/components/room/PresenceList";
 import { GenericIframe } from "@/components/room/GenericIframe";
 import { isSafeEmbedUrl } from "@/lib/video-source";
 import { NativeVideoPlayer } from "@/components/room/NativeVideoPlayer";
@@ -127,16 +130,14 @@ export function RoomExperience({
   // aside com o Chat desmonta/remonta ao entrar em fullscreen ou alternar
   // teatro, o que reenviava "entrou na sala" a cada toggle (bug real).
   useRoomJoinAnnouncement(userName);
-  // useChat sobe pra este nível (em vez de instanciado dentro de <Chat>)
-  // pra existir uma única fonte de mensagens: useRoomLeaveAnnouncement
-  // também precisa injetar mensagens de sistema no mesmo feed, e mora aqui
-  // pela mesma razão do join acima — instanciar duas vezes duplicaria
-  // estado (e o dedup de `appendMessage` é por instância).
-  const { messages: chatMessages, sendMessage: sendChatMessage, appendMessage } = useChat({
-    userId,
-    userName,
-  });
-  useRoomLeaveAnnouncement(appendMessage, userId);
+  // O feed de chat NÃO é estado deste componente (FR-001/FR-002,
+  // docs/specs/13-chat-sala/spec.md): ele vive na store de `lib/chat-feed.ts` e
+  // é assinado dentro do `<Chat>`. Com `useChat` aqui, cada mensagem recebida
+  // acordava a árvore inteira da sala — presença, sync, player, cabeçalho
+  // (medido em docs/specs/13-chat-sala/research.md, seção 2). O que fica aqui é
+  // só o emissor, dentro do `<Chat>`, e o reset da store no mount.
+  useRoomLeaveAnnouncement(userId);
+  const presence = usePresenceDisclosure();
 
   const {
     resolution,
@@ -709,11 +710,19 @@ export function RoomExperience({
               : "p-2 -m-2"
           }`}
         >
-          <section className="flex min-h-0 shrink-0 flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
-                presença
-              </h2>
+          {/* A presença perdeu o cabeçalho próprio (FR-021): o gatilho e as
+              ações da sala dividiam a mesma fileira, e com o `<h2>presença` por
+              cima eram duas linhas de cabeçalho para um painel de 272px. O que
+              sobra é a fileira única com quem está na sala, as ações e — logo
+              abaixo, só quando aberto — a lista. */}
+          <section className="flex shrink-0 flex-col gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <PresenceTrigger
+                expanded={presence.expanded}
+                onToggle={presence.toggle}
+                myUserId={userId}
+                myName={userName}
+              />
               <RoomActions
                 onLoadVideo={openLoadModal}
                 onToggleTheater={toggleTheater}
@@ -723,14 +732,14 @@ export function RoomExperience({
                 isEconomy={economyMode}
               />
             </div>
-            <PresenceList myName={userName} />
+            <PresenceList expanded={presence.expanded} myUserId={userId} myName={userName} />
           </section>
           {/* `min-h-11` (e não `min-h-0`) no bloco do chat: é o piso que
               garante altura para o próprio composer (44px), que fica preso no
               rodapé dele. Sem o piso, em viewport muito curta o bloco encolhia
               a menos que o campo de mensagem e o campo era recortado. */}
           <section className="flex min-h-11 flex-1 flex-col gap-3">
-            <Chat userId={userId} messages={chatMessages} sendMessage={sendChatMessage} />
+            <Chat userId={userId} userName={userName} roomCode={roomCode} />
           </section>
         </aside>
 

@@ -3,6 +3,11 @@ import type { VideoSourceKind } from "@/lib/video-source";
 export type RoomPresence = {
   userId: string;
   name: string;
+  // `true` enquanto a pessoa está digitando (FR-029/FR-030,
+  // docs/specs/13-chat-sala/spec.md). Opcional porque um cliente de versão
+  // anterior, ou uma presence que acabou de entrar, pode não trazer o campo — e
+  // ausência é lida como "não está digitando".
+  typing?: boolean;
 };
 
 // Quem está transmitindo a própria tela. Vive no storage — e não no data

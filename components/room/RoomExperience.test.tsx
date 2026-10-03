@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ScreenSharePresets, Track } from "livekit-client";
 import { DEFAULT_BROADCAST_QUALITY } from "@/lib/broadcast-quality";
 import type { BroadcastState } from "@/liveblocks.config";
+import { appendChatItem, resetChatFeed } from "@/lib/chat-feed";
 
 // O que este teste cobre: o gate do player. Com `storage.broadcast === null` a
 // sala mostra o player normal; com o storage preenchido, `PlayerShell` e
@@ -42,6 +43,8 @@ const mocks = vi.hoisted(() => {
     writes,
     setScreenShareEnabled: vi.fn(),
     useTracksReturn: [] as unknown[],
+    // contador de renders da presença (ver o mock de `PresenceList` abaixo)
+    presenceRenders: { n: 0 },
     livekitRoom,
     emitirLiveKitRoom: (evento: string, payload: unknown) => {
       for (const call of livekitRoom.on.mock.calls) {
@@ -118,6 +121,10 @@ vi.mock("@liveblocks/react", () => ({
     useCallback((...args: unknown[]) => callback({ storage: mocks.storage }, ...args), deps),
   useBroadcastEvent: () => vi.fn(),
   useEventListener: () => {},
+  // Tupla: presença E atualizador. O `Chat` real chama o segundo para marcar
+  // digitação, e um mock com um elemento só quebra em tempo de digitação, não
+  // no render.
+  useMyPresence: () => [{ userId: "eu", name: "ana" }, vi.fn()],
 }));
 
 // Os três hooks de sync devolvem um `controller` sempre presente (é o contrato
@@ -136,13 +143,18 @@ vi.mock("@/hooks/useNativeVideoSync", () => ({
 vi.mock("@/hooks/useLastRoomEvent", () => ({ useLastRoomEvent: () => null }));
 vi.mock("@/hooks/useRoomJoinAnnouncement", () => ({ useRoomJoinAnnouncement: () => {} }));
 vi.mock("@/hooks/useRoomLeaveAnnouncement", () => ({ useRoomLeaveAnnouncement: () => {} }));
-vi.mock("@/hooks/useChat", () => ({
-  useChat: () => ({ messages: [], sendMessage: vi.fn(), appendMessage: vi.fn() }),
+// O `Chat` aqui é o de verdade: o isolamento de render que a spec 13 exige
+// (FR-002, AC-001) só pode ser medido com o log real montado dentro da sala.
+// Já a presença é substituída por um CONTADOR de renders: ela é o componente
+// "fora do log" que a mensagem de chat não pode acordar.
+vi.mock("@/components/room/PresenceList", () => ({
+  PresenceTrigger: () => {
+    mocks.presenceRenders.n += 1;
+    return <div data-testid="presence-trigger" />;
+  },
+  PresenceList: () => <div data-testid="presence" />,
+  usePresenceDisclosure: () => ({ expanded: false, toggle: () => {} }),
 }));
-// Chat, presença e oval de carga são chrome: existe player embaixo deles e o
-// que está sob teste aqui.
-vi.mock("@/components/room/Chat", () => ({ Chat: () => <div data-testid="chat" /> }));
-vi.mock("@/components/room/PresenceList", () => ({ PresenceList: () => <div data-testid="presence" /> }));
 
 vi.mock("@livekit/components-react", () => ({
   LiveKitRoom: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -238,6 +250,7 @@ beforeEach(() => {
   Object.assign(mocks.root, { video: VIDEO, player: PLAYER, broadcast: null });
   mocks.writes.length = 0;
   mocks.useTracksReturn = [];
+  mocks.presenceRenders.n = 0;
   mocks.auth = { status: "ready" };
   mocks.connection = "connected";
   mocks.failure = null;
@@ -1086,5 +1099,50 @@ describe("o host não ouve a própria transmissão", () => {
     renderRoom();
 
     expect(screen.getByText(/sem áudio/i)).toBeTruthy();
+  });
+});
+
+// ── isolamento do estado do chat (FR-002, docs/specs/13-chat-sala/spec.md) ─────
+//
+// A medição original (docs/specs/13-chat-sala/research.md, seção 2) era: 1
+// mensagem recebida re-renderiza a presença, que é o componente "fora do log"
+// mais próximo. Este bloco é a regressão que impede a volta: o `Chat` real monta
+// dentro da sala e a presença é um contador.
+
+describe("isolamento do estado do chat", () => {
+  // A store do feed é a porta de entrada: é por ela que uma "mensagem remota"
+  // chega sem passar pelo socket, que não existe em jsdom.
+  beforeEach(() => {
+    resetChatFeed();
+  });
+
+  it("não re-renderiza nada fora do log quando chega mensagem (AC-001)", () => {
+    renderRoom();
+    for (let i = 1; i <= 30; i++) {
+      act(() => appendChatItem({ type: "CHAT_MESSAGE", id: `c${i}`, authorId: "bruno", authorName: "bruno", text: `msg ${i}`, ts: Date.now() }));
+    }
+    const antes = mocks.presenceRenders.n;
+    expect(screen.getByRole("log").querySelectorAll("li").length).toBeGreaterThan(0);
+
+    act(() =>
+      appendChatItem({ type: "CHAT_MESSAGE", id: "nova", authorId: "bruno", authorName: "bruno", text: "chegou agora", ts: Date.now() }),
+    );
+
+    expect(mocks.presenceRenders.n).toBe(antes);
+    expect(screen.getByText("chegou agora")).toBeTruthy();
+  });
+
+  it("não re-renderiza nada fora do log quando o campo de mensagem muda (AC-003)", () => {
+    renderRoom();
+    const antes = mocks.presenceRenders.n;
+
+    const campo = screen.getByLabelText("mensagem para o chat da sala");
+    act(() => {
+      fireEvent.change(campo, { target: { value: "d" } });
+      fireEvent.change(campo, { target: { value: "da" } });
+    });
+
+    expect(mocks.presenceRenders.n).toBe(antes);
+    expect((campo as HTMLTextAreaElement).value).toBe("da");
   });
 });

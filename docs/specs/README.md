@@ -22,6 +22,7 @@ de redirecionamento; histórico completo do monolito continua disponível no git
 | 09 | [Resolução client-side, FPS e modo economy](09-resolucao-client/spec.md) | implementado |
 | 10 | [Exclusão de sala pelo dono e limite de histórico do chat](10-exclusao-sala-limite-chat/spec.md) | implementado (verificação manual em navegador pendente) |
 | 12 | [Transmissão por screen share](12-transmissao-screen-share/spec.md) — modo transmissão via LiveKit Cloud, contornando o sync layer | implementado (captura real, track do SFU, áudio e troca de aba sem verificação em browser) |
+| 13 | [Chat da sala](13-chat-sala/spec.md) — feed fora do estado da sala, envio em fila, log legível, composer de verdade | implementado (medição de altura do painel em device real segue manual) |
 
 A pasta é numerada, não datada — as rodadas 02 a 14 do arquivo original foram todas escritas em
 2026-08-20/21, então uma data não separaria a ordem real de nada.
@@ -75,6 +76,13 @@ como "pendente" com 14.1-14.4/14.6-14.7 já implementados (só o 14.5, código d
 caracteres, segue aberto em `lib/room-code.ts`); a 08 aparecia como "rascunho" e está implementada,
 com o CA1.2 atendido só em parte (o cooldown do YouTube mudou de duração, 400 → 1500 ms, mas
 continua sendo timeout fixo em vez de resolução por evento); e a 09 não estava na tabela.
+
+**O que a spec 13 mudou no chat.** O estado do feed saiu do componente de sala para uma store de
+módulo (`lib/chat-feed.ts`), assinada dentro do `<Chat>`; `useChat` voltou a ser só o emissor e não
+devolve mais `messages` — isso é uma divergência declarada da spec 10, seção 7, e está no FR-008 da
+13. O envio passou a ser enfileirado fora de `connected` em vez de descartado. E o log ganhou
+agrupamento por autor, divisórias de dia e de não lidas, identidade por iniciais, bolha na própria
+mensagem e contador de não lidas.
 
 **Pendências que sobrevivem à migração:** item 14.5 da spec 07 (decisão de produto); CA1.2 da spec
 08 (exige teste com dois navegadores); itens 3/4/6 da seção 9.3 da spec 02 (sem medição); achados 9

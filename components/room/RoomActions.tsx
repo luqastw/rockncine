@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { PlusIcon, TheaterIcon } from "@/components/room/player/icons";
 
 function EconomyIcon({ className }: { className?: string }) {
@@ -25,7 +26,13 @@ function EconomyIcon({ className }: { className?: string }) {
 // 1181). Quebrando em duas linhas, os três ficam inteiros e clicáveis. Fora do
 // teatro nada muda: "carregar vídeo" + o botão de economy somam 176px e cabem
 // nos 256px.
-export function RoomActions({
+// `memo` é defesa em profundidade, não o isolamento (FR-010,
+// docs/specs/13-chat-sala/spec.md): o isolamento real vem do feed de chat viver
+// fora do estado da sala. As props aqui são todas estáveis — três booleanos e
+// três `useCallback` — então evento de presença ou de sync não redesenha a
+// fileira. `PlayerShell` NÃO entra nesta lista: recebe `controller`, que os
+// hooks de sync recriam a cada render, e memoizar ali seria placebo.
+export const RoomActions = memo(function RoomActions({
   onLoadVideo,
   onToggleTheater,
   isTheater,
@@ -86,4 +93,4 @@ export function RoomActions({
       )}
     </div>
   );
-}
+});

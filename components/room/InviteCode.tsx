@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 
 type CopyStatus = "idle" | "copied" | "failed";
 
@@ -10,7 +10,10 @@ const STATUS_TIMEOUT_MS = 2000;
 // de convite em lugar nenhum do app, e convidar alguém é o fluxo central de
 // uma watch-party (achado 6 da auditoria). Copia a URL completa — o código
 // curto (lib/room-code.ts) continua visível pra quem prefere ditar.
-export function InviteCode({ code }: { code: string }) {
+// `memo` porque a prop é uma string imutável: evento de presença ou de sync na
+// sala não tem por que redesenhar o botão de convidar (FR-010,
+// docs/specs/13-chat-sala/spec.md).
+export const InviteCode = memo(function InviteCode({ code }: { code: string }) {
   const [status, setStatus] = useState<CopyStatus>("idle");
 
   useEffect(() => {
@@ -66,4 +69,4 @@ export function InviteCode({ code }: { code: string }) {
       </span>
     </div>
   );
-}
+});
