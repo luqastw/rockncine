@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConnectionError, ConnectionErrorReason } from "livekit-client";
+import { ConnectionError } from "livekit-client";
 import { describeConnectError, sfuFailureHint } from "./sfu-connect";
 
 // A tradução do erro de conexão é a única forma de o motivo aparecer na sala:

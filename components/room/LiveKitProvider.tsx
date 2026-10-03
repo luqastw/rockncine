@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { LiveKitRoom, useMaybeRoomContext } from "@livekit/components-react";
+import { LiveKitRoom } from "@livekit/components-react";
 import { describeConnectError, type SfuFailure } from "@/lib/sfu-connect";
 
 // Estado da credencial e da conexão com o SFU, para a sala poder ser honesta
@@ -72,6 +72,11 @@ export function LiveKitProvider({
   // `setState` de `useState` é estável, mas envolvê-lo mantém a assinatura de
   // `ConnectGate` explícita e o efeito abaixo livre da regra de dependências.
   const clearFailure = useCallback(() => setFailure(null), []);
+  // `describeConnectError` nunca lança, então mesmo um erro inesperado aqui vira
+  // uma falha legível em vez de derrubar a sala.
+  const reportFailure = useCallback((error: unknown) => {
+    setFailure(describeConnectError(error));
+  }, []);
 
   useEffect(() => {
     if (!serverUrl) return;
@@ -129,13 +134,26 @@ export function LiveKitProvider({
         <LiveKitRoom
           token={token}
           serverUrl={serverUrl}
-          // `connect={false}` e a conexão é feita por `<ConnectGate>` abaixo.
-          // O componente só sabe o motivo da falha se a promise do `connect` for
-          // capturada por quem chamou, e quem chama é o `LiveKitRoom` — que não
-          // expõe `onError`. Sem este `false`, o motivo da falha mais
-          // diagnosticável do produto (401 por chave de outro projeto) seria
-          // impossível de ver.
-          connect={false}
+          // `connect` fica LIGADO de propósito, e quem conecta é o próprio
+          // `LiveKitRoom`.
+          //
+          // A versão anterior desta linha punha `connect={false}` e conectava de
+          // dentro, num `ConnectGate`. Isso não funciona: o efeito do Livekit tem
+          // um `else` que chama `room.disconnect()` quando `connect` é falso, e
+          // efeito de pai roda DEPOIS do do filho. A ordem real era o `ConnectGate`
+          // chamar `connect()` e o Livekit desconectar em seguida — a promessa
+          // pendente era rejeitada com `Cancelled: Client initiated disconnect`, e
+          // a transmissão não subia nunca. Era a causa do sintoma, não do
+          // diagnóstico.
+          //
+          // `onError` é a prop que traz o motivo — um `ConnectionError` com
+          // `.status` (o HTTP do handshake) e `.reasonName`. Ela existe desde
+          // sempre: a ausência anterior foi um grep meu no bundle errado, não uma
+          // limitação da biblioteca.
+          onError={reportFailure}
+          // Conectar limpa a falha anterior: o handshake é assíncrono e o erro de
+          // uma tentativa velha ficaria na tela com a transmissão já funcionando.
+          onConnected={clearFailure}
           // Nada é publicado ao entrar: o único áudio e o único vídeo do app são os
           // que o host capturar (FR-015). Nenhuma permissão de microfone é pedida,
           // e a captura de tela só acontece no clique do botão.
@@ -148,66 +166,9 @@ export function LiveKitProvider({
           // da sala passaria a depender do conteúdo dele.
           style={{ display: "contents" }}
         >
-          <ConnectGate
-            serverUrl={serverUrl}
-            token={token}
-            onSettled={setFailure}
-            onConnected={clearFailure}
-          >
-            {children}
-          </ConnectGate>
+          {children}
         </LiveKitRoom>
       </LiveKitFailureContext.Provider>
     </LiveKitAuthContext.Provider>
   );
-}
-
-/**
- * Conecta a room e reporta a falha.
- *
- * Fica DENTRO do `LiveKitRoom` porque o objeto `Room` só existe ali — o contexto
- * é criado pelo componente. Renderiza `children` sem 不 fazer nada: a
- * conexão é efeito, não markup.
- */
-function ConnectGate({
-  serverUrl,
-  token,
-  onSettled,
-  onConnected,
-  children,
-}: {
-  serverUrl: string;
-  token: string | undefined;
-  onSettled: (failure: SfuFailure) => void;
-  onConnected: () => void;
-  children: ReactNode;
-}) {
-  const room = useMaybeRoomContext();
-
-  useEffect(() => {
-    // Sem token não há o que assinar. O `LiveKitRoom` esperaria em silêncio; o
-    // botão de transmitir é que falharia no clique, sem motivo.
-    if (!room || !token) return;
-    let cancelled = false;
-
-    room
-      .connect(serverUrl, token)
-      .then(() => {
-        if (cancelled) return;
-        // Uma falha antiga não pode sobreviver a uma conexão boa: o log do
-        // handshake é assíncrono e o erro da primeira tentativa continuaria na
-        // tela com a transmissão já funcionando.
-        onConnected();
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        onSettled(describeConnectError(error));
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [room, serverUrl, token, onSettled, onConnected]);
-
-  return <>{children}</>;
 }

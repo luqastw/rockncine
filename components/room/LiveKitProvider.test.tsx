@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // O que este teste cobre: a degradação e a ordem. Sem `serverUrl` a árvore da
@@ -13,9 +13,6 @@ const mocks = vi.hoisted(() => ({
   liveKitRoomProps: [] as Record<string, unknown>[],
   children: [] as unknown[],
   fetch: vi.fn(),
-  // O `Room` que o `ConnectGate` obtém do contexto. `connect` é quem carrega o
-  // motivo da falha, então precisa ser observável.
-  connect: vi.fn(),
 }));
 
 vi.mock("@livekit/components-react", async () => {
@@ -33,11 +30,12 @@ vi.mock("@livekit/components-react", async () => {
       mocks.children.push(children);
       return <div data-testid="livekit-room">{children as never}</div>;
     },
-    useMaybeRoomContext: () => ({ connect: mocks.connect }),
   };
 });
 
-import { LiveKitProvider } from "./LiveKitProvider";
+import { ConnectionError } from "livekit-client";
+import { sfuFailureHint } from "@/lib/sfu-connect";
+import { LiveKitProvider, useLiveKitFailure } from "./LiveKitProvider";
 
 const ROOM = "SALA1234";
 const URL_LK = "wss://projeto.livekit.cloud";
@@ -48,8 +46,14 @@ function okResponse(body: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // `liveKitRoomProps` e `children` são arrays comuns, não mocks — `clearAllMocks`
+  // não os limpa. Sem esta linha, o teste N lê as props do render do teste N-1, de
+  // um componente já desmontado: o `onError` capturado chama `setState` de um
+  // componente morto, que é no-op, e o motivo nunca aparece na tela. A falha se
+  // apresenta como "o contexto não propaga", que não é onde está a causa.
+  mocks.liveKitRoomProps.length = 0;
+  mocks.children.length = 0;
   mocks.fetch.mockResolvedValue(okResponse("token.jwt.valido"));
-  mocks.connect.mockResolvedValue(undefined);
   vi.stubGlobal("fetch", mocks.fetch);
 });
 
@@ -129,10 +133,12 @@ describe("LiveKitProvider", () => {
       audio: false,
       video: false,
       screen: false,
-      // `false` de propósito: quem conecta é o `ConnectGate`, porque só quem
-      // chama `room.connect()` captura o motivo da falha.
-      connect: false,
     });
+    // `connect` NÃO pode ser `false`: o efeito do Livekit chama
+    // `room.disconnect()` nesse caso, e qualquer conexão iniciada de dentro morre
+    // com "Client initiated disconnect". Quem conecta é o próprio `LiveKitRoom`,
+    // e o motivo chega pelo `onError`.
+    expect(mocks.liveKitRoomProps[0].connect).not.toBe(false);
   });
 
   // Livekit fora do ar não pode derrubar a sala: a conexão do Liveblocks, que
@@ -165,42 +171,70 @@ describe("LiveKitProvider", () => {
   });
 });
 
-describe("ConnectGate", () => {
-  it("conecta com a url e o token assim que os dois existem", async () => {
+describe("motivo da falha de conexão", () => {
+  // Quem chama `room.connect()` é o `LiveKitRoom`, e o motivo chega por `onError`.
+  // Sem estas duas props o botão de transmitir falha no clique sem dizer nada.
+  it("liga o onError e o onConnected no LiveKitRoom", () => {
     render(
       <LiveKitProvider serverUrl={URL_LK} roomCode={ROOM}>
         <p>a sala</p>
       </LiveKitProvider>,
     );
 
-    await waitFor(() => expect(mocks.connect).toHaveBeenCalledWith(URL_LK, "token.jwt.valido"));
+    expect(mocks.liveKitRoomProps[0].onError).toBeTypeOf("function");
+    expect(mocks.liveKitRoomProps[0].onConnected).toBeTypeOf("function");
   });
 
-  // Sem token não há o que assinar, e tentar assim seria conectar com
-  // `undefined` e falhar com um erro que não significa nada.
-  it("não tenta conectar antes do token chegar", () => {
+  it("um erro do Livekit vira motivo legível para a sala", async () => {
     render(
       <LiveKitProvider serverUrl={URL_LK} roomCode={ROOM}>
-        <p>a sala</p>
+        <FalhaVisivel />
       </LiveKitProvider>,
     );
 
-    expect(mocks.connect).not.toHaveBeenCalled();
+    const onError = mocks.liveKitRoomProps[0].onError as (e: unknown) => void;
+    await act(async () => {
+      onError(ConnectionError.notAllowed("connection closed", 401));
+    });
+
+    // O texto é montado de hint + status num único parágrafo, então o
+    // casamento é por conteúdo, não por elemento.
+    const falha = screen.getByTestId("falha");
+    expect(falha.textContent).toContain("401");
+    expect(falha.textContent).toContain("mesmo projeto");
   });
 
-  // O motivo da falha é o que torna 401-por-chave-de-outro-projeto
-  // diagnosticável. Uma rejeição tem de virar estado, não sumir.
-  it("uma falha de conexão não derruba a sala", async () => {
-    const falha = new Error("connection closed");
-    mocks.connect.mockRejectedValue(falha);
-
+  // Uma falha antiga não pode sobreviver a uma conexão boa: descreveria um
+  // problema que não existe mais, com a transmissão já funcionando.
+  it("conectar limpa o motivo anterior", async () => {
     render(
       <LiveKitProvider serverUrl={URL_LK} roomCode={ROOM}>
-        <p>a sala</p>
+        <FalhaVisivel />
       </LiveKitProvider>,
     );
 
-    await waitFor(() => expect(mocks.connect).toHaveBeenCalled());
-    await waitFor(() => expect(screen.getByText("a sala")).toBeTruthy());
+    const props = mocks.liveKitRoomProps[0];
+    await act(async () => {
+      (props.onError as (e: unknown) => void)(ConnectionError.serverUnreachable("no route"));
+    });
+    expect(screen.getByTestId("falha").textContent).toContain("LIVEKIT_URL");
+
+    await act(async () => {
+      (props.onConnected as () => void)();
+    });
+
+    expect(screen.getByTestId("falha").textContent).toBe("sem falha");
   });
 });
+
+// Consumidor mínimo do contexto: é o que a sala usa para mostrar o motivo.
+function FalhaVisivel() {
+  const failure = useLiveKitFailure();
+  if (!failure) return <p data-testid="falha">sem falha</p>;
+  return (
+    <p data-testid="falha">
+      {sfuFailureHint(failure)}
+      {failure.httpStatus ? ` ${failure.httpStatus}` : ""}
+    </p>
+  );
+}

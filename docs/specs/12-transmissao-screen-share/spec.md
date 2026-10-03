@@ -208,18 +208,27 @@ sala — está numa aba separada que ele compartilha.
 
 ## 7. Decisões de arquitetura
 
-### O motivo da falha de conexão, e por que a conexão é nossa
+### O motivo da falha de conexão
 
-`RoomEvent.ConnectionStateChanged` emite **só** o estado, sem motivo. `LiveKitRoom` não
-aceita `onError`. O resultado era uma sala dizendo "sem conexão com o servidor de
-transmissão", que é a ausência de informação apresentada como se fosse informação.
+`RoomEvent.ConnectionStateChanged` emite **só** o estado, sem motivo. O resultado era uma sala
+dizendo "sem conexão com o servidor de transmissão", que é a ausência de informação
+apresentada como se fosse informação.
 
-Duas saídas foram avaliadas. A primeira, `setLogExtension` do `livekit-client`, existe no
-bundle mas **não é exportada** — é API privada, e a feature nasceria quebrada sem ninguém
-perceber (o guard silencioso esconderia). A segunda, que ficou: o `LiveKitRoom` recebe
-`connect={false}` e um `ConnectGate` dentro dele chama `room.connect()`, capturando a
-promise. A rejeição é um `ConnectionError`, que carrega `.status` (o HTTP do handshake) e
-`.reasonName`.
+O `LiveKitRoom` tem `onError`, que recebe um `ConnectionError` com `.status` (o HTTP do
+handshake) e `.reasonName`. É o bastante, e é a via óbvia.
+
+**Duas armadilhas nesse caminho, ambas pagas aqui:**
+
+1. `setLogExtension` do `livekit-client` resolveria o diagnóstico e **não é exportada** —
+   existe no bundle, é API privada, e um guard silencioso esconderia que ela não chegou ao
+   runtime. Diagnosticar com API privada é como a feature nasce quebrada sem ninguém
+   perceber.
+2. **Conectar por conta própria não funciona.** Uma versão anterior punha `connect={false}` e
+   chamava `room.connect()` de um componente filho. O efeito do `LiveKitRoom` tem um `else`
+   que chama `room.disconnect()` quando `connect` é falso, e efeito de pai roda **depois**
+   do do filho: o filho abria a conexão e o pai a derrubava em seguida, com `Cancelled: Client
+   initiated disconnect`. Pior que não diagnosticar — substituía uma falha real por uma
+  .Connection que nunca subia, e ela parecia um sintoma do ambiente.
 
 O `.status` é o que fecha o caso que mais custou tempo: a rota de token responde 200 porque
 assinaram com as chaves coladas, e só o handshake revela que elas não são do projeto que
