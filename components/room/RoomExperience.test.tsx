@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useCallback } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Track } from "livekit-client";
+import { ScreenSharePresets, Track } from "livekit-client";
+import { DEFAULT_BROADCAST_QUALITY } from "@/lib/broadcast-quality";
 import type { BroadcastState } from "@/liveblocks.config";
 
 // O que este teste cobre: o gate do player. Com `storage.broadcast === null` a
@@ -216,8 +217,24 @@ function renderRoom({ livekitUrl = "wss://teste.livekit.cloud" }: { livekitUrl?:
   );
 }
 
+// Clica em "iniciar transmissão" e devolve as options que chegaram no
+// `setScreenShareEnabled` — que é onde as constraints e o preset de qualidade
+// viram observáveis. No escopo do módulo porque tanto as constraints de captura
+// quanto a qualidade precisam dela.
+async function iniciar() {
+  vi.stubGlobal("open", vi.fn());
+  mocks.setScreenShareEnabled.mockResolvedValue({});
+  renderRoom();
+  fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
+  await waitFor(() => expect(mocks.setScreenShareEnabled).toHaveBeenCalled());
+  return mocks.setScreenShareEnabled.mock.calls[0][1] as Record<string, unknown>;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  // A qualidade vive em localStorage (preferência do host). Sem limpar, um teste
+  // que escolha "alta" contamina o seguinte pelo store de módulo.
+  localStorage.clear();
   Object.assign(mocks.root, { video: VIDEO, player: PLAYER, broadcast: null });
   mocks.writes.length = 0;
   mocks.useTracksReturn = [];
@@ -620,15 +637,6 @@ describe("degradação sem SFU configurado", () => {
 // (`screenCaptureToDisplayMediaStreamOptions` no bundle dele), então verificar
 // o que chega em `setScreenShareEnabled` é verificar o que chega no SO.
 describe("constraints de captura (FR-006, FR-015)", () => {
-  async function iniciar() {
-    vi.stubGlobal("open", vi.fn());
-    mocks.setScreenShareEnabled.mockResolvedValue({});
-    renderRoom();
-    fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
-    await waitFor(() => expect(mocks.setScreenShareEnabled).toHaveBeenCalled());
-    return mocks.setScreenShareEnabled.mock.calls[0][1] as Record<string, unknown>;
-  }
-
   // O SALÃO DE MIRROR. Sem isto, o seletor oferece a aba da própria sala e quem
   // compartilha a sala transmite a sala — recursivamente, com o atraso do SFU
   // a cada geração. O espectador assiste uma sala se multiplicando, e o host
@@ -658,13 +666,81 @@ describe("constraints de captura (FR-006, FR-015)", () => {
     vi.unstubAllGlobals();
   });
 
-  // `contentHint: "detail"` porque o conteúdo é vídeo. Sem a dica o encoder
-  // reduz resolução para segurar taxa de quadros e o espectador recebe a tela
-  // borrada em banda apertada — que é o caso comum desta feature.
-  it('marca o conteúdo como detail para o encoder não borrar o vídeo', async () => {
+  // `detail` manda o encoder preservar detalhe AO CUSTO da taxa de quadros — foi
+  // feito para texto e arte vetorial. Para vídeo é o oposto do que serve, e foi o
+  // que fez a transmissão parecer travada: o encoder segurava nitidez e dropping
+  // frames. O próprio Livekit força `motion` em screen share porque o caminho
+  // `detail` é "untested/buggy".
+  it("marca o conteúdo como motion, nunca detail", async () => {
     const options = await iniciar();
-    expect(options.contentHint).toBe("detail");
+    expect(options.contentHint).toBe("motion");
+    expect(options.contentHint).not.toBe("detail");
     vi.unstubAllGlobals();
+  });
+
+  // Sem `resolution` explícito o Livekit usa `ScreenSharePresets.h1080fps30`:
+  // 1920x1080 a 5 Mbps de upstream, que em banda residencial vira frames
+  // descartados — exatamente o sintoma que se quer eliminar.
+  it("envia o preset da qualidade escolhida, não o default de 5 Mbps", async () => {
+    const options = await iniciar();
+    expect(options.resolution).toBe(ScreenSharePresets.h720fps30);
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("qualidade da transmissão", () => {
+  it("o padrão é 720p30, 40% da banda do default do Livekit", () => {
+    expect(DEFAULT_BROADCAST_QUALITY).toBe("normal");
+    // `maxBitrate` e `maxFramerate` vivem dentro de `encoding`, não no topo do preset.
+    expect(ScreenSharePresets.h1080fps30.encoding.maxBitrate).toBe(5_000_000);
+    expect(ScreenSharePresets.h720fps30.encoding.maxBitrate).toBe(2_000_000);
+    expect(ScreenSharePresets.h720fps30.encoding.maxFramerate).toBe(30);
+  });
+
+  it("escolher qualidade muda o preset da próxima transmissão", async () => {
+    localStorage.setItem("rockncine-broadcast-quality", "alta");
+
+    const options = await iniciar();
+
+    expect(options.resolution).toBe(ScreenSharePresets.h1080fps30);
+    vi.unstubAllGlobals();
+    localStorage.clear();
+  });
+
+  // Valor corrompido no localStorage não pode virar `undefined` em
+  // `BROADCAST_QUALITIES[...]` — um crash na hora de transmitir.
+  it("qualidade corrompida no storage cai no padrão", async () => {
+    localStorage.setItem("rockncine-broadcast-quality", '{"level":"alta"}');
+
+    const options = await iniciar();
+
+    expect(options.resolution).toBe(ScreenSharePresets.h720fps30);
+    vi.unstubAllGlobals();
+    localStorage.clear();
+  });
+
+  it("o seletor mostra as três opções", () => {
+    renderRoom();
+
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.value)).toEqual([
+      "baixa",
+      "normal",
+      "alta",
+    ]);
+  });
+
+  // A track já foi criada com o preset escolhido; trocar exigiria republicar, o
+  // que derrubaria a transmissão no meio do filme. O motivo fica nomeado.
+  it("transmitindo, o seletor desabilita e diz que vale para a próxima", () => {
+    mocks.root.broadcast = { ...broadcast, broadcasterId: "eu" };
+
+    renderRoom();
+
+    expect((screen.getByRole("combobox") as HTMLSelectElement).disabled).toBe(true);
+    expect(
+      screen.getByRole("combobox", { name: /próxima transmissão/i }),
+    ).toBeTruthy();
   });
 });
 

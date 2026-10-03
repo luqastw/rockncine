@@ -15,6 +15,13 @@ import {
 } from "livekit-client";
 import type { BroadcastState } from "@/liveblocks.config";
 import { useLiveKitAuth } from "@/components/room/LiveKitProvider";
+import { useBroadcastQuality } from "@/hooks/useBroadcastQuality";
+import {
+  BROADCAST_QUALITIES,
+  BROADCAST_QUALITY_LEVELS,
+  broadcastQuality,
+  type BroadcastQualityLevel,
+} from "@/lib/broadcast-quality";
 import { useLiveKitFailure } from "@/components/room/LiveKitProvider";
 import { sfuFailureHint } from "@/lib/sfu-connect";
 import {
@@ -59,6 +66,11 @@ export function BroadcastControls({
   const { localParticipant } = useLocalParticipant();
   const connection = useConnectionState();
   const auth = useLiveKitAuth();
+  // Qualidade da transmissão: escolha do host, local e persistente. Só entra no
+  // momento de publicar — a track já criada não troca de preset sem republicar,
+  // e republicar derrubaria a transmissão no meio do filme.
+  const { level: qualityLevel, setQuality } = useBroadcastQuality();
+  const quality = broadcastQuality(qualityLevel);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -208,12 +220,24 @@ export function BroadcastControls({
       // aba, troca o que está sendo transmitido e a sala segue. É o que
       // sustenta "vídeo rola em outra aba" quando a sessão muda de filme.
       //
-      // `contentHint: "detail"` porque o conteúdo compartilhado é vídeo: sem a
-      // dica o encoder reduz resolução para segurar taxa de quadros, e o
-      // espectador recebe a tela borrada em banda apertada.
+      // `contentHint: "motion"`, e não `"detail"`. Pela spec WebRTC, `detail`
+      // manda o encoder preservar detalhe AO CUSTO da taxa de quadros — foi feito
+      // para texto e arte vetorial. Para vídeo é o oposto do que serve: foi
+      // exatamente o que fez a transmissão parecer travada, com o encoder
+      // segurando nitidez e dropping frames. O próprio Livekit força `motion` em
+      // screen share porque o caminho `detail` é "untested/buggy".
+      //
+      // A qualidade, essa sim, éResolution/bitrate — a alavanca certa para
+      // banda apertada, e por isso uma escolha do host (lib/broadcast-quality.ts).
+      //
+      // `resolution` sem valor explícito vira `ScreenSharePresets.h1080fps30`
+      // (1920x1080, 5 Mbps). Esse é o default do Livekit e não serve para
+      // watch party em banda residencial: 5 Mbps de upstream é o suficiente para
+      // frames descartados, que aparecem como travamento.
       await localParticipant.setScreenShareEnabled(true, {
         audio: true,
-        contentHint: "detail",
+        contentHint: "motion",
+        resolution: quality.preset,
         selfBrowserSurface: "exclude",
         systemAudio: "include",
         surfaceSwitching: "include",
@@ -253,7 +277,7 @@ export function BroadcastControls({
     } finally {
       setBusy(false);
     }
-  }, [busy, blockedReason, videoSourceUrl, localParticipant, startBroadcast, stopScreenShare]);
+  }, [busy, blockedReason, videoSourceUrl, localParticipant, quality, startBroadcast, stopScreenShare]);
 
   const isBroadcaster = broadcast !== null && broadcast.broadcasterId === userId;
 
@@ -307,6 +331,37 @@ export function BroadcastControls({
     return null;
   }
 
+  // A qualidade é um controle ÚNICO, montado antes dos dois returns abaixo.
+  // Ele precisa aparecer nos dois ramos — inclusive transmitindo, onde fica
+  // desabilitado. Teria ficado só no ramo de não-transmissor se fosse escrito
+  // inline lá dentro, que é como o componente ramifica.
+  const seletorQualidade = (
+    <label
+      className={`flex items-center gap-1 text-xs ${
+        isBroadcaster ? "text-[var(--ink-muted)]" : "text-[var(--ink)]"
+      }`}
+    >
+      <span className="sr-only sm:not-sr-only">qualidade</span>
+      <select
+        value={qualityLevel}
+        disabled={isBroadcaster}
+        onChange={(event) => setQuality(event.target.value as BroadcastQualityLevel)}
+        aria-label={
+          isBroadcaster
+            ? "a qualidade só muda na próxima transmissão"
+            : `qualidade da transmissão: ${quality.detail}`
+        }
+        className="min-h-11 rounded-md border border-[var(--ink-muted)] bg-transparent px-2 py-1 text-xs text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)] disabled:cursor-not-allowed disabled:border-[var(--line)] disabled:text-[var(--ink-muted)]"
+      >
+        {BROADCAST_QUALITY_LEVELS.map((level) => (
+          <option key={level} value={level}>
+            {BROADCAST_QUALITIES[level].label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+
   if (isBroadcaster) {
     return (
       <div className="flex flex-wrap items-center gap-2">
@@ -327,6 +382,11 @@ export function BroadcastControls({
         >
           parar transmissão
         </button>
+        {/* A track já foi criada com o preset escolhido; trocar exigiria
+            republicar, o que derrubaria a transmissão no meio do filme. O motivo
+            do desabilitado é nomeado, pelo mesmo motivo do botão de FR-009:
+            cinza sobre cinza não é informação. */}
+        {seletorQualidade}
       </div>
     );
   }
@@ -373,6 +433,7 @@ export function BroadcastControls({
           {livekitReason && ` — ${livekitReason}`}
         </span>
       )}
+      {seletorQualidade}
       {error && (
         <span role="status" aria-live="polite" className="text-xs text-[var(--ink-muted)]">
           {error}

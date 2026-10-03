@@ -166,7 +166,16 @@ sala — está numa aba separada que ele compartilha.
   leitura DEVE prevalecer sobre o `reason` do enum. O enum classifica "invalid token" como
   `ServerUnreachable` (a conexão de sinal não subiu), e a dica resultante — "confira o
   `LIVEKIT_URL`" — seria errada: o servidor respondeu, só recusou a credencial.
-- **FR-040** QUANDO houver status HTTP, ENTÃO ele DEVE ser exibido como fato observável,
+- **FR-040** QUANDO o host iniciar a transmissão, ENTÃO o preset DEVE ser o da qualidade
+  escolhida pelo host, e o padrão DEVE ser 720p a 30fps — não o `h1080fps30` que o
+  Livekit aplica quando `resolution` não vem explícito.
+- **FR-041** QUANDO o host iniciar a transmissão, ENTÃO `contentHint` DEVE ser `motion`.
+  `detail` troca taxa de quadros por nitidez e foi feito para texto; em vídeo é a causa
+  de "transmissão travada".
+- **FR-042** QUANDO o host mudar a qualidade durante a transmissão, ENTÃO o seletor DEVE
+  estar desabilitado com o motivo nomeado, e a escolha DEVE valer para a próxima
+  transmissão. Republicar derrubaria a transmissão em andamento.
+- **FR-043** QUANDO houver status HTTP, ENTÃO ele DEVE ser exibido como fato observável,
   separado da dica. A dica é hipótese com ação; o status é o que o servidor respondeu.
   Fundir os dois faria a dica afirmar um status que não houve.
 
@@ -227,6 +236,14 @@ sala — está numa aba separada que ele compartilha.
   ela é anexada ao elemento de áudio.
 - **AC-022** Dado que quem assiste é o transmissor, quando a track de áudio existe, então a
   sala não mostra aviso de áudio ausente.
+- **AC-023** Dado que o host iniciou a transmissão, quando a captura é pedida, então
+  `contentHint` é `motion` e `resolution` é o preset 720p30.
+- **AC-024** Dado que o host escolheu qualidade alta, quando inicia a transmissão, então
+  `resolution` é o preset 1080p30.
+- **AC-025** Dado que a transmissão está em andamento, quando a sala renderiza, então o
+  seletor de qualidade está desabilitado e o motivo está no nome acessível.
+- **AC-026** Dado que o localStorage tem um valor que não é um nível válido, quando o host
+  inicia a transmissão, então vale o padrão.
 
 ## 7. Decisões de arquitetura
 
@@ -293,6 +310,37 @@ qualquer preview.
 Esta é a consequência de projetada do requisito "voltar pra sala enquanto o vídeo rola em outra
 aba". O host compartilha uma aba **separada**. Por isso FR-006 abre a URL em nova aba antes de
 pedir a permissão: o seletor do sistema precisa ter o que escolher.
+
+### Qualidade: escolha do host, local a ele
+
+O uplink do host é o recurso escasso, e a qualidade não é propriedade da sala.
+Colocar a escolha no storage do Liveblocks daria a qualquer membro o direito de
+degradar a transmissão dos outros — a mesma classe de griefing que a spec já
+documenta para `storage.broadcast`. Por isso a preferência é local e persistente
+(`localStorage`), seguindo o mesmo mecanismo de `useVideoQuality`.
+
+| nível | preset | banda | quando |
+|---|---|---|---|
+| baixa | `h720fps15` | 1,5 Mbps | uplink fraco |
+| normal | `h720fps30` | 2 Mbps | padrão |
+| alta | `h1080fps30` | 5 Mbps | uplink folgado |
+
+O padrão é **normal** e não o `h1080fps30` que o Livekit usa quando `resolution`
+não vem explícito: 5 Mbps de upstream é o suficiente para frames descartados, que
+aparecem como travamento. 720p a 30fps custa 40% da banda com a **mesma taxa de
+quadros**, e é o que resolve "travado" — travamento é falta de quadros, não falta
+de pixels.
+
+`contentHint` é `motion` e **não** é uma opção. Pela spec WebRTC, `detail` manda
+o encoder preservar detalhe ao custo da taxa de quadros, e foi feito para texto e
+arte vetorial. Para vídeo é o oposto do que serve, e foi o que fez a primeira
+transmissão parecer travada: o encoder segurava nitidez e descartava quadros. O
+próprio Livekit força `motion` em screen share porque o caminho `detail` é
+"untested/buggy".
+
+A troca só vale para a próxima transmissão: a track já foi criada com o preset
+escolhido e mudá-lo exigiria republicar, o que derrubaria a transmissão no meio do
+filme. Por isso o seletor fica visível mas desabilitado durante a transmissão.
 
 ### Compartilhar ABA, nunca a tela inteira
 
