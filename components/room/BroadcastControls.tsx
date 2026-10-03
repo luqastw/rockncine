@@ -2,9 +2,19 @@
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useMutation } from "@liveblocks/react";
-import { useMaybeRoomContext, useLocalParticipant } from "@livekit/components-react";
-import { RoomEvent, Track, type LocalTrackPublication } from "livekit-client";
+import {
+  useConnectionState,
+  useMaybeRoomContext,
+  useLocalParticipant,
+} from "@livekit/components-react";
+import {
+  ConnectionState,
+  RoomEvent,
+  Track,
+  type LocalTrackPublication,
+} from "livekit-client";
 import type { BroadcastState } from "@/liveblocks.config";
+import { useLiveKitAuth } from "@/components/room/LiveKitProvider";
 import {
   BROADCAST_HEARTBEAT_MS,
   broadcasterLabel,
@@ -45,10 +55,38 @@ export function BroadcastControls({
   // degradação não pode depender dessa distinção.
   const room = useMaybeRoomContext();
   const { localParticipant } = useLocalParticipant();
+  const connection = useConnectionState();
+  const auth = useLiveKitAuth();
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mounted = useIsClient();
+
+  // O botão só habilita com o SFU CONECTADO, e não apenas com a credencial em
+  // mãos. São duas coisas: `auth.ready` diz que o token chegou, `connected` diz
+  // que o WebSocket subiu e a room existe. Publicar exige as duas.
+  //
+  // Sem este gate, o caminho era: token pendente → botão habilitado → clique →
+  // o SO concede a captura (e o banner de "compartilhando" aparece, fazendo o
+  // usuário acreditar que funcionou) → a publicação falha porque não há room →
+  // o erro cai no `catch` genérico. O usuário fica com a tela compartilhada e
+  // ninguém recebendo, e o app o acusa de ter cancelado.
+  const connected = connection === ConnectionState.Connected;
+  // Motivo legível para o botão desabilitado. É o que torna o estado de
+  // configuração diagnosticável sem DevTools — o `httpStatus` da rota diz se é
+  // env var faltando (503), sessão (401) ou permissão na sala (403).
+  const blockedReason = (() => {
+    if (auth.status === "unavailable") {
+      if (auth.httpStatus === 503) return "transmissão não configurada neste deploy";
+      if (auth.httpStatus === 403) return "você não pode transmitir nesta sala";
+      if (auth.httpStatus === 401) return "sessão expirada — recarregue a sala";
+      return "servidor de transmissão indisponível";
+    }
+    if (auth.status !== "ready") return "conectando ao servidor de transmissão";
+    if (connection === ConnectionState.Reconnecting) return "reconectando ao servidor de transmissão";
+    if (!connected) return "sem conexão com o servidor de transmissão";
+    return null;
+  })();
 
   const startBroadcast = useMutation(
     ({ storage }) => {
@@ -85,16 +123,30 @@ export function BroadcastControls({
     storage.set("broadcast", null);
   }, []);
 
-  const stopScreenShare = useCallback(() => {
-    localParticipant.setScreenShareEnabled(false).catch(() => {
+  // Devolve a promise para que quem chama possa esperar o desligamento. A
+  // captura que sobra é o pior estado possível desta feature — o SO continua
+  // enviando a tela e o app não diz nada — então a limpeza na falha precisa
+  //aguardar, não disparar e seguir.
+  const stopScreenShare = useCallback(async () => {
+    try {
+      await localParticipant.setScreenShareEnabled(false);
+    } catch {
       // A track já pode ter ido (aba compartilhada fechada, permissão
       // revogada). O estado da sala é limpo de qualquer forma — o storage é a
       // autoridade, não a track.
-    });
+    }
   }, [localParticipant]);
 
   const start = useCallback(async () => {
     if (busy) return;
+    // Guarda no início, e não só na UI: `blockedReason` pode virar não-nulo
+    // entre o clique e a execução do handler, e pedir captura ao SO sem SFU
+    // conectado é exatamente o caminho que deixa a tela do usuário compartilhada
+    // com ninguém recebendo.
+    if (blockedReason) {
+      setError(blockedReason);
+      return;
+    }
     setBusy(true);
     setError(null);
 
@@ -147,15 +199,41 @@ export function BroadcastControls({
         surfaceSwitching: "include",
       });
       startBroadcast();
-    } catch {
-      // FR-008: permissão negada ou seletor cancelado. Nada é gravado no
-      // storage e a UI volta ao estado anterior — o aviso existe, o modo
-      // player não muda.
-      setError("a captura de tela foi cancelada ou negada.");
+    } catch (error: unknown) {
+      // A distinção que o `catch` genérico apagava: cancelamento é decisão do
+      // usuário, falha de publicação é problema do deploy. Atribuir ao usuário
+      // um erro de configuração é pior que não dizer nada — ele refaz o
+      // procedimento inteiro e chega ao mesmo resultado.
+      //
+      // O Livekit normaliza "picker dispensado" e "permissão negada" para o
+      // nome `NotAllowedError` (ver o shim em `createScreenTracks` no bundle
+      // dele), então esse nome é a fronteira confiável entre os dois casos — e
+      // ele tem de ser lido ANTES de qualquer limpeza, porque decide se há
+      // alguma coisa para limpar.
+      const nome = error instanceof Error ? error.name : "";
+      if (nome === "NotAllowedError") {
+        // `getDisplayMedia` não resolveu: nada foi capturado, e desligar uma
+        // captura que não existe seria falar do estado do SO sem saber dele.
+        setError("a captura de tela foi cancelada ou negada.");
+        return;
+      }
+
+      // Aqui a captura pode ter sido CONCEDIDA e a publicação falhar depois. O
+      // `getDisplayMedia` acontece dentro do `setScreenShareEnabled`, e o SO já
+      // cedeu a tela quando a publicação estoura. Sem esta limpeza, o usuário
+      // fica com o banner de "compartilhando" ligado, a tela indo para o SO e
+      // ninguém recebendo — que é o pior estado possível desta feature.
+      await stopScreenShare();
+      console.error("[transmissão] falha ao publicar a track de tela", error);
+      setError(
+        nome === "TrackInvalidError"
+          ? "o navegador não devolveu nenhum quadro da captura."
+          : "a captura foi liberada mas não conseguiu publicar. o servidor de transmissão não respondeu — verifique LIVEKIT_URL, LIVEKIT_API_KEY e LIVEKIT_API_SECRET no deploy.",
+      );
     } finally {
       setBusy(false);
     }
-  }, [busy, videoSourceUrl, localParticipant, startBroadcast]);
+  }, [busy, blockedReason, videoSourceUrl, localParticipant, startBroadcast, stopScreenShare]);
 
   const isBroadcaster = broadcast !== null && broadcast.broadcasterId === userId;
 
@@ -245,13 +323,15 @@ export function BroadcastControls({
       <button
         type="button"
         onClick={start}
-        disabled={busy || otherBroadcaster !== null}
+        disabled={busy || otherBroadcaster !== null || blockedReason !== null}
         aria-label={
           otherBroadcaster
             ? "já há alguém transmitindo"
-            : busy
-              ? "abrindo o seletor de tela"
-              : "iniciar transmissão de tela"
+            : blockedReason
+              ? blockedReason
+              : busy
+                ? "abrindo o seletor de tela"
+                : "iniciar transmissão de tela"
         }
         aria-busy={busy || undefined}
         className="flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-[var(--ink-muted)] px-3 py-2 text-xs text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)] disabled:cursor-not-allowed disabled:border-[var(--line)] disabled:text-[var(--ink-muted)]"
@@ -261,6 +341,15 @@ export function BroadcastControls({
       {otherBroadcaster && (
         <span className="text-xs text-[var(--ink-muted)]">
           {broadcasterLabel(otherBroadcaster)} está transmitindo
+        </span>
+      )}
+      {/* O motivo do SFU indisponível fica visível, e não só no `aria-label`:
+          quem está com a configuração errada no deploy precisa ver isso sem
+          abrir o DevTools, e o botão desabilitado sozinho parece decisão da
+          sala. Some quando há transmissão alheia — aí o motivo já é outro. */}
+      {blockedReason && !otherBroadcaster && auth.status !== "disabled" && (
+        <span role="status" aria-live="polite" className="text-xs text-[var(--ink-muted)]">
+          {blockedReason}
         </span>
       )}
       {error && (

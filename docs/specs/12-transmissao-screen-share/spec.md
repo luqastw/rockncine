@@ -124,6 +124,29 @@ sala — está numa aba separada que ele compartilha.
 - **FR-019** QUANDO o transmissor sair da sala, ENTÃO `storage.broadcast` DEVE ser zerado e os
   espectadores DEVE ver o estado de player normal, não um player vazio.
 
+### Saúde do SFU e honestidade do erro
+
+> Estas FRs nasceram de uma falha em produção, não de um requisito teórico. O que
+> aconteceu: a captura foi concedida pelo SO, a publicação falhou porque a room do
+> Livekit não existia (credencial nunca chegou), e um `catch` genérico acusou o
+> usuário de ter cancelado. O usuário ficou com o banner de "compartilhando"
+> ligado, a tela indo para o SO, ninguém recebendo, e nenhuma pista do motivo.
+
+- **FR-029** QUANDO o estado da conexão com o SFU não for "conectado", ENTÃO o botão de
+  iniciar DEVE estar desabilitado, com o motivo nomeado no texto visível e no
+  `aria-label`.
+- **FR-030** QUANDO o botão for acionado com o SFU indisponível, ENTÃO o cliente NÃO DEVE chamar
+  `getDisplayMedia`. Pedir captura ao SO sem poder publicar é o que produz a tela
+  compartilhada sem ninguém recebendo.
+- **FR-031** QUANDO a captura for recusada pelo usuário, ENTÃO a UI DEVE dizer que foi
+  cancelada ou negada, e NÃO DEVE tentar desligar captura — nada foi capturado.
+- **FR-032** QUANDO a captura for concedida mas a publicação falhar, ENTÃO o cliente DEVE
+  desligar a captura antes de reportar, e o aviso DEVE atribuir a falha à publicação
+  (e ao deploy), nunca ao usuário.
+- **FR-033** QUANDO a credencial não puder ser obtida, ENTÃO a sala DEVE exibir a causa
+  distinguível por status HTTP — 503 configuração, 403 permissão na sala, 401 sessão —
+  em vez de degradar em silêncio para um botão que falha no clique.
+
 ### Sessão
 
 - **FR-020** QUANDO o cliente pedir credencial, ENTÃO o servidor DEVE emitir um token de room
@@ -162,6 +185,15 @@ sala — está numa aba separada que ele compartilha.
   diz "a transmissão não chegou" e oferece "voltar ao player".
 - **AC-013** Dado que um espectador voltou ao player, quando a transmissão continua, então o
   armazenamento de `broadcast` não foi alterado.
+- **AC-014** Dado que a credencial não chegou (503), quando a sala renderiza, então o botão
+  está desabilitado e o texto diz que a transmissão não está configurada no deploy.
+- **AC-015** Dado que o SFU está indisponível, quando o botão é acionado, então
+  `setScreenShareEnabled` não é chamado e o storage não é tocado.
+- **AC-016** Dado que a publicação falhou depois da captura concedida, quando o erro sobe,
+  então `setScreenShareEnabled(false)` é chamado e o aviso aponta o servidor, com a
+  menção de que o usuário não cancelou.
+- **AC-017** Dado que o seletor foi dispensado, quando o erro sobe, então o aviso diz
+  "cancelada ou negada" e nenhuma tentativa de desligar captura é feita.
 
 ## 7. Decisões de arquitetura
 
@@ -271,6 +303,8 @@ no grafo.
 
 | Risco | Mitigação |
 |---|---|
+| Erro de configuração se apresenta como erro do usuário | Impedido por FR-031/FR-032: `NotAllowedError` é a fronteira entre cancelamento e falha de publicação, e o aviso de falha nomeia o deploy. A credencial indisponível aparece na tela com o status HTTP (FR-033), então o problema é diagnosticável sem DevTools. |
+| Captura órfã: SO continua capturando com ninguém recebendo | Impedido por prevenção (FR-030: não pedir captura sem SFU conectado) e por cura (FR-032: desligar o que o SO já concedeu). A primeira tentativa em produção produziu exatamente este estado. |
 | Dependência de terceiro para mídia central do produto | LiveKit é o SDK de referência do WebRTC, tem free tier, e é self-hostável. O estado de transmissão **não** depende dele — se o LiveKit cair, a sala volta ao modo player com o storage intacto. |
 | Payload da sala subiu de 107,6 para 260,1 KB gzip | Ver seção 9: inerente ao SFU, medido, e as demais rotas não pagam. A mitigação possível (dois cliques) está descrita e não foi implementada por decisão de produto. |
 | Qualquer membro pode escrever `storage.broadcast` e tirar o player da tela de todos por até 3 min | É a mesma classe de confiança do storage do Liveblocks que o app já tem: `storage.player` e o `ts` dos eventos têm o mesmo dono. O estado é validado por forma, mas a **autoria** não é verificada pelo servidor. Um membro malicioso escreve `{ broadcasterId, broadcasterName, startedAt, heartbeatAt }` sem ter track nenhuma, e a sala mostra "conectando à transmissão" até o prazo vencer. **Parcialmente mitigado**: FR-026/FR-027 dão a quem assiste uma saída manual após 12s, então o espectador não fica preso — ele só precisa de um clique. **Autoria não resolvida**: fechar exige que o storage seja gravado por um caminho que o cliente não controle, que é mudança de arquitetura e não cabe nesta spec. |

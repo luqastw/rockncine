@@ -60,6 +60,14 @@ const mocks = vi.hoisted(() => {
         }
       },
     },
+    // Saúde do SFU: `auth` é o estado da credencial (veja o contexto em
+    // LiveKitProvider) e `connection` é o estado do WebSocket. O botão só
+    // habilita com os dois em `ready`/`connected`, e cada combinação tem uma
+    // mensagem própria — que é o que torna erro de configuração diagnosticável
+    // sem DevTools.
+    auth: { status: "ready" } as Record<string, unknown>,
+    connection: "connected" as string,
+
     // Vive no `vi.hoisted` porque as factories de `vi.mock` são içadas acima
     // dos `const` do módulo: um controller declarado aqui fora seria acessado
     // antes da inicialização.
@@ -139,6 +147,15 @@ vi.mock("@livekit/components-react", () => ({
   // `on`/`off` registrados para o teste poder disparar `LocalTrackUnpublished`
   // e exercitar FR-018.
   useMaybeRoomContext: () => mocks.livekitRoom,
+  useConnectionState: () => mocks.connection,
+}));
+
+// O `RoomExperience` é renderizado direto aqui, sem o `LiveKitProvider` acima —
+// então o contexto de auth cai no valor padrão (`disabled`) e o botão ficaria
+// desabilitado em todos os testes. `ready` é o estado saudável e é o que os
+// testes que não falam de configuração precisam.
+vi.mock("@/components/room/LiveKitProvider", () => ({
+  useLiveKitAuth: () => mocks.auth,
 }));
 
 import { RoomExperience, type VideoQuality } from "./RoomExperience";
@@ -198,6 +215,8 @@ beforeEach(() => {
   Object.assign(mocks.root, { video: VIDEO, player: PLAYER, broadcast: null });
   mocks.writes.length = 0;
   mocks.useTracksReturn = [];
+  mocks.auth = { status: "ready" };
+  mocks.connection = "connected";
   // jsdom não implementa `mediaDevices` nem `getDisplayMedia`; o botão depende
   // dele existir (FR-010). O comportamento de captura de verdade — o seletor do
   // SO, a `MediaStream` real — não é testável aqui, e este stub existe só para
@@ -208,6 +227,17 @@ beforeEach(() => {
     value: { getDisplayMedia: () => Promise.resolve({}) },
   });
 });
+
+// O `DOMException` que o `getDisplayMedia` produz quando o usuário dispensa o
+// seletor ou nega a permissão. O Livekit normaliza os dois nomes antigos
+// (`PermissionDeniedError`, `PermissionDismissedError`) para este (ver o shim
+// em `createScreenTracks` no bundle dele), então `NotAllowedError` é a
+// fronteira confiável entre cancelamento e falha de publicação.
+function negado() {
+  const error = new Error("Permission denied");
+  error.name = "NotAllowedError";
+  return error;
+}
 
 function removeDisplayMedia() {
   Object.defineProperty(navigator, "mediaDevices", {
@@ -380,7 +410,12 @@ describe("iniciar transmissão (FR-006, FR-007, FR-008)", () => {
   // mostrando um player vazio para todo mundo.
   it("FR-008: permissão negada não grava nada e avisa", async () => {
     vi.stubGlobal("open", vi.fn());
-    mocks.setScreenShareEnabled.mockRejectedValue(new Error("NotAllowedError"));
+    // `name`, não mensagem: o `getDisplayMedia` rejeita com `DOMException` cujo
+    // `name` é `NotAllowedError`, e é esse campo que separa "usuário cancelou"
+    // de "a publicação falhou". Um `new Error("NotAllowedError")` teria `name`
+    // igual a "Error" e cairia no ramo errado — o teste precisa usar o formato
+    // real para estar exercitando o discriminate.
+    mocks.setScreenShareEnabled.mockRejectedValue(negado());
 
     renderRoom();
     fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
@@ -703,5 +738,137 @@ describe("escotilha quando os quadros não chegam", () => {
 
     expect(screen.queryByText("conectando à transmissão")).toBeNull();
     expect(screen.queryByText("a transmissão não chegou")).toBeNull();
+  });
+});
+
+// A falha que aconteceu na primeira tentativa em produção: a captura foi
+// concedida pelo SO (o banner do browser ficou ligado), a publicação no SFU
+// falhou porque a room não existia, e o `catch` genérico acusou o usuário de
+// ter cancelado. Quem lê isso não tem como saber que era deploy mal configurado.
+//
+// Estes testes fixam as quatro propriedades que corrigem isso.
+describe("saúde do SFU antes de pedir captura", () => {
+  it("sem credencial (503), o botão desabilita e diz que é configuração do deploy", () => {
+    mocks.auth = { status: "unavailable", httpStatus: 503, detail: "transmissão não configurada." };
+
+    renderRoom();
+
+    const button = screen.getByRole("button", { name: /transmissão não configurada/ });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("transmissão não configurada neste deploy")).toBeTruthy();
+  });
+
+  it("sem permissão na sala (403), o motivo não é o mesmo do 503", () => {
+    mocks.auth = { status: "unavailable", httpStatus: 403, detail: "não é membro desta sala." };
+
+    renderRoom();
+
+    expect(
+      (screen.getByRole("button", { name: /não pode transmitir/ }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it("sessão expirada (401) tem motivo próprio", () => {
+    mocks.auth = { status: "unavailable", httpStatus: 401, detail: "não autenticado." };
+
+    renderRoom();
+
+    expect(screen.getByText("sessão expirada — recarregue a sala")).toBeTruthy();
+  });
+
+  it("token em voo: desabilitado, mas sem chamar isso de erro", () => {
+    mocks.auth = { status: "pending" };
+
+    renderRoom();
+
+    expect(
+      (screen.getByRole("button", { name: /conectando ao servidor/ }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it("credencial em mãos mas WebSocket fora: desabilitado por conexão", () => {
+    mocks.auth = { status: "ready" };
+    mocks.connection = "disconnected";
+
+    renderRoom();
+
+    expect(
+      (screen.getByRole("button", { name: /sem conexão com o servidor/ }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+  });
+
+  it("reconectando tem motivo distinto de sem conexão", () => {
+    mocks.auth = { status: "ready" };
+    mocks.connection = "reconnecting";
+
+    renderRoom();
+
+    expect(
+      (screen.getByRole("button", { name: /reconectando ao servidor/ }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+  });
+
+  // O ponto do gate: pedir captura com o SFU fora é o que produz a tela do
+  // usuário compartilhada com ninguém recebendo. O clique tem de ser um no-op
+  // ANTES do `getDisplayMedia`, não uma tentativa que falha depois.
+  it("com o SFU indisponível, clicar não pede captura nenhuma", async () => {
+    mocks.auth = { status: "unavailable", httpStatus: 503, detail: "transmissão não configurada." };
+
+    renderRoom();
+    fireEvent.click(screen.getByRole("button", { name: /transmissão não configurada/ }));
+
+    expect(mocks.setScreenShareEnabled).not.toHaveBeenCalled();
+    expect(mocks.writes).toHaveLength(0);
+  });
+});
+
+describe("falha depois da captura concedida", () => {
+  it("publicação falhou: desliga a captura e aponta o SFU, não o usuário", async () => {
+    vi.stubGlobal("open", vi.fn());
+    const falha = new Error("room is closed");
+    falha.name = "InvalidStateError";
+    mocks.setScreenShareEnabled.mockRejectedValueOnce(falha);
+
+    renderRoom();
+    fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
+
+    expect(await screen.findByText(/não conseguiu publicar/i)).toBeTruthy();
+    // A distinction que faltava: cancelamento é do usuário, esta falha é nossa.
+    expect(screen.queryByText(/cancelada ou negada/)).toBeNull();
+    expect(mocks.writes).toHaveLength(0);
+    vi.unstubAllGlobals();
+  });
+
+  // O pior estado possível: o SO continua enviando a tela, ninguém recebe, e o
+  // app diz que o usuário cancelou. A limpeza é o que fecha isso.
+  it("desliga a captura que o SO já tinha concedido", async () => {
+    vi.stubGlobal("open", vi.fn());
+    const falha = new Error("publish failed");
+    falha.name = "InvalidStateError";
+    mocks.setScreenShareEnabled.mockRejectedValueOnce(falha);
+
+    renderRoom();
+    fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
+
+    await waitFor(() => {
+      expect(mocks.setScreenShareEnabled).toHaveBeenCalledWith(false);
+    });
+    vi.unstubAllGlobals();
+  });
+
+  // Cancelamento é decisão do usuário e nada foi capturado, então não há o que
+  // desligar — e dizer que desligamos seria mentira sobre o estado do SO.
+  it("cancelamento no seletor não tenta desligar captura", async () => {
+    vi.stubGlobal("open", vi.fn());
+    mocks.setScreenShareEnabled.mockRejectedValueOnce(negado());
+
+    renderRoom();
+    fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
+
+    expect(await screen.findByText("a captura de tela foi cancelada ou negada.")).toBeTruthy();
+    expect(mocks.setScreenShareEnabled).not.toHaveBeenCalledWith(false);
+    vi.unstubAllGlobals();
   });
 });
