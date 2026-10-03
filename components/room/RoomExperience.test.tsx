@@ -993,14 +993,6 @@ describe("o host não ouve a própria transmissão", () => {
     expect(anexados).toEqual(["VIDEO", "AUDIO"]);
   });
 
-  // Sem esta linha o host conclui que a transmissão perdeu o áudio: ele ouve na
-  // aba, não ouve aqui, e as duas coisas são o comportamento certo.
-  it("diz ao host onde o som está tocando", () => {
-    montarComo(true);
-
-    expect(screen.getByText(/o som toca na aba que você está compartilhando/i)).toBeTruthy();
-  });
-
   // O áudio EXISTE e está sendo transmitido — só não toca para ele. Mostrar
   // "sem áudio" seria afirmar uma falha que não houve.
   it("não mostra aviso de áudio ausente para o host", () => {

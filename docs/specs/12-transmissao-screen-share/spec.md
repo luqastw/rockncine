@@ -110,12 +110,10 @@ sala — está numa aba separada que ele compartilha.
 - **FR-030** QUANDO a track de áudio for a do próprio transmissor, ENTÃO a decisão DEVE ser
   tomada por `participant.isLocal` da própria track — não por comparar `identity` com o
   `userId`, e não por "sou participante local", que todo espectador também é.
-- **FR-031** QUANDO o áudio não tocar por ser do próprio transmissor, ENTÃO a sala DEVE
-  dizer onde o som está tocando. Sem isso, o host ouve na aba, não ouve na sala, e conclui
-  que a transmissão perdeu o áudio.
-- **FR-032** QUANDO a track de áudio existir e for do próprio transmissor, ENTÃO a sala NÃO
-  DEVE exibir o aviso de "sem áudio": nada quebrou, e afirmar que quebrou é pior que a
-  omissão.
+- **FR-031** QUANDO a track de áudio existir e for do próprio transmissor, ENTÃO a sala NÃO
+  DEVE exibir aviso de áudio ausente: nada quebrou, e afirmar que quebrou é pior que a
+  omissão. Nenhum aviso substitui este silêncio — o transmissor ouve o som na aba, e a sala
+  não precisa explicar isso para ele.
 - **FR-026** QUANDO houver transmissão e a track de vídeo NÃO tiver chegado, ENTÃO a sala DEVE
   esperar por prazo limitado antes de concluir que nada vem, e ao vencê-lo DEVE dizer que a
   transmissão não chegou e oferecer saída manual para o modo player.
@@ -143,32 +141,32 @@ sala — está numa aba separada que ele compartilha.
 > usuário de ter cancelado. O usuário ficou com o banner de "compartilhando"
 > ligado, a tela indo para o SO, ninguém recebendo, e nenhuma pista do motivo.
 
-- **FR-033** QUANDO o estado da conexão com o SFU não for "conectado", ENTÃO o botão de
+- **FR-032** QUANDO o estado da conexão com o SFU não for "conectado", ENTÃO o botão de
   iniciar DEVE estar desabilitado, com o motivo nomeado no texto visível e no
   `aria-label`.
-- **FR-034** QUANDO o botão for acionado com o SFU indisponível, ENTÃO o cliente NÃO DEVE chamar
+- **FR-033** QUANDO o botão for acionado com o SFU indisponível, ENTÃO o cliente NÃO DEVE chamar
   `getDisplayMedia`. Pedir captura ao SO sem poder publicar é o que produz a tela
   compartilhada sem ninguém recebendo.
-- **FR-035** QUANDO a captura for recusada pelo usuário, ENTÃO a UI DEVE dizer que foi
+- **FR-034** QUANDO a captura for recusada pelo usuário, ENTÃO a UI DEVE dizer que foi
   cancelada ou negada, e NÃO DEVE tentar desligar captura — nada foi capturado.
-- **FR-036** QUANDO a captura for concedida mas a publicação falhar, ENTÃO o cliente DEVE
+- **FR-035** QUANDO a captura for concedida mas a publicação falhar, ENTÃO o cliente DEVE
   desligar a captura antes de reportar, e o aviso DEVE atribuir a falha à publicação
   (e ao deploy), nunca ao usuário.
-- **FR-037** QUANDO a credencial não puder ser obtida, ENTÃO a sala DEVE exibir a causa
+- **FR-036** QUANDO a credencial não puder ser obtida, ENTÃO a sala DEVE exibir a causa
   distinguível por status HTTP — 503 configuração, 403 permissão na sala, 401 sessão —
   em vez de degradar em silêncio para um botão que falha no clique.
-- **FR-038** QUANDO a conexão WebSocket com o SFU falhar, ENTÃO a sala DEVE exibir o status
+- **FR-037** QUANDO a conexão WebSocket com o SFU falhar, ENTÃO a sala DEVE exibir o status
   HTTP do handshake e a razão do Livekit (`NotAllowed`, `ServerUnreachable`,
   `InternalError`), junto do texto do servidor.
-- **FR-039** QUANDO o handshake responder 401, ENTÃO a sala DEVE apontar que `LIVEKIT_URL` e
+- **FR-038** QUANDO o handshake responder 401, ENTÃO a sala DEVE apontar que `LIVEKIT_URL` e
   as chaves precisam ser do mesmo projeto — a falha mais provável e a que mais custou
   tempo de diagnóstico, porque a assinatura do token passa (200 na rota) e só o handshake
   rejeita.
-- **FR-040** QUANDO o texto do servidor nomear um problema de credencial, ENTÃO essa
+- **FR-039** QUANDO o texto do servidor nomear um problema de credencial, ENTÃO essa
   leitura DEVE prevalecer sobre o `reason` do enum. O enum classifica "invalid token" como
   `ServerUnreachable` (a conexão de sinal não subiu), e a dica resultante — "confira o
   `LIVEKIT_URL`" — seria errada: o servidor respondeu, só recusou a credencial.
-- **FR-041** QUANDO houver status HTTP, ENTÃO ele DEVE ser exibido como fato observável,
+- **FR-040** QUANDO houver status HTTP, ENTÃO ele DEVE ser exibido como fato observável,
   separado da dica. A dica é hipótese com ação; o status é o que o servidor respondeu.
   Fundir os dois faria a dica afirmar um status que não houve.
 
@@ -228,7 +226,7 @@ sala — está numa aba separada que ele compartilha.
 - **AC-021** Dado que quem assiste é um espectador, quando a track de áudio é remota, então
   ela é anexada ao elemento de áudio.
 - **AC-022** Dado que quem assiste é o transmissor, quando a track de áudio existe, então a
-  tela diz onde o som toca e não mostra aviso de áudio ausente.
+  sala não mostra aviso de áudio ausente.
 
 ## 7. Decisões de arquitetura
 
@@ -364,8 +362,8 @@ no grafo.
 
 | Risco | Mitigação |
 |---|---|
-| Erro de configuração se apresenta como erro do usuário | Impedido por FR-035/FR-036: `NotAllowedError` é a fronteira entre cancelamento e falha de publicação, e o aviso de falha nomeia o deploy. A credencial indisponível aparece na tela com o status HTTP (FR-033), então o problema é diagnosticável sem DevTools. |
-| Captura órfã: SO continua capturando com ninguém recebendo | Impedido por prevenção (FR-034: não pedir captura sem SFU conectado) e por cura (FR-036: desligar o que o SO já concedeu). A primeira tentativa em produção produziu exatamente este estado. |
+| Erro de configuração se apresenta como erro do usuário | Impedido por FR-034/FR-035: `NotAllowedError` é a fronteira entre cancelamento e falha de publicação, e o aviso de falha nomeia o deploy. A credencial indisponível aparece na tela com o status HTTP (FR-033), então o problema é diagnosticável sem DevTools. |
+| Captura órfã: SO continua capturando com ninguém recebendo | Impedido por prevenção (FR-033: não pedir captura sem SFU conectado) e por cura (FR-035: desligar o que o SO já concedeu). A primeira tentativa em produção produziu exatamente este estado. |
 | Dependência de terceiro para mídia central do produto | LiveKit é o SDK de referência do WebRTC, tem free tier, e é self-hostável. O estado de transmissão **não** depende dele — se o LiveKit cair, a sala volta ao modo player com o storage intacto. |
 | Payload da sala subiu de 107,6 para 260,1 KB gzip | Ver seção 9: inerente ao SFU, medido, e as demais rotas não pagam. A mitigação possível (dois cliques) está descrita e não foi implementada por decisão de produto. |
 | Qualquer membro pode escrever `storage.broadcast` e tirar o player da tela de todos por até 3 min | É a mesma classe de confiança do storage do Liveblocks que o app já tem: `storage.player` e o `ts` dos eventos têm o mesmo dono. O estado é validado por forma, mas a **autoria** não é verificada pelo servidor. Um membro malicioso escreve `{ broadcasterId, broadcasterName, startedAt, heartbeatAt }` sem ter track nenhuma, e a sala mostra "conectando à transmissão" até o prazo vencer. **Parcialmente mitigado**: FR-026/FR-027 dão a quem assiste uma saída manual após 12s, então o espectador não fica preso — ele só precisa de um clique. **Autoria não resolvida**: fechar exige que o storage seja gravado por um caminho que o cliente não controle, que é mudança de arquitetura e não cabe nesta spec. |

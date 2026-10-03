@@ -134,7 +134,11 @@ export function ScreenSharePlayer({
           a captura vem só em vídeo. O aviso é explícito e não é tratado como
           erro — o vídeo continua tocando normalmente. Só aparece depois que a
           track de vídeo existe: enquanto ela não chegou, "sem áudio" seria uma
-          afirmação que ninguém pode verificar. */}
+          afirmação que ninguém pode verificar.
+
+          E nunca para o host: a track existe e está sendo transmitida, só não
+          toca para quem a produziu. Avisar ali seria afirmar uma falha que não
+          houve. */}
       {videoTrack && !audioTrack && !audioEhMinha && (
         <p
           role="status"
@@ -142,19 +146,6 @@ export function ScreenSharePlayer({
           className="absolute inset-x-0 bottom-0 bg-[var(--scrim)] px-3 py-2 text-center text-xs text-[var(--ink)]"
         >
           esta transmissão está sem áudio — o navegador não capturou o som da aba
-        </p>
-      )}
-
-      {/* O host não ouve o áudio aqui de propósito (ver `audioEhMinha`). Dizer isso
-          é o que separa "o áudio foi desativado" de "o áudio quebrou": sem esta
-          linha o transmissor ouve o som na aba compartilhada, não ouve aqui, e
-          conclui que a transmissão perdeu o áudio. */}
-      {videoTrack && audioEhMinha && (
-        <p
-          role="status"
-          className="absolute inset-x-0 bottom-0 bg-[var(--scrim)] px-3 py-2 text-center text-xs text-[var(--ink)]"
-        >
-          o som toca na aba que você está compartilhando, não aqui
         </p>
       )}
     </div>
