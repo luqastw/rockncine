@@ -517,9 +517,16 @@ describe("anexação da track ao elemento (FR-011, FR-012)", () => {
 // strings específicas (`screen_share`, `screen_share_audio`) e o
 // `ScreenSharePlayer` compara por igualdade — um literal inventado aqui
 // passaria como "nenhuma track encontrada" e o teste viraria vacuidade.
-function screenShareRef(identity: string, source: Track.Source, track: unknown = null) {
+function screenShareRef(
+  identity: string,
+  source: Track.Source,
+  track: unknown = null,
+  // `isLocal` decide se o áudio toca para quem está olhando. O padrão é remoto
+  // (espectador); o host vê a própria track como local.
+  isLocal = false,
+) {
   return {
-    participant: { identity, isLocal: false },
+    participant: { identity, isLocal },
     source,
     publication: { source, track, isMuted: false, trackSid: `${identity}-${source}` },
   };
@@ -945,5 +952,71 @@ describe("motivo da falha de conexão na tela", () => {
 
     expect(screen.queryByText(/mesmo projeto/i)).toBeNull();
     expect(screen.queryByText(/connection closed/)).toBeNull();
+  });
+});
+
+// O host já ouve o som da aba compartilhada, direto e sem latência. Se a sala
+// tocasse a track devolvida pelo SFU, ele ouviria o mesmo áudio duas vezes — uma
+// na hora, outra com 1-2s de atraso. Não é eco, são duas fontes do mesmo som em
+// tempos diferentes, e o ouvido lê como chiado de fase.
+describe("o host não ouve a própria transmissão", () => {
+  function montarComo(souHost: boolean) {
+    mocks.root.broadcast = broadcast;
+    const anexados: string[] = [];
+    const video = screenShareRef(
+      "outro",
+      Track.Source.ScreenShare,
+      fakeTrack((el) => anexados.push(el.tagName)),
+    );
+    const audio = screenShareRef(
+      "outro",
+      Track.Source.ScreenShareAudio,
+      fakeTrack((el) => anexados.push(el.tagName)),
+      souHost,
+    );
+    mocks.useTracksReturn = [video, audio];
+    renderRoom();
+    return anexados;
+  }
+
+  // O comportamento pedido: nada de áudio para o host.
+  it("não anexa a track de áudio quando ela é a dele", () => {
+    const anexados = montarComo(true);
+
+    expect(anexados).toEqual(["VIDEO"]);
+    expect(document.querySelector("audio")?.hasAttribute("srcObject")).toBe(false);
+  });
+
+  it("espectador continua ouvindo normalmente", () => {
+    const anexados = montarComo(false);
+
+    expect(anexados).toEqual(["VIDEO", "AUDIO"]);
+  });
+
+  // Sem esta linha o host conclui que a transmissão perdeu o áudio: ele ouve na
+  // aba, não ouve aqui, e as duas coisas são o comportamento certo.
+  it("diz ao host onde o som está tocando", () => {
+    montarComo(true);
+
+    expect(screen.getByText(/o som toca na aba que você está compartilhando/i)).toBeTruthy();
+  });
+
+  // O áudio EXISTE e está sendo transmitido — só não toca para ele. Mostrar
+  // "sem áudio" seria afirmar uma falha que não houve.
+  it("não mostra aviso de áudio ausente para o host", () => {
+    montarComo(true);
+
+    expect(screen.queryByText(/sem áudio/i)).toBeNull();
+  });
+
+  it("espectador vê o aviso quando o Firefox não captura áudio", () => {
+    mocks.root.broadcast = broadcast;
+    mocks.useTracksReturn = [
+      screenShareRef("outro", Track.Source.ScreenShare, fakeTrack(() => {})),
+    ];
+
+    renderRoom();
+
+    expect(screen.getByText(/sem áudio/i)).toBeTruthy();
   });
 });

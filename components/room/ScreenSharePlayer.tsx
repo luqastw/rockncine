@@ -45,7 +45,7 @@ export function ScreenSharePlayer({
   });
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
 
   // O storage é a autoridade sobre QUEM transmite (decisão de "onde mora o
   // estado", docs/specs/12-transmissao-screen-share/spec.md, seção 7), e a
@@ -59,9 +59,26 @@ export function ScreenSharePlayer({
     tracks.find((ref) => ref.source === Track.Source.ScreenShare)?.publication.track;
 
   // FR-011: áudio é uma track separada, e ela pode simplesmente não existir.
-  const audioTrack = tracks.find(
+  const audioRef = tracks.find(
     (ref) => ref.source === Track.Source.ScreenShareAudio && ref.participant.identity === broadcast.broadcasterId,
-  )?.publication.track;
+  );
+  const audioTrack = audioRef?.publication.track;
+
+  // O HOST NÃO OUVE A PRÓPRIA TRANSMISSÃO.
+  //
+  // Quem compartilha a aba já ouve o som dela, direto, sem latência. Se a sala
+  // tambem tocasse a track devolvida pelo SFU, ele ouviria o mesmo som duas
+  // vezes: uma na hora e outra com 1-2s de atraso, fora de sincronia. Isso não é
+  // eco — são duas fontes do mesmo áudio em tempos diferentes, que o ouvido lê
+  // como um chiado de fase.
+  //
+  // A checagem e `participant.isLocal` e nao comparar `identity` com `userId`: a
+  // pergunta e "esta track e minha?", e o Livekit ja sabe responder isso. Todo
+  // espectador tambem e participante local no seu navegador, entao "sou local"
+  // sozinho nao serve -- quem decide e a track ser especificamente a própria.
+  const audioEhMinha = audioRef?.participant.isLocal === true;
+  // O que este espectador vai ouvir. Para o host, nada: o som esta na aba.
+  const audioParaAssistir = audioEhMinha ? null : audioTrack;
 
   // FR-011/FR-012: cada `MediaStreamTrack` no seu elemento. `muted` no `<video>`
   // é obrigatório: sem ele o navegador bloqueia o autoplay e o espectador vê
@@ -77,13 +94,13 @@ export function ScreenSharePlayer({
   }, [videoTrack]);
 
   useEffect(() => {
-    const element = audioRef.current;
-    if (!element || !audioTrack) return;
-    audioTrack.attach(element);
+    const element = audioElRef.current;
+    if (!element || !audioParaAssistir) return;
+    audioParaAssistir.attach(element);
     return () => {
-      audioTrack.detach(element);
+      audioParaAssistir.detach(element);
     };
-  }, [audioTrack]);
+  }, [audioParaAssistir]);
 
   return (
     <div className="relative h-full w-full">
@@ -97,7 +114,7 @@ export function ScreenSharePlayer({
         aria-hidden
         className="h-full w-full bg-black object-contain"
       />
-      <audio ref={audioRef} autoPlay />
+      <audio ref={audioElRef} autoPlay />
       <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-center gap-2 p-2">
         <span
           role="status"
@@ -118,13 +135,26 @@ export function ScreenSharePlayer({
           erro — o vídeo continua tocando normalmente. Só aparece depois que a
           track de vídeo existe: enquanto ela não chegou, "sem áudio" seria uma
           afirmação que ninguém pode verificar. */}
-      {videoTrack && !audioTrack && (
+      {videoTrack && !audioTrack && !audioEhMinha && (
         <p
           role="status"
           aria-live="polite"
           className="absolute inset-x-0 bottom-0 bg-[var(--scrim)] px-3 py-2 text-center text-xs text-[var(--ink)]"
         >
           esta transmissão está sem áudio — o navegador não capturou o som da aba
+        </p>
+      )}
+
+      {/* O host não ouve o áudio aqui de propósito (ver `audioEhMinha`). Dizer isso
+          é o que separa "o áudio foi desativado" de "o áudio quebrou": sem esta
+          linha o transmissor ouve o som na aba compartilhada, não ouve aqui, e
+          conclui que a transmissão perdeu o áudio. */}
+      {videoTrack && audioEhMinha && (
+        <p
+          role="status"
+          className="absolute inset-x-0 bottom-0 bg-[var(--scrim)] px-3 py-2 text-center text-xs text-[var(--ink)]"
+        >
+          o som toca na aba que você está compartilhando, não aqui
         </p>
       )}
     </div>
