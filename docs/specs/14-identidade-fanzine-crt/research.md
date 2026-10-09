@@ -125,16 +125,31 @@ O rascunho orçava 40 colunas (~384px, não caberia) e o AC media colunas — pa
 contrato foi corrigido (FR-010/AC-005) e o teste passou a medir px. Guard adicional no CSS:
 `.ascii { overflow-x: clip }`.
 
-### AC-003 / AC-004 — media queries (estrutura provada; computado pendente)
+### AC-004 — reduced-motion no browser (VERIFICADO)
+
+Medido com o browser dirigido por CDP em `https://rockncine.vercel.app/`, com `prefers-reduced-motion:
+reduce` emulado: `matchMedia("(prefers-reduced-motion: reduce)")` casa `true` e a `transition-duration`
+computada de `.reveal` é `1e-05s` (0,01ms) — exatamente o teto de AC-004. A transição nova vive em
+`transition`, e a regra global (mais o `.reduce-motion` do modo economy) a zera. ✅
+
+### AC-003 — reduced-transparency (estrutura provada; computado ainda pendente)
 
 - `styles.test.ts` prova que o bloco `@media (prefers-reduced-transparency: reduce)` existe e desliga
   `.grain` (`display: none`) e `.chrome-blur` (`backdrop-filter: none`).
-- A regra global de `prefers-reduced-motion` (`animation-duration/transition-duration: 0.01ms
-  !important`) e o `.reduce-motion` do modo economy cobrem `[data-js] .reveal` — a transição nova vive
-  em `transition`, que a regra zera.
-- **[pendente]** O valor **computado** em browser (o `backdrop-filter: none` efetivo sob a media query
-  real, e a duração computada ≤ 0,01ms) exige navegador com a preferência ligada. Não há browser nesta
-  sessão; é a verificação manual de release de AC-003/AC-004.
+- **[pendente]** O CLI de browser disponível não emula `prefers-reduced-transparency` (tentei
+  `set media … reduced-transparency`; `matchMedia` continua `false` e o `backdrop-filter` segue
+  `blur(10px)`), então o valor computado sob a preferência real exige um browser com a opção ligada nas
+  settings. É a única verificação manual que resta.
+
+### Calibração do grão (revisão pós-deploy, 2026-10-09)
+
+A primeira entrega saiu com `--grain-opacity: 0.05` e o usuário não viu textura nenhuma na tela.
+Diagnóstico em browser (1280px): o nó `.grain` existia e o estilo computado estava correto (`opacity:
+0.05`, `position: fixed`, `background-image` presente) — o valor estava **abaixo do limiar
+perceptível**, não havia bug de deploy. Pré-visualização por override em runtime: 0,15 lê como grão de
+filme, 0,30 vira chuvisco e levanta o preto, 0,05 não se vê. Fixado em **0,16** com tile de 120px
+(grão fino), conferido no dev server local antes do push. Lição registrada: efeito visual só conta como
+entregue depois de olhado no tamanho alvo — o valor do token não é prova de que se vê.
 
 ### AC-017 — escopo
 

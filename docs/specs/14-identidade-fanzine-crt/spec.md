@@ -155,8 +155,8 @@ Unhappy paths primeiro.
 - **AC-003** [FR-008] Given `prefers-reduced-transparency: reduce`, When a página é inspecionada,
   Then a camada de grão está desligada e o `backdrop-filter` computado da barra é `none`.
 - **AC-004** [FR-015] Given `prefers-reduced-motion: reduce`, When uma seção é revelada, Then a
-  duração de transição computada é ≤ 0.01ms. *(verificação em browser; jsdom não aplica media query
-  em `getComputedStyle` — declarada como bloqueante de release.)*
+  duração de transição computada é ≤ 0.01ms. *(verificado em browser: `transition-duration` computada
+  de `.reveal` = `1e-05s`; ver `research.md` §7.)*
 - **AC-005** [FR-010] Given o módulo da arte ASCII, When o teste mede cada linha (`colunas × 0,62em ×
   16px`), Then o máximo é ≤ 272px; e a fonte não contém tabulação.
 - **AC-006** [FR-007] Given a camada de grão renderizada, When o nó é inspecionado, Then tem

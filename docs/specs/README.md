@@ -23,7 +23,7 @@ de redirecionamento; histórico completo do monolito continua disponível no git
 | 10 | [Exclusão de sala pelo dono e limite de histórico do chat](10-exclusao-sala-limite-chat/spec.md) | implementado (verificação manual em navegador pendente) |
 | 12 | [Transmissão por screen share](12-transmissao-screen-share/spec.md) — modo transmissão via LiveKit Cloud, contornando o sync layer | implementado (captura real, track do SFU, áudio e troca de aba sem verificação em browser) |
 | 13 | [Chat da sala](13-chat-sala/spec.md) — feed fora do estado da sala, envio em fila, log legível, composer de verdade | implementado (medição de altura do painel em device real segue manual) |
-| 14 | [Identidade fanzine-CRT](14-identidade-fanzine-crt/spec.md) — textura, ASCII, blur e movimento no chrome (`/`, auth, `/rooms`, 404/erro); sala fora do escopo | implementado (AC-003/AC-004 dependem de verificação em browser) |
+| 14 | [Identidade fanzine-CRT](14-identidade-fanzine-crt/spec.md) — textura, ASCII, blur e movimento no chrome (`/`, auth, `/rooms`, 404/erro); sala fora do escopo | implementado (AC-003 pendente de browser com reduced-transparency) |
 
 A pasta é numerada, não datada — as rodadas 02 a 14 do arquivo original foram todas escritas em
 2026-08-20/21, então uma data não separaria a ordem real de nada.

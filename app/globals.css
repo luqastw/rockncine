@@ -58,8 +58,12 @@
      Declarados SEM remover nem renomear nenhum token acima. Continuam acromáticos por
      construção: `--hairline` é branco translúcido e `--ascii-ink` é cinza (R=G=B) — a
      regra de "estado nunca por matiz" (FR-001) segue valendo para a camada nova. */
-  --grain-opacity: 0.05;
-  --grain-size: 180px;
+  /* Calibração do grão. 0,05 (primeira versão) ficava ABAIXO DO LIMIAR PERCEPTÍVEL: o
+     nó existia no DOM e não se via nada na tela. 0,16 é o menor valor que lê como textura
+     sobre --bg-void sem levantar o preto e sem virar chuvisco (0,30 já suja a leitura) —
+     verificado em browser a 1280px. 120px de tile deixa o grão fino, como filme. */
+  --grain-opacity: 0.16;
+  --grain-size: 120px;
   --hairline: rgb(255 255 255 / 0.14);
   /* Cor da arte ASCII. A arte é `aria-hidden` e decorativa, então está fora do piso de
      contraste de FR-022 (que vale para texto acessível): medido, #4d4d4d sobre --bg-void dá
