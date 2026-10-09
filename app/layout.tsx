@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProviderWrapper } from "@/components/SessionProviderWrapper";
 
@@ -10,6 +10,17 @@ import { SessionProviderWrapper } from "@/components/SessionProviderWrapper";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+});
+
+// Papel Display do redesign fanzine-CRT (FR-004, docs/specs/14-identidade-fanzine-crt/spec.md):
+// uma mono self-hosted, peso 700, subset latin. Não é dependência npm — o `next/font` baixa e
+// self-hospeda o arquivo no build, como o Inter acima. A variável alimenta `--font-display`
+// em globals.css.
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
+  subsets: ["latin"],
+  weight: ["700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -56,8 +67,29 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} h-full antialiased`}>
+    // `suppressHydrationWarning`: o script abaixo escreve `data-js` no <html>
+    // antes de o React hidratar, então o atributo difere do HTML do servidor. É
+    // o escape documentado para o padrão de script de tema; sem ele o React
+    // avisa a cada página em `next dev`.
+    <html
+      lang="pt-BR"
+      suppressHydrationWarning
+      className={`${inter.variable} ${spaceMono.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col">
+        {/* Marcador do realce progressivo (FR-014, docs/specs/14-identidade-fanzine-crt/spec.md).
+            Roda antes do conteúdo do body pintar e só então o CSS esconde `.reveal`. Sem JS o
+            atributo não existe, `.reveal` não casa nenhum seletor e o conteúdo nasce visível
+            (AC-001). O `setTimeout` é a rede de segurança de FR-014: se o bundle não hidratar
+            (chunk bloqueado, erro de rede, deploy skew), `data-hydrated` nunca é escrito e
+            depois de 1,2s tudo é revelado — a animação nunca pode virar portão. É
+            deliberadamente minúsculo e sem `src`. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "document.documentElement.dataset.js='';setTimeout(function(){if(!document.documentElement.hasAttribute('data-hydrated'))document.documentElement.setAttribute('data-reveal','')},1200);",
+          }}
+        />
         <SessionProviderWrapper>{children}</SessionProviderWrapper>
       </body>
     </html>

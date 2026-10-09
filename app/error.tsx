@@ -2,6 +2,9 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { PageShell } from "@/components/chrome/PageShell";
+import { AsciiArt } from "@/components/chrome/AsciiArt";
+import { ERROR_ART } from "@/components/chrome/ascii";
 
 // Boundary de erro do segmento raiz. Não envolve o `layout.tsx` acima dele —
 // a falha no próprio layout raiz é coberta por `app/global-error.tsx`, que
@@ -12,6 +15,10 @@ import Link from "next/link";
 // Sem este arquivo, qualquer erro no servidor (Postgres fora do ar, por
 // exemplo) caía na tela de erro default do Next, fora da linguagem visual do
 // resto do app (achado 23).
+//
+// No redesign (FR-019, docs/specs/14-identidade-fanzine-crt/spec.md) o estado
+// ganha fio e arte ASCII decorativa. Sem `Reveal` de propósito: num erro, o
+// conteúdo tem de aparecer sem depender do IntersectionObserver.
 export default function SegmentError({ error, reset }: { error: Error; reset: () => void }) {
   // O `error` era declarado no tipo e ignorado: nenhum 500 em produção deixava
   // rastro. O `digest` é o que o Next expõe do lado do servidor e é o que
@@ -21,8 +28,14 @@ export default function SegmentError({ error, reset }: { error: Error; reset: ()
   }, [error]);
 
   return (
-    <main className="mx-auto flex w-full min-h-dvh max-w-sm flex-col items-center justify-center gap-4 px-6 py-10 text-center">
-      <h1 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">
+    <PageShell width="sm" className="items-center justify-center gap-4 text-center">
+      <AsciiArt art={ERROR_ART} />
+      {/* fio de separação do estado de erro (FR-019) */}
+      <span aria-hidden="true" className="h-px w-16 bg-[var(--hairline)]" />
+      <p className="font-display text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+        rockncine
+      </p>
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-[var(--ink)]">
         alguma coisa quebrou
       </h1>
       <p className="text-sm text-[var(--ink-muted)]">
@@ -43,6 +56,6 @@ export default function SegmentError({ error, reset }: { error: Error; reset: ()
           voltar pro menu
         </Link>
       </div>
-    </main>
+    </PageShell>
   );
 }

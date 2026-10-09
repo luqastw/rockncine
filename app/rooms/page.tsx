@@ -7,6 +7,8 @@ import { JoinRoomForm } from "@/components/JoinRoomForm";
 import { CreateRoomForm } from "@/components/CreateRoomForm";
 import { DeleteRoomButton } from "@/components/DeleteRoomButton";
 import { SignOutButton } from "@/components/SignOutButton";
+import { PageShell } from "@/components/chrome/PageShell";
+import { Reveal } from "@/components/chrome/Reveal";
 import { SOURCE_LABEL } from "@/lib/video-source";
 
 export const metadata: Metadata = { title: "suas salas · rockncine" };
@@ -93,37 +95,39 @@ export default async function RoomsPage({
   const visiveis = temProxima ? memberships.slice(0, PAGE_SIZE) : memberships;
 
   return (
-    // `w-full` é obrigatório aqui: este `<main>` é item de um flex-coluna (o
-    // `body`) e o `mx-auto` faz margin automática no eixo transversal, que
-    // DESLIGA o stretch do item — sem `w-full` a coluna encolhe até o conteúdo
-    // e a largura da página passa a depender do nome das salas (medido: 348px
-    // com uma lista e 423px com outra, em vez dos 448px do `max-w-md`).
-    <main className="mx-auto flex w-full min-h-dvh max-w-md flex-col justify-center gap-10 px-6 py-10">
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">rockncine</h1>
-          <p className="text-sm text-[var(--ink-muted)]">
-            {session?.user?.name ?? session?.user?.email}
-          </p>
-        </div>
-        <SignOutButton />
-      </header>
+    // O invólucro único (FR-018, docs/specs/14-identidade-fanzine-crt/spec.md) agora é o
+    // `PageShell`: ele é dono da largura da coluna (`w-full` + `max-w-*` para o `mx-auto`
+    // não desligar o stretch — ver comentário original desta página), do padding e do grão.
+    // A marca saiu deste arquivo e vive no `ChromeBar`.
+    <PageShell width="md" chrome className="justify-center gap-10">
+      {/* A marca está no ChromeBar; este h1 preserva a semântica de título da página
+          sem duplicar o texto visível. Mantém o papel Display da spec 06 (AC-003:
+          mesmo font-weight e letter-spacing nos h1) para o guard de consistência
+          continuar valendo. */}
+      <h1 className="sr-only font-semibold tracking-tight">suas salas</h1>
 
-      <section className="flex flex-col gap-3">
+      <Reveal as="header" className="flex items-start justify-between gap-4">
+        <p className="text-sm text-[var(--ink-muted)]">
+          {session?.user?.name ?? session?.user?.email}
+        </p>
+        <SignOutButton />
+      </Reveal>
+
+      <Reveal as="section" className="flex flex-col gap-3">
         <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
           criar sala
         </h2>
         <CreateRoomForm />
-      </section>
+      </Reveal>
 
-      <section className="flex flex-col gap-3">
+      <Reveal as="section" className="flex flex-col gap-3">
         <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
           entrar por código
         </h2>
         <JoinRoomForm />
-      </section>
+      </Reveal>
 
-      <section className="flex flex-col gap-3">
+      <Reveal as="section" className="flex flex-col gap-3">
         <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
           suas salas
         </h2>
@@ -204,7 +208,7 @@ export default async function RoomsPage({
             )}
           </nav>
         )}
-      </section>
-    </main>
+      </Reveal>
+    </PageShell>
   );
 }

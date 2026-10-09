@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { Inter } from "next/font/google";
+import { Inter, Space_Mono } from "next/font/google";
+import { PageShell } from "@/components/chrome/PageShell";
+import { AsciiArt } from "@/components/chrome/AsciiArt";
+import { ERROR_ART } from "@/components/chrome/ascii";
 import "./globals.css";
 
 // Boundary de erro do documento inteiro. `app/error.tsx` cobre o segmento raiz,
@@ -16,9 +19,20 @@ import "./globals.css";
 //      nada disso é herdado;
 //   2. `metadata`/`generateMetadata` não existem aqui (é client component): o
 //      título vai por `<title>` do React.
+//
+// A variável de Display do redesign (FR-004, docs/specs/14-identidade-fanzine-crt/spec.md)
+// precisa ser redeclarada aqui pela mesma razão: o `--font-space-mono` do
+// layout raiz não chega a este documento substituto.
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+});
+
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
+  subsets: ["latin"],
+  weight: ["700"],
+  display: "swap",
 });
 
 export default function GlobalError({
@@ -36,11 +50,20 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="pt-BR" className={`${inter.variable} h-full antialiased`}>
+    <html
+      lang="pt-BR"
+      className={`${inter.variable} ${spaceMono.variable} h-full antialiased`}
+    >
       <body className="min-h-full">
         <title>alguma coisa quebrou · rockncine</title>
-        <main className="animate-rise mx-auto flex w-full min-h-dvh max-w-sm flex-col items-center justify-center gap-4 px-6 py-10 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">
+        <PageShell width="sm" className="items-center justify-center gap-4 text-center">
+          <AsciiArt art={ERROR_ART} />
+          {/* fio + arte ASCII decorativa do estado de erro (FR-019) */}
+          <span aria-hidden="true" className="h-px w-16 bg-[var(--hairline)]" />
+          <p className="font-display text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
+            rockncine
+          </p>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-[var(--ink)]">
             alguma coisa quebrou
           </h1>
           <p className="text-sm text-[var(--ink-muted)]">
@@ -53,7 +76,7 @@ export default function GlobalError({
           >
             tentar de novo
           </button>
-        </main>
+        </PageShell>
       </body>
     </html>
   );

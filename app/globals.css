@@ -53,6 +53,19 @@
      achado 5 de docs/specs/06-consistencia-design/spec.md). Não usar em cima do vídeo: ali "preto" é
      letterbox real, não scrim de UI — ver comentário em RoomExperience.tsx. */
   --scrim: rgb(0 0 0 / 0.7);
+
+  /* Tokens de textura do redesign fanzine-CRT (FR-002, docs/specs/14-identidade-fanzine-crt/spec.md).
+     Declarados SEM remover nem renomear nenhum token acima. Continuam acromáticos por
+     construção: `--hairline` é branco translúcido e `--ascii-ink` é cinza (R=G=B) — a
+     regra de "estado nunca por matiz" (FR-001) segue valendo para a camada nova. */
+  --grain-opacity: 0.05;
+  --grain-size: 180px;
+  --hairline: rgb(255 255 255 / 0.14);
+  /* Cor da arte ASCII. A arte é `aria-hidden` e decorativa, então está fora do piso de
+     contraste de FR-022 (que vale para texto acessível): medido, #4d4d4d sobre --bg-void dá
+     2,34:1 — abaixo de 4,5:1 de propósito, porque a arte é textura de fundo, não conteúdo.
+     Se a arte deixar de ser decorativa, este token tem de subir para ≥ 4,5:1. */
+  --ascii-ink: #4d4d4d;
 }
 
 @theme inline {
@@ -70,6 +83,13 @@
      depois. */
   --font-mono:
     ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  /* Papel Display do redesign (FR-004, docs/specs/14-identidade-fanzine-crt/spec.md): a mono
+     self-hosted vem do `--font-space-mono` que o `next/font` declara em layout.tsx, com a mono
+     do sistema como fallback. Vira a utilitária `font-display` do Tailwind v4. O corpo segue
+     `--font-sans` acima; nenhuma segunda webfont entra no bundle (FR-005). */
+  --font-display:
+    var(--font-space-mono), ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
 }
 
 /* Cantos no espírito do iOS: os 6px do default do Tailwind ficavam quase retos
@@ -310,7 +330,6 @@ button,
   to { opacity: 1; }
 }
 
-.animate-rise { animation: rise-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-pop { animation: pop-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-fade { animation: fade-in 160ms ease-out both; }
 
@@ -331,4 +350,87 @@ button,
 button:not(:disabled):active,
 a[href]:active {
   opacity: 0.88;
+}
+
+/* ---------------------------------------------------------------------------
+   Identidade fanzine-CRT (spec 14, docs/specs/14-identidade-fanzine-crt/spec.md).
+   Textura, chrome e realce progressivo. Tudo abaixo é estático: nada aqui usa
+   `animation` nem escapa das regras globais de reduced-motion/economy já
+   declaradas acima (FR-015).
+   --------------------------------------------------------------------------- */
+
+/* Grão: uma camada fixa por página, nas superfícies em escopo (FR-007). O SVG
+   `feTurbulence` em data-URI nasce achromático (`saturate 0`), então a regra de
+   "estado nunca por matiz" continua de pé. Sem `animation`/`transition` e sem
+   custo de layout: `background-image` é pintura pura, não dispara reflow. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-repeat: repeat;
+  background-size: var(--grain-size) var(--grain-size);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23g)'/%3E%3C/svg%3E");
+  opacity: var(--grain-opacity);
+}
+
+/* Barra de chrome: ÚNICO lugar do app com `backdrop-filter` (FR-011, AC-008).
+   Raio de 10px (≤ 12px), fundo translúcido e fio `--hairline` — a separação não
+   depende só do desfoque (FR-012). O fundo é acromático (R=G=B). */
+.chrome-blur {
+  background: rgb(10 10 10 / 0.72);
+  /* só o nome padrão: o Lightning CSS do Tailwind v4 adiciona o `-webkit-` para
+     os alvos que precisam. Declarar os dois à mão faz o minificador descartar o
+     sem prefixo, e aí o Firefox fica sem desfoque. */
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* Arte ASCII (FR-010). Defesa em profundidade contra rolagem horizontal: a arte
+   já é orçada em ≤ 26 colunas (components/chrome/ascii.test.ts), mas `white-space:
+   pre` não quebra linha, então `overflow-x: clip` corta uma linha larga demais em
+   vez de arrastar o documento — em 320px a coluna útil é 272px. */
+.ascii {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* Realce progressivo (FR-013/FR-014). O seletor é ancorado no marcador `[data-js]`
+   que o script inline do layout raiz escreve em <html>: sem JavaScript ele não
+   existe, `.reveal` não casa nada e o conteúdo nasce visível (AC-001). Com JS, o
+   componente Reveal seta `[data-visible]` via IntersectionObserver. Anima SÓ
+   `opacity` e `transform` — nunca largura, altura ou offsets de layout (FR-016). */
+[data-js] .reveal {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 380ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 380ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-js] .reveal[data-visible] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Rede de segurança (FR-014): se o bundle não carregar ou não hidratar — chunk
+   bloqueado, erro de rede, deploy skew — o script inline do layout marca
+   `[data-reveal]` depois de 1,2s e tudo aparece. Sem isto, uma falha de rede
+   deixaria o site inteiro invisível, o que seria a animação virando portão.
+   Vem depois de `[data-js] .reveal` (mesma especificidade) de propósito. */
+[data-reveal] .reveal {
+  opacity: 1;
+  transform: none;
+}
+
+/* FR-008: quando o usuário pede menos transparência, o grão e o desfoque saem
+   de cena. O fundo da barra volta a ser opaco para o conteúdo não vazar por trás. */
+@media (prefers-reduced-transparency: reduce) {
+  .grain {
+    display: none;
+  }
+  .chrome-blur {
+    backdrop-filter: none;
+    background: var(--bg-void);
+  }
 }
