@@ -230,7 +230,13 @@ describe("Chat — agrupamento por autor", () => {
 
   it("insere divisória de dia quando o dia muda (AC-010)", () => {
     renderChat();
-    const ontem = NOW - 26 * 60 * 60 * 1000;
+    // Um instante do dia ANTERIOR, não "26 horas atrás". O offset fixo escorrega
+    // dois dias quando a suíte roda antes das 02:00 locais: o rótulo vira a data
+    // por extenso e o teste passa a depender do relógio de quem roda — ficou
+    // vermelho na CI, em UTC às 00:34, sem nenhuma mudança no chat. Meio-dia de
+    // ontem é o dia anterior em qualquer hora de execução.
+    const meiaNoite = new Date(NOW).setHours(0, 0, 0, 0);
+    const ontem = meiaNoite - 12 * 60 * 60 * 1000;
     at(ontem - NOW, () => emitRemote({ text: "ontem mesmo", ts: ontem }));
     at(0, () => emitRemote({ text: "hoje", ts: NOW }));
     // "hoje" aparece em dois lugares — a divisória e o texto da própria
