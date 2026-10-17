@@ -19,6 +19,7 @@ import { useBroadcastQuality } from "@/hooks/useBroadcastQuality";
 import {
   BROADCAST_QUALITIES,
   BROADCAST_QUALITY_LEVELS,
+  broadcastPublishOptions,
   broadcastQuality,
   type BroadcastQualityLevel,
 } from "@/lib/broadcast-quality";
@@ -234,14 +235,34 @@ export function BroadcastControls({
       // (1920x1080, 5 Mbps). Esse é o default do Livekit e não serve para
       // watch party em banda residencial: 5 Mbps de upstream é o suficiente para
       // frames descartados, que aparecem como travamento.
-      await localParticipant.setScreenShareEnabled(true, {
-        audio: true,
-        contentHint: "motion",
-        resolution: quality.preset,
-        selfBrowserSurface: "exclude",
-        systemAudio: "include",
-        surfaceSwitching: "include",
-      });
+      //
+      // `video: { displaySurface: "browser" }` é DICA de superfície, não
+      // imposição — o usuário ainda escolhe janela ou tela inteira no seletor,
+      // mas o padrão que o Chrome pré-seleciona passa a ser a aba, que é o
+      // requisito de FR-006 e não por acaso o caminho de menor custo: capturar
+      // um monitor 4K para depois escalar a 720p move muito mais pixel e mais
+      // GPU do que capturar a aba que interessa, e a captura de aba é a que o
+      // próprio Chrome documenta como de taxa de quadros mais estável
+      // (FR-048/AC-030).
+      //
+      // O terceiro argumento é a PUBLICACAO, e não a captura, e ele não é
+      // opcional: é o único caminho para o `screenShareEncoding`. Sem ele o
+      // Livekit publica screen share com o default dele (`h1080fps15`: 2,5 Mbps
+      // e **15 fps**) e o teto de quadros que o seletor promete nunca chega no
+      // fio (FR-044 a FR-046).
+      await localParticipant.setScreenShareEnabled(
+        true,
+        {
+          audio: true,
+          contentHint: "motion",
+          resolution: quality.preset,
+          video: { displaySurface: "browser" },
+          selfBrowserSurface: "exclude",
+          systemAudio: "include",
+          surfaceSwitching: "include",
+        },
+        broadcastPublishOptions(quality),
+      );
       startBroadcast();
     } catch (error: unknown) {
       // A distinção que o `catch` genérico apagava: cancelamento é decisão do

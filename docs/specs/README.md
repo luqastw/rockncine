@@ -21,7 +21,7 @@ de redirecionamento; histórico completo do monolito continua disponível no git
 | 08 | [Otimização de sync de vídeo e scroll do chat](08-otimizacao-sync-video-scroll-chat/spec.md) — redução de rollback e remoção da barra de scroll | implementado (CA1.2 parcial) |
 | 09 | [Resolução client-side, FPS e modo economy](09-resolucao-client/spec.md) | implementado |
 | 10 | [Exclusão de sala pelo dono e limite de histórico do chat](10-exclusao-sala-limite-chat/spec.md) | implementado (verificação manual em navegador pendente) |
-| 12 | [Transmissão por screen share](12-transmissao-screen-share/spec.md) — modo transmissão via LiveKit Cloud, contornando o sync layer | implementado (captura real, track do SFU, áudio e troca de aba sem verificação em browser) |
+| 12 | [Transmissão por screen share](12-transmissao-screen-share/spec.md) — modo transmissão via LiveKit Cloud, contornando o sync layer | implementado (captura real, track do SFU, áudio e troca de aba sem verificação em browser; FR-044 a FR-048 corrigem o teto de 15 fps no encoder, também pendentes de browser) |
 | 13 | [Chat da sala](13-chat-sala/spec.md) — feed fora do estado da sala, envio em fila, log legível, composer de verdade | implementado (medição de altura do painel em device real segue manual) |
 | 14 | [Identidade fanzine-CRT](14-identidade-fanzine-crt/spec.md) — textura, ASCII, blur e movimento no chrome (`/`, auth, `/rooms`, 404/erro); sala fora do escopo | implementado (AC-003 pendente de browser com reduced-transparency) |
 

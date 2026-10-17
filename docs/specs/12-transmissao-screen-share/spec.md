@@ -179,6 +179,40 @@ sala — está numa aba separada que ele compartilha.
   separado da dica. A dica é hipótese com ação; o status é o que o servidor respondeu.
   Fundir os dois faria a dica afirmar um status que não houve.
 
+### Quadros e banda: o encoder, não a captura
+
+> Estas FRs nasceram da segunda passagem em produção pelo mesmo sintoma de FR-041 — transmissão
+> travada, com o áudio bom e o seletor de qualidade parecendo inerte. A causa não era a captura:
+> `resolution` alimenta as constraints do `getDisplayMedia` e **para aí**. O encoder é alimentado
+> por `screenShareEncoding`, e sem ele o Livekit usa o default do `publishDefaults` —
+> `ScreenSharePresets.h1080fps15.encoding`, **2,5 Mbps e 15 fps**. Os três níveis pediam
+> 15/30/30 quadros à captura e o fio entregava 15 em todos: dois deles com metade dos quadros no
+> chão. FR-040/FR-041 estavam implementados e o teste passava verde, porque ambos olham só o que
+> chega ao SO.
+
+- **FR-044** QUANDO o host iniciar a transmissão, ENTÃO as opções de PUBLICAÇÃO DEVEM ser passadas
+  junto das de captura (`setScreenShareEnabled(true, captura, publicação)`), com
+  `screenShareEncoding` igual ao `encoding` do preset escolhido. O argumento de publicação é o único
+  caminho para o teto de quadros: sem ele, o preset muda a captura e não muda o fio.
+- **FR-045** QUANDO a banda do host apertar, ENTÃO o encoder DEVE cortar resolução, e NÃO quadros:
+  `degradationPreference` DEVE ser `maintain-framerate`. O default do Livekit para screen share é
+  `maintain-resolution`, o inverso: das duas degradações, a barata é resolução — borrão se lê como
+  qualidade de vídeo, quadro faltando se lê como transmissão quebrada, e é o que produz a imagem
+  nítida e congelada de FR-041.
+- **FR-046** QUANDO a track de tela for publicada, ENTÃO `simulcast` DEVE ser falso. Com simulcast o
+  host codifica duas camadas — o dobro de CPU de quem transmite, que é o recurso escasso a 60 fps —
+  e o Livekit gera para screen share uma camada de 360p a 625 kbps, que é justamente o que o
+  espectador recebe quando a banda aperta: borrada e sem quadros. A sala é pequena; a camada extra
+  não protege ninguém.
+- **FR-047** A qualidade DEVE oferecer um nível de 60 fps a 720p e 4 Mbps, além dos três de FR-040.
+  O preset DEVE ser construído explicitamente: `ScreenSharePresets` não tem nível de 60 fps (o topo
+  lá é `h1080fps30`). 4 Mbps a 60 fps são os mesmos ~67 kbit por quadro de 2 Mbps a 30 fps, então o
+  nível dobra os quadros sem dobrar o custo por quadro — e só rende quando a fonte produz 60 quadros.
+- **FR-048** QUANDO a captura for pedida, ENTÃO a superfície DEVE ser sugerida como aba
+  (`video: { displaySurface: "browser" }`), mantendo o seletor do SO com todas as opções. Capturar um
+  monitor inteiro para depois escalar a 720p move muito mais pixel e mais GPU que capturar a aba que
+  interessa, e a captura de aba é a que a seção 7 já registra como de taxa de quadros mais estável.
+
 ### Sessão
 
 - **FR-020** QUANDO o cliente pedir credencial, ENTÃO o servidor DEVE emitir um token de room
@@ -244,6 +278,22 @@ sala — está numa aba separada que ele compartilha.
   seletor de qualidade está desabilitado e o motivo está no nome acessível.
 - **AC-026** Dado que o localStorage tem um valor que não é um nível válido, quando o host
   inicia a transmissão, então vale o padrão.
+
+### Quadros e banda
+
+- **AC-027** Dado que o host inicia a transmissão na qualidade padrão, quando
+  `setScreenShareEnabled` é chamado, então o terceiro argumento traz `screenShareEncoding` com
+  30 quadros e 2 Mbps — e não os 15 quadros com 2,5 Mbps do default do Livekit.
+- **AC-028** Dado que o host inicia a transmissão, quando a publicação é configurada, então
+  `degradationPreference` é `maintain-framerate`.
+- **AC-029** Dado que o host inicia a transmissão, quando a track de tela é publicada, então
+  `simulcast` é falso.
+- **AC-030** Dado que o host inicia a transmissão, quando a captura é pedida, então
+  `video.displaySurface` é `browser` e o seletor continua sendo o do sistema.
+- **AC-031** Dado que o host escolhe o nível de 60 fps, quando inicia a transmissão, então a
+  captura e o encoding pedem 60 quadros e 4 Mbps.
+- **AC-032** Dado que o host escolhe qualquer nível, quando inicia a transmissão, então a
+  `maxFramerate` do `screenShareEncoding` é igual à do preset — nunca a do default do Livekit.
 
 ## 7. Decisões de arquitetura
 
@@ -323,7 +373,11 @@ documenta para `storage.broadcast`. Por isso a preferência é local e persisten
 |---|---|---|---|
 | baixa | `h720fps15` | 1,5 Mbps | uplink fraco |
 | normal | `h720fps30` | 2 Mbps | padrão |
+| fluida | `VideoPreset(1280x720, 4 Mbps, 60fps)` | 4 Mbps | fonte a 60 quadros |
 | alta | `h1080fps30` | 5 Mbps | uplink folgado |
+
+A ordem é a do custo de upload, não uma hierarquia de "melhor": `fluida` e `alta` custam quase o
+mesmo e compram coisas diferentes — a primeira compra quadros, a segunda compra pixels.
 
 O padrão é **normal** e não o `h1080fps30` que o Livekit usa quando `resolution`
 não vem explícito: 5 Mbps de upstream é o suficiente para frames descartados, que
@@ -331,12 +385,55 @@ aparecem como travamento. 720p a 30fps custa 40% da banda com a **mesma taxa de
 quadros**, e é o que resolve "travado" — travamento é falta de quadros, não falta
 de pixels.
 
+O nível de 60 fps não existe em `ScreenSharePresets` — o topo lá é `h1080fps30` — e por isso é
+construído no `lib/broadcast-quality.ts`. Ele dobra os quadros sem dobrar o custo por quadro
+(4 Mbps a 60 fps são os mesmos ~67 kbit por quadro de 2 Mbps a 30 fps, e a redundância temporal
+extra do VP8 sobra a favor). Só rende quando a **fonte** produz 60 quadros: um filme 24fps entrega
+24 quadros de qualquer forma, e nesse caso o nível custa banda sem devolver nada.
+
 `contentHint` é `motion` e **não** é uma opção. Pela spec WebRTC, `detail` manda
 o encoder preservar detalhe ao custo da taxa de quadros, e foi feito para texto e
 arte vetorial. Para vídeo é o oposto do que serve, e foi o que fez a primeira
 transmissão parecer travada: o encoder segurava nitidez e descartava quadros. O
 próprio Livekit força `motion` em screen share porque o caminho `detail` é
 "untested/buggy".
+
+### O preset muda a captura E o encoder
+
+O preset carrega duas coisas, e elas viajam por argumentos diferentes de
+`setScreenShareEnabled`. Isto foi pago duas vezes:
+
+| | o que alimenta | onde o valor entra |
+|---|---|---|
+| `preset.resolution` | `getDisplayMedia` | 2º argumento (captura) |
+| `preset.encoding` | encoder de vídeo | 3º argumento (publicação, `screenShareEncoding`) |
+
+Sem o terceiro argumento, o encoder fica no default do Livekit para screen share —
+`ScreenSharePresets.h1080fps15.encoding`, 2,5 Mbps e **15 fps** — e o nível escolhido vira só um
+pedido à captura. Era esse o estado da primeira versão: `normal` e `alta` pediam 30 quadros ao SO e
+o fio entregava 15, com o seletor de qualidade sem efeito visível. Nenhuma constraint de captura
+resolve isso, e nenhum teste que olhe só o 2º argumento pega isso — AC-027/AC-032 existem para
+fechar essa ponta.
+
+Duas decisões vão no mesmo argumento, e as duas revertem defaults do Livekit:
+
+- **`degradationPreference: "maintain-framerate"`.** O default para screen share é
+  `maintain-resolution`, feito para texto e UI, onde nitidez é tudo. Aqui o conteúdo é um filme:
+  das duas degradações, a barata é resolução — borrão em movimento se lê como qualidade de vídeo,
+  quadro faltando se lê como transmissão quebrada.
+- **`simulcast: false`.** Com simulcast o host codifica duas camadas e o Livekit gera para screen
+  share uma camada de 360p a 625 kbps. Em sala pequena isso não é seguro contra banda ruim, é
+  armadilha: o espectador em banda apertada recebe a camada borrada. Uma camada custa metade da CPU
+  de quem transmite — o recurso escasso, principalmente a 60 fps — e a banda do host já é polida
+  pelo `screenShareEncoding`.
+
+### A superfície é sugerida, não imposta
+
+`video: { displaySurface: "browser" }` é dica: o seletor continua sendo o do SO e o usuário pode
+escolher janela ou tela inteira. O que muda é o padrão que o Chrome pré-seleciona — a aba. Capturar
+um monitor inteiro para depois escalar a 720p move muito mais pixel e mais GPU que capturar a aba
+que interessa, e a captura de aba é a via que o próprio Chrome documenta como de taxa de quadros
+mais estável (ver "Compartilhar ABA, nunca a tela inteira", abaixo).
 
 A troca só vale para a próxima transmissão: a track já foi criada com o preset
 escolhido e mudá-lo exigiria republicar, o que derrubaria a transmissão no meio do
@@ -372,6 +469,11 @@ Por isso a implementação **exclui a própria aba do seletor**: `selfBrowserSur
   exigiria `getDisplayMedia` sem escolha, que o browser não oferece.
 - **Android/iOS.** `getDisplayMedia` não existe em iOS Safari. A feature é de desktop; o botão
   some nos outros casos, sem tratamento especial por plataforma.
+- **Codec melhor que VP8 (VP9/AV1).** É a alavanca óbvia para "mais qualidade por bitrate" e foi
+  descartada com motivo: em screen share o Livekit trata codec SVC mandando `scalabilityMode:
+  "L1T3"`, e o próprio bundle anota que o Chrome não passa de 5 fps nesse caminho ("a different path
+  for screenshare handling and it seems to be untested/buggy"). Trocar o codec por qualidade
+  arrisca trocar "travado" por "quase parado". Continua VP8.
 
 ## 9. O que esta spec custa no payload
 
@@ -422,6 +524,8 @@ no grafo.
 | Áudio ausente silenciosamente | FR-016 exige aviso explícito. Firefox é o caso conhecido. |
 | Sala com transmissão e estado de player antigo simultâneos | FR-004/FR-005 tornam o storage de transmissão autoritativo sobre o que é exibido. Os dois coexistem no storage, o que é deliberado: encerrar a transmissão devolve a sala ao vídeo que já estava carregado. |
 | Custos do LiveKit estourando o free tier | 50k min/mês. Uma sessão de 2h com 6 pessoas consome 12 min de participant-minutes. Margem grande para o uso esperado. |
+| Encoder preso no default de 15 fps sem nenhum sinal na UI | O preset ia só para a captura e o encoder ficava no default do Livekit; a transmissão travava com o seletor prometendo 30. Impedido por FR-044 e coberto por AC-027/AC-032, que afirmam sobre o **terceiro** argumento — o buraco existia porque todo teste olhava o segundo. |
+| CPU do host a 60 fps (software VP8, uma passada a 720p60) | `simulcast: false` corta a segunda passada (FR-046) e o nível é escolha explícita do host, com o custo no rótulo. Se a CPU for o limite, o sintoma é `qualityLimitationReason: "cpu"` no `webrtc-internals` do host, e o nível "fluida" é o primeiro a cair. |
 
 ## 11. Arquivos
 
@@ -431,6 +535,7 @@ no grafo.
 | Token no servidor | `lib/livekit.ts`, `app/api/livekit-auth/route.ts` |
 | Wrapper `LiveKitRoom` | `components/room/LiveKitProvider.tsx` |
 | UI de host (iniciar/parar) | `components/room/BroadcastControls.tsx` |
+| Presets de qualidade e opções de publicação | `lib/broadcast-quality.ts`, `hooks/useBroadcastQuality.ts` |
 | UI de espectador (vídeo + áudio) | `components/room/ScreenSharePlayer.tsx` |
 | Integração e gate do player | `components/room/RoomExperience.tsx` |
 | Variáveis | `.env.example` |

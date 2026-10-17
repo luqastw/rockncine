@@ -1,7 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useCallback } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ScreenSharePresets, Track } from "livekit-client";
+import {
+  ScreenSharePresets,
+  Track,
+  type VideoEncoding,
+  type VideoPreset,
+} from "livekit-client";
 import { DEFAULT_BROADCAST_QUALITY } from "@/lib/broadcast-quality";
 import type { BroadcastState } from "@/liveblocks.config";
 import { appendChatItem, resetChatFeed } from "@/lib/chat-feed";
@@ -233,13 +238,27 @@ function renderRoom({ livekitUrl = "wss://teste.livekit.cloud" }: { livekitUrl?:
 // `setScreenShareEnabled` — que é onde as constraints e o preset de qualidade
 // viram observáveis. No escopo do módulo porque tanto as constraints de captura
 // quanto a qualidade precisam dela.
-async function iniciar() {
+//
+// São DOIS argumentos de peso, e a distinção é o defeito que a spec 12 fechou
+// depois: o segundo é a captura (o que se pede ao `getDisplayMedia`) e o
+// terceiro é a publicação (o que se pede ao encoder). A transmissão travava
+// porque só o segundo era passado.
+async function iniciarCompleto() {
   vi.stubGlobal("open", vi.fn());
   mocks.setScreenShareEnabled.mockResolvedValue({});
   renderRoom();
   fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
   await waitFor(() => expect(mocks.setScreenShareEnabled).toHaveBeenCalled());
-  return mocks.setScreenShareEnabled.mock.calls[0][1] as Record<string, unknown>;
+  const [ligado, captura, publicacao] = mocks.setScreenShareEnabled.mock.calls[0];
+  return {
+    ligado: ligado as boolean,
+    captura: captura as Record<string, unknown>,
+    publicacao: publicacao as Record<string, unknown>,
+  };
+}
+
+async function iniciar() {
+  return (await iniciarCompleto()).captura;
 }
 
 beforeEach(() => {
@@ -699,6 +718,77 @@ describe("constraints de captura (FR-006, FR-015)", () => {
     expect(options.resolution).toBe(ScreenSharePresets.h720fps30);
     vi.unstubAllGlobals();
   });
+
+  // Dica de superfície, não imposição: o seletor continua sendo o do SO e o
+  // usuário pode escolher janela ou tela inteira. O que muda é o padrão que o
+  // Chrome pré-seleciona — a aba. Capturar o monitor inteiro para escalar a
+  // 720p move muito mais pixel e GPU, e a captura de aba é a via que o Chrome
+  // documenta como de taxa de quadros mais estável (FR-048).
+  it("sugere a captura de aba, não de tela inteira", async () => {
+    const options = await iniciar();
+    expect(options.video).toEqual({ displaySurface: "browser" });
+    vi.unstubAllGlobals();
+  });
+});
+
+// O teto de quadros NÃO vive na captura, vive no encoder.
+//
+// Este bloco existe porque o defeito era invisível: `resolution` alimenta as
+// constraints do `getDisplayMedia` e para aí. O encoder é alimentado por
+// `screenShareEncoding`, e sem ele o Livekit usa o default do
+// `publishDefaults` — `ScreenSharePresets.h1080fps15.encoding`, 2,5 Mbps e
+// **15 fps**. Os três níveis pediam 15/30/30 quadros à captura e o fio
+// entregava 15 em todos: os dois maiores níveis com metade dos quadros no
+// chão, transmissão nítida e travada, seletor de qualidade parecendo inerte.
+describe("quadros e bytes na track publicada (FR-044 a FR-046)", () => {
+  it("FR-044: publica com o encoding do preset, não com os 15 fps do default", async () => {
+    const { publicacao } = await iniciarCompleto();
+
+    expect(publicacao.screenShareEncoding).toEqual(ScreenSharePresets.h720fps30.encoding);
+    expect((publicacao.screenShareEncoding as VideoEncoding).maxFramerate).toBe(30);
+    // O valor exato que a track usava antes desta correção.
+    expect((publicacao.screenShareEncoding as VideoEncoding).maxFramerate).not.toBe(15);
+    vi.unstubAllGlobals();
+  });
+
+  // O default do Livekit para screen share é `maintain-resolution`: sob
+  // congestão o encoder corta QUADROS para manter a nitidez. Em vídeo, borrão
+  // passa e travamento não — a ordem de degradação tem de ser a inversa.
+  it("FR-045: sob congestão corta resolução, nunca quadros", async () => {
+    const { publicacao } = await iniciarCompleto();
+
+    expect(publicacao.degradationPreference).toBe("maintain-framerate");
+    expect(publicacao.degradationPreference).not.toBe("maintain-resolution");
+    vi.unstubAllGlobals();
+  });
+
+  // Simulcast aqui não é seguro, é armadilha: o host codifica duas vezes (a 60
+  // fps, o dobro de CPU de quem transmite) e o Livekit gera para screen share
+  // uma camada de 360p a 625 kbps — borrada E sem quadros — que é o que o
+  // espectador recebe quando a banda aperta.
+  it("FR-046: publica uma camada só", async () => {
+    const { publicacao } = await iniciarCompleto();
+
+    expect(publicacao.simulcast).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  // 60 fps não existe em `ScreenSharePresets`; o preset é construído no
+  // `lib/broadcast-quality.ts`. O que este teste trava é o par coerente:
+  // 60 quadros pedidos à captura E 60 liberados pelo encoder — pedir 60 e
+  // liberar 15 era exatamente a falha original.
+  it("o nível de 60 fps alinha captura e encoder", async () => {
+    localStorage.setItem("rockncine-broadcast-quality", "fluida");
+
+    const { captura, publicacao } = await iniciarCompleto();
+
+    const encoding = publicacao.screenShareEncoding as VideoEncoding;
+    expect((captura.resolution as VideoPreset).encoding.maxFramerate).toBe(60);
+    expect(encoding.maxFramerate).toBe(60);
+    expect(encoding.maxBitrate).toBe(4_000_000);
+    vi.unstubAllGlobals();
+    localStorage.clear();
+  });
 });
 
 describe("qualidade da transmissão", () => {
@@ -732,13 +822,14 @@ describe("qualidade da transmissão", () => {
     localStorage.clear();
   });
 
-  it("o seletor mostra as três opções", () => {
+  it("o seletor mostra os quatro níveis, em ordem crescente de banda", () => {
     renderRoom();
 
     const select = screen.getByRole("combobox") as HTMLSelectElement;
     expect(Array.from(select.options).map((o) => o.value)).toEqual([
       "baixa",
       "normal",
+      "fluida",
       "alta",
     ]);
   });
