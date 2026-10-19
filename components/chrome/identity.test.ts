@@ -11,18 +11,23 @@ const cssBruto = readFileSync(
   "utf8",
 );
 
-// Comentários fora: eles citam cores medidas (a dívida do `#7a7a7a`) que não são
-// declaração nenhuma, e uma palavra em português poderia colidir com o denylist.
+// Comentários fora: eles citam contrastes medidos e nomes de spec, e uma
+// palavra em português poderia colidir com o denylist.
 const css = cssBruto.replace(/\/\*[\s\S]*?\*\//g, "");
 
-// Tokens das specs 01 e 13 que o redesign NÃO pode remover nem renomear
-// (AC-010, docs/specs/14-identidade-fanzine-crt/spec.md).
-const TOKENS_SPEC_01_13 = [
+// Tokens legados preservados (FR-002 / AC-010 da spec 15, herdados das specs
+// 01 e 13) + a camada nova de superfícies e fills.
+const TOKENS = [
   "bg-void",
   "bg-surface",
+  "bg-elevated",
   "line",
   "ink",
   "ink-muted",
+  "fill-1",
+  "fill-2",
+  "fill-3",
+  "hairline",
   "invert-bg",
   "invert-fg",
   "outline-strong",
@@ -48,7 +53,7 @@ function hexParaRgb(digits: string): [number, number, number] {
 /**
  * TODO literal de cor do arquivo — dentro de variável OU de bloco de regra
  * (a porta dos fundos que o scan só-de-variável deixava passar, ex.: o fundo do
- * `.chrome-blur`). `url(data:...)` é removido antes: o SVG do grão não é cor.
+ * `.chrome-blur`). `url(data:...)` é removido antes.
  */
 function literaisDeCor(arquivo: string): Cor[] {
   const semDataUri = arquivo.replace(/url\(["']?data:[^)]*\)/gi, "");
@@ -75,8 +80,8 @@ function literaisDeCor(arquivo: string): Cor[] {
   return cores;
 }
 
-describe("identidade monocromática (FR-001)", () => {
-  it("AC-009: todo literal de cor do arquivo tem R=G=B", () => {
+describe("identidade neutra (FR-001)", () => {
+  it("AC-001: todo literal de cor do arquivo tem R=G=B", () => {
     const cores = literaisDeCor(css);
 
     // O coletor não pode estar quebrado: sem este piso, a asserção abaixo
@@ -90,7 +95,7 @@ describe("identidade monocromática (FR-001)", () => {
     expect(infractores).toEqual([]);
   });
 
-  it("AC-009: nenhum hsl() com saturação, nenhum nome de cor cromático", () => {
+  it("AC-001: nenhum hsl() com saturação, nenhum nome de cor cromático", () => {
     const hslComCor = [...css.matchAll(/hsla?\(([^)]+)\)/gi)]
       .map((m) => m[1].trim())
       .filter((args) => {
@@ -99,23 +104,18 @@ describe("identidade monocromática (FR-001)", () => {
       });
     expect(hslComCor).toEqual([]);
 
-    // Denylist curta dos nomes que um `background: red` traria sem passar pelo
-    // scan de hex/rgb. As cores neutras (`black`, `white`, `transparent`,
-    // `currentColor`) são permitidas.
-    const nomeCromatico = /\b(red|green|blue|yellow|orange|purple|pink|cyan|magenta|teal|lime|navy|maroon|olive|aqua|fuchsia)\b/i;
+    const nomeCromatico =
+      /\b(red|green|blue|yellow|orange|purple|pink|cyan|magenta|teal|lime|navy|maroon|olive|aqua|fuchsia)\b/i;
     expect(nomeCromatico.test(css), "cor nomeada cromática no globals.css").toBe(false);
 
-    // Funções de cor que carregam croma e não passam por hex/rgb/hsl — hoje não há
-    // nenhuma no arquivo. Se uma entrar, precisa ser tratada aqui antes de ser aceita.
+    // Funções de cor que carregam croma e não passam por hex/rgb/hsl.
     const funcaoDeCroma = /\b(oklch|oklab|lch|lab|hwb|color)\(/i;
     expect(funcaoDeCroma.test(css), "função de cor fora do scan").toBe(false);
   });
 
-  it("AC-010: os tokens das specs 01 e 13 continuam declarados", () => {
-    const nomes = new Set(
-      [...css.matchAll(/--([a-z0-9-]+)\s*:/gi)].map((m) => m[1]),
-    );
-    const faltando = TOKENS_SPEC_01_13.filter((token) => !nomes.has(token));
+  it("AC-002: os tokens legados e os novos continuam declarados", () => {
+    const nomes = new Set([...css.matchAll(/--([a-z0-9-]+)\s*:/gi)].map((m) => m[1]));
+    const faltando = TOKENS.filter((token) => !nomes.has(token));
     expect(faltando).toEqual([]);
   });
 });

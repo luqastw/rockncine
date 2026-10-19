@@ -1,31 +1,31 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { AsciiArt } from "./AsciiArt";
-import { GrainOverlay } from "./GrainOverlay";
-import { HERO_ART } from "./ascii";
+import { AmbientGlow } from "./AmbientGlow";
+import { Wordmark } from "./Wordmark";
 
-describe("camada de grão (FR-007)", () => {
-  it("AC-006: o nó é decorativo — aria-hidden e classe .grain", () => {
+describe("glow ambiente (FR-006)", () => {
+  it("AC-006: o nó é decorativo — aria-hidden e classe .ambient", () => {
     // A ausência de animation/transition e o `pointer-events: none` vivem no CSS:
     // são verificados em styles.test.ts (ambiente node, onde ler arquivo não é
     // externalizado pelo jsdom). Aqui se prova o que é do DOM renderizado.
-    const { container } = render(<GrainOverlay />);
+    const { container } = render(<AmbientGlow />);
     const node = container.firstElementChild as HTMLElement;
     expect(node.getAttribute("aria-hidden")).toBe("true");
-    expect(node.className).toContain("grain");
+    expect(node.className).toContain("ambient");
   });
 });
 
-describe("arte ASCII decorativa (FR-009)", () => {
-  it("AC-007: renderiza um <pre aria-hidden> com a arte dentro, fora da árvore de acessibilidade", () => {
-    const { container } = render(<AsciiArt art={HERO_ART} />);
-    const pre = container.querySelector("pre");
+describe("wordmark (FR-007)", () => {
+  it("AC-007: o texto é acessível e o ponto à esquerda é decorativo", () => {
+    const { container } = render(<Wordmark />);
 
-    expect(pre).toBeTruthy();
-    expect(pre?.getAttribute("aria-hidden")).toBe("true");
-    // O nó desenha a arte de verdade — um <pre> vazio passaria pelo `aria-hidden`
-    // sem entregar nada.
-    expect(pre?.textContent).toBe(HERO_ART.join("\n"));
+    const marca = screen.getByText("rockncine");
+    expect(marca.closest('[aria-hidden="true"]')).toBeNull();
+    expect(marca.className).toContain("bg-clip-text");
+
+    const decorativo = container.querySelector('[aria-hidden="true"]');
+    expect(decorativo).toBeTruthy();
+    expect(decorativo?.textContent).toBe("");
   });
 });

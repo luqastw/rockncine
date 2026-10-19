@@ -1,109 +1,110 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Identidade Kimi Platform (spec 15, docs/specs/15-identidade-kimi/spec.md).
+
+   Paleta 100% acromática: canvas #121212, superfícies #1f1f1f/#292929, texto
+   por opacidade de branco e separadores de 1px. Nenhum matiz — estado continua
+   sendo sinalizado por contraste, opacidade, peso e inversão (herdado da spec
+   01, seção 8, FR-044). Os nomes legados dos tokens são preservados para não
+   quebrar as specs 01/13 (FR-002 / AC-010).
+
+   Contrastes medidos:
+   - --ink (84% de branco) sobre #121212: ~13,5:1
+   - --ink sobre #1f1f1f: ~12,2:1
+   - --ink-muted (56% de branco) sobre #121212: ~6,4:1
+   - --ink-muted sobre #1f1f1f: ~6,0:1
+   - --ink-muted como contorno de input sobre #1f1f1f: ~6,0:1 (piso 3:1)
+   Todos acima do piso AA de 4,5:1 exigido por AC-012 da spec 15.
+   --------------------------------------------------------------------------- */
 :root {
-  /* monocromático, dark-first — ver docs/specs/01-fundacao-mvp/spec.md, seção 8. Nenhuma cor de marca:
-     estado é sinalizado por contraste/inversão/peso, nunca por matiz. */
-  --gray-950: #0a0a0a;
-  --gray-900: #141414;
-  --gray-700: #2a2a2a;
-  /* #7a7a7a dava 4,29:1 sobre --bg-surface (#141414), abaixo do piso AA de 4,5:1 que a seção 8
-     de docs/specs/01-fundacao-mvp/spec.md exige — #828282 sobe pra ~4,8:1 mantendo a mesma função
-     de "cinza neutro discreto". Requisito: FR-004 em docs/specs/03-auditoria-ui-ux/spec.md
-     (achado 2 na numeração legada do Anexo A). */
-  --gray-500: #828282;
-  --gray-100: #f2f2f2;
+  --neutral-950: #121212;
+  --neutral-900: #1f1f1f;
+  --neutral-850: #292929;
+  --neutral-800: #333333;
+  --neutral-700: #4d4d4d;
+  --neutral-500: #9a9a9a;
+  --neutral-100: #f2f2f2;
   --pure-black: #000000;
   --pure-white: #ffffff;
 
-  --bg-void: var(--gray-950);
-  --bg-surface: var(--gray-900);
-  --line: var(--gray-700);
-  --ink: var(--gray-100);
-  --ink-muted: var(--gray-500);
+  --bg-void: var(--neutral-950);
+  --bg-surface: var(--neutral-900);
+  --bg-elevated: var(--neutral-850);
+  --line: rgb(255 255 255 / 0.12);
+  --ink: rgb(255 255 255 / 0.84);
+  --ink-muted: rgb(255 255 255 / 0.56);
+  --fill-1: rgb(255 255 255 / 0.05);
+  --fill-2: rgb(255 255 255 / 0.1);
+  --fill-3: rgb(255 255 255 / 0.18);
+  --hairline: rgb(255 255 255 / 0.12);
 
-  /* Identidade do participante (FR-018, docs/specs/13-chat-sala/spec.md).
-     Quatro tons de cinza, derivados de `--gray-100` e `--gray-500`, escolhidos
-     por hash do `userId` (ver `lib/identity.ts`). A diferenciação entre pessoas é
-     por PESO, nunca por matiz — a regra de estado desta casa (spec 01, seção 8).
-     Contrastes medidos: texto preto sobre cada tom vai de 5,4:1 (`--id-4`) a
-     17:1 (`--id-1`); cada tom contra `--bg-surface` na borda vai de 4,8:1 a
-     13:1. Nenhum dos quatro fica abaixo do piso AA de 4,5:1 em nenhum dos usos. */
-  --id-1: #e8e8e8;
-  --id-2: #c2c2c2;
-  --id-3: #9c9c9c;
-  --id-4: #828282;
-
-  /* substituem o antigo acento --ember — só contraste/inversão, sem matiz */
-  --invert-bg: var(--pure-white); /* CTA primário / estado ativo */
-  --invert-fg: var(--pure-black); /* texto/ícone sobre --invert-bg */
-  --outline-strong: var(--pure-white); /* foco, borda de "ao vivo" */
+  --invert-bg: var(--pure-white);
+  --invert-fg: var(--neutral-950);
+  --outline-strong: var(--pure-white);
 
   --background: var(--bg-void);
   --foreground: var(--ink);
-
-  /* cor do ring-offset do anel de foco: normalmente o fundo da página, mas
-     painéis que trocam de superfície (o aside em modo teatro) redeclaram esta
-     variável no próprio elemento pra o halo do foco não ficar escuro sobre
-     --bg-surface (achado 24 da auditoria). */
   --focus-offset: var(--bg-void);
+  --scrim: rgb(0 0 0 / 0.6);
 
-  /* scrim de overlay (modal, mensagem de carregamento/erro do player) — antes
-     dois valores de opacidade diferentes (bg-black/70, bg-black/60) pra
-     mesma função de "escurecer o que está atrás" (revisão de consistência,
-     achado 5 de docs/specs/06-consistencia-design/spec.md). Não usar em cima do vídeo: ali "preto" é
-     letterbox real, não scrim de UI — ver comentário em RoomExperience.tsx. */
-  --scrim: rgb(0 0 0 / 0.7);
+  /* Sombra de popover da Kimi (0 4px 10px), intensificada para o dark. */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.24);
+  --shadow-pop: 0 4px 10px 0 rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 24px -6px rgb(0 0 0 / 0.45);
 
-  /* Tokens de textura do redesign fanzine-CRT (FR-002, docs/specs/14-identidade-fanzine-crt/spec.md).
-     Declarados SEM remover nem renomear nenhum token acima. Continuam acromáticos por
-     construção: `--hairline` é branco translúcido e `--ascii-ink` é cinza (R=G=B) — a
-     regra de "estado nunca por matiz" (FR-001) segue valendo para a camada nova. */
-  /* Calibração do grão. 0,05 (primeira versão) ficava ABAIXO DO LIMIAR PERCEPTÍVEL: o
-     nó existia no DOM e não se via nada na tela. 0,16 é o menor valor que lê como textura
-     sobre --bg-void sem levantar o preto e sem virar chuvisco (0,30 já suja a leitura) —
-     verificado em browser a 1280px. 120px de tile deixa o grão fino, como filme. */
-  --grain-opacity: 0.16;
-  --grain-size: 120px;
-  --hairline: rgb(255 255 255 / 0.14);
-  /* Cor da arte ASCII. A arte é `aria-hidden` e decorativa, então está fora do piso de
-     contraste de FR-022 (que vale para texto acessível): medido, #4d4d4d sobre --bg-void dá
-     2,34:1 — abaixo de 4,5:1 de propósito, porque a arte é textura de fundo, não conteúdo.
-     Se a arte deixar de ser decorativa, este token tem de subir para ≥ 4,5:1. */
-  --ascii-ink: #4d4d4d;
+  /* Identidade do participante (FR-018, docs/specs/13-chat-sala/spec.md).
+     Quatro tons de cinza derivados do `userId` (lib/identity.ts). A
+     diferenciação entre pessoas é por forma (iniciais) e peso (tom), nunca por
+     matiz. Texto preto sobre cada tom fica entre 5,4:1 e 17:1. */
+  --id-1: #e6e6e6;
+  --id-2: #c2c2c2;
+  --id-3: #9a9a9a;
+  --id-4: #828282;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* SF Pro onde o sistema oferece — `-apple-system` resolve para a fonte do
-     sistema em iOS e macOS. Ela NÃO entra no bundle: a Apple não licencia o
-     arquivo para servir na web, então o que se faz é pedir a do sistema.
-     `Inter` é o fallback que vai no bundle (via next/font), para o desenho não
-     depender da plataforma; daí o resto da pilha. */
+
+  /* Geist é o análogo livre mais próximo da MiSans da Kimi; Geist Mono é a
+     própria mono usada pela plataforma. A fonte do sistema continua na frente
+     da pilha quando existe (SF Pro em macOS/iOS). Nenhuma dependência npm nova:
+     as duas vêm do `next/font/google` em layout.tsx (FR-003,
+     docs/specs/15-identidade-kimi/spec.md). */
   --font-sans:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", var(--font-inter),
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", var(--font-geist),
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  /* Mesma ideia na utilitária: SF Mono no sistema, e a mono da plataforma
-     depois. */
   --font-mono:
-    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  /* Papel Display do redesign (FR-004, docs/specs/14-identidade-fanzine-crt/spec.md): a mono
-     self-hosted vem do `--font-space-mono` que o `next/font` declara em layout.tsx, com a mono
-     do sistema como fallback. Vira a utilitária `font-display` do Tailwind v4. O corpo segue
-     `--font-sans` acima; nenhuma segunda webfont entra no bundle (FR-005). */
+    var(--font-geist-mono), ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
   --font-display:
-    var(--font-space-mono), ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    var(--font-geist-mono), ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
     "Liberation Mono", monospace;
 }
 
-/* Cantos no espírito do iOS: os 6px do default do Tailwind ficavam quase retos
-   no tamanho dos cards e botões deste app (print do /rooms). Como são token, a
-   mudança vale para todo `rounded-md` — card, campo, botão, diálogo — e não
-   para um componente só. O `lg` acompanha (8 → 14px) para a moldura do sync
-   continuar 2px mais aberta que a caixa de vídeo que ela contorna. */
+/* Escala da Kimi: 18/26, 16/24, 15/22, 14/20, 12/18, 10/14 (FR-004). */
 @theme {
+  --text-title: 1.5rem;
+  --text-title--line-height: 2rem;
+  --text-heading: 1.125rem;
+  --text-heading--line-height: 1.625rem;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.375rem;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.25rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.125rem;
+  --text-micro: 0.625rem;
+  --text-micro--line-height: 0.875rem;
+
+  /* Raios da Kimi: 8/10/12/16/20. `rounded-md` continua sendo o raio de
+     card/input/botão; `rounded-xl` é o painel grande. */
+  --radius-sm: 0.5rem;
   --radius-md: 0.625rem;
-  --radius-lg: 0.875rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
 }
 
 body {
@@ -112,20 +113,48 @@ body {
   font-family: var(--font-sans);
 }
 
-/* estático, sem keyframe — animar border-width force reflow a cada frame
-   (era a provável causa real do "video lagando", não só da borda piscando:
-   3s de layout thrash contínuo em cima do próprio elemento do vídeo). Só
-   box-shadow (compositor, não dispara reflow), fixo, brilho fraco. */
+/* ---------------------------------------------------------------------------
+   Glow ambiente (FR-006, docs/specs/15-identidade-kimi/spec.md). Substitui o
+   grão da identidade anterior: uma camada
+   fixa, decorativa e estática, que dá profundidade ao canvas sem textura.
+   É acromática por construção (branco em opacidade baixa) e não anima.
+   --------------------------------------------------------------------------- */
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(72rem 36rem at 50% -12%, rgb(255 255 255 / 0.07), transparent 62%),
+    radial-gradient(40rem 26rem at 88% -4%, rgb(255 255 255 / 0.035), transparent 70%);
+}
+
+/* Barra de chrome (FR-005, docs/specs/15-identidade-kimi/spec.md). Único ponto
+   de blur do chrome: 6px, fundo 72% e
+   fio de 1px que só aparece depois do primeiro scroll — o mesmo comportamento
+   da navegação da Kimi. O fio é separação real, não só desfoque. */
+.chrome-blur {
+  background: rgb(18 18 18 / 0.72);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid transparent;
+}
+
+.chrome-blur[data-scrolled="true"] {
+  border-bottom-color: var(--hairline);
+}
+
+/* Pulso do "ao vivo": estático, sem keyframe — animar border-width força
+   reflow a cada frame. Só box-shadow (compositor). */
 .animate-sync-pulse {
-  box-shadow: 0 0 14px 1px rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 20px 1px rgb(255 255 255 / 0.1);
 }
 
 @keyframes sync-flash {
   0% {
-    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.8);
   }
   100% {
-    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0);
   }
 }
 
@@ -133,12 +162,8 @@ body {
   animation: sync-flash 350ms ease-out;
 }
 
-/* Scrubber/volume do player. O `accent-color` do Chrome pinta a parte
-   reproduzida com --ink (quase branco) e o resto com o track claro padrão —
-   sobre fundo escuro os dois ficam indistinguíveis e a barra deixa de
-   comunicar progresso (achado 13 da auditoria). Aqui o track fica
-   transparente e quem desenha o progresso é o background do próprio input,
-   via linear-gradient inline com a porcentagem tocada. */
+/* Scrubber/volume do player: o track fica transparente e o progresso é
+   desenhado pelo background do próprio input (linear-gradient inline). */
 .range-mono {
   appearance: none;
   -webkit-appearance: none;
@@ -176,44 +201,24 @@ body {
 
 /* Nenhuma barra de rolagem visível em lugar nenhum do app. A rolagem continua
    funcionando por wheel, trackpad, toque, teclado e leitor de tela — o que sai
-   é só o desenho da barra, para a superfície ficar uniforme.
-
-   Isto AMPLIA o escopo do CA2.1 da spec 08, que aplicava a regra apenas ao log
-   do chat (era a classe `.scrollbar-hidden`, hoje removida — um só lugar
-   decide isso agora). Efeito colateral aceito: em telas curtas, páginas que
-   rolam (entrar, criar conta, suas salas) deixam de mostrar que há mais
-   conteúdo abaixo; a rolagem por gesto e por teclado continua igual. */
+   é só o desenho da barra (FR-005,
+   docs/specs/08-otimizacao-sync-video-scroll-chat/spec.md). */
 html {
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: none;
 }
 html::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Edge */
+  display: none;
 }
 * {
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: none;
 }
 *::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Edge */
+  display: none;
 }
 
-/* Campos de formulário usam `text-base sm:text-sm` — 16px no mobile, 14px de
-   `sm` para cima — e não `text-sm` direto. No Safari do iOS, focar um campo com
-   menos de 16px dispara zoom automático da viewport: a página alarga, aparece
-   rolagem horizontal e o usuário precisa dar pinça para voltar. A regra vive na
-   classe de cada campo, de propósito: um seletor de tipo (`input { font-size }`)
-   perderia por especificidade para o utilitário do Tailwind e não valeria nada. */
-
-/* A casca da sala tem altura fixa (`h-dvh` + `overflow-hidden`, FR-049), o que
-   é o certo enquanto o conteúdo cabe: o log do chat ganha altura definida para
-   rolar e a página fica parada. Quando NÃO cabe — janela de 256px de altura, ou
-   o texto do usuário a 200% — espremer é pior que rolar: o campo de mensagem
-   saía da caixa e o vídeo colapsava para 0×0 (achado 12 da revisão de design).
-
-   A unidade é `em` de propósito: 32em vale 512px com a fonte padrão e 1024px
-   quando o usuário dobra o tamanho base do texto, então a troca de modo
-   acompanha a preferência do usuário em vez de assumir uma altura fixa. Rolagem
-   vertical é o que a WCAG 1.4.10 permite; perder conteúdo não é. Regra sem
-   camada, então vence os utilitários do Tailwind (que vivem em `@layer`). */
+/* A casca da sala tem altura fixa enquanto o conteúdo cabe. Quando NÃO cabe —
+   janela de 256px de altura ou texto a 200% — espremer é pior que rolar. A
+   unidade `em` acompanha a preferência do usuário (FR-049 da spec 01). */
 @media (max-height: 32em) {
   .room-shell {
     height: auto;
@@ -222,11 +227,7 @@ html::-webkit-scrollbar {
   }
 }
 
-/* `touch-action: manipulation` em link, botão e papel de botão: no toque, remove
-   a espera de ~300ms do browser para decidir se o toque é um duplo-toque de
-   zoom. Não é só em ponteiro grosso de propósito — a propriedade não faz nada
-   sem toque, e assim ela vale também em híbrido (notebook com tela sensível). O
-   zoom por pinça continua disponível; o que sai é a espera. */
+/* Remove a espera de ~300ms do duplo-toque no toque, sem desligar o zoom. */
 a,
 button,
 [role="button"] {
@@ -244,22 +245,18 @@ button,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }
 
-/* Contorno/borda mudam de cor no hover e no foco; sem transição o estado salta
-   e a interface "estala" em vez de acompanhar o ponteiro (achado de fluidez da
-   revisão de design). Só propriedades de pintura e `transform` — nada que
-   dispare layout — e de propósito SEM box-shadow: o anel de foco precisa
-   aparecer na hora, não desbotar por 180ms.
-
-   Dentro de `@layer base` para perder para qualquer utilitário `transition-*`
-   já usado no app (barra de controles do player, anel de sync, ações em tela
-   cheia): a regra preenche o vazio, não sobrescreve transição existente. */
+/* Transição de pintura para hover/foco. Sem box-shadow: o anel de foco precisa
+   aparecer na hora. Dentro de `@layer base` para qualquer utilitário
+   `transition-*` continuar vencendo. */
 @layer base {
   a,
   button,
@@ -268,19 +265,16 @@ button,
   textarea,
   [role="button"] {
     transition:
-      color 180ms cubic-bezier(0.16, 1, 0.3, 1),
-      background-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
-      border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
-      opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
-      transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+      color 160ms cubic-bezier(0.16, 1, 0.3, 1),
+      background-color 160ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 160ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 160ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
 
-/* Selo do Liveblocks — nó de terceiro, com estilo inline, por isso `!important`.
-   O botão de esconder nasce com `outline: none` e opacidade 0 (só aparecia no
-   hover do selo): alcançável por Tab, invisível e sem nome (achado 1 da revisão
-   de design). Aqui ele ganha anel de foco do projeto, aparece quando focado e
-   uma área de toque de 24px — o mínimo que o app aceita para alvo pequeno. */
+/* Selo do Liveblocks: nó de terceiro com estilo inline. O botão de esconder
+   nasce invisível e sem foco; aqui ganha alvo de 24px e anel do projeto. */
 #liveblocks-badge-hide-button {
   width: 24px !important;
   height: 24px !important;
@@ -292,124 +286,99 @@ button,
   outline-offset: 2px !important;
 }
 
-/* O selo vem com `z-index: 9999` inline: medido, ele pintava POR CIMA do modal
-   do app (`z-50`) — `elementFromPoint` no centro do selo, com o "carregar
-   vídeo" aberto, devolvia o SVG do selo. Um overlay de terceiro acima de um
-   diálogo modal quebra o próprio contrato do diálogo. 40 o deixa abaixo de
-   toda a camada de overlay do app (z-50) e acima do conteúdo comum. */
+/* O selo vem com z-index 9999 inline e pintava sobre o modal (`z-50`). */
 #liveblocks-badge {
   z-index: 40 !important;
 }
 
-/* Centralização vertical que não recorta. `safe center` se comporta como
-   `center` enquanto o conteúdo cabe e cai para `start` quando ele passa da
-   caixa — por isso serve em contêiner que também rola, onde `center` puro
-   empurra o começo do conteúdo para fora da área rolável. Existe como classe
-   porque o Tailwind v4 não gera `justify-[safe_center]` (verificado: o
-   `justify-content` computado ficava em `normal`). */
+/* Centralização vertical que não recorta: `center` enquanto cabe, `start`
+   quando o conteúdo passa da caixa. Tailwind v4 não gera
+   `justify-[safe_center]`. */
 .justify-safe-center {
   justify-content: safe center;
 }
 
 /* ---------------------------------------------------------------------------
-   Movimento. Só o que ajuda a perceber mudança de estado — nada coreografado:
-   entradas curtas com curva de desaceleração, uma cascata discreta nos itens da
-   lista e resposta imediata no toque. Todas as durações morrem em
-   `prefers-reduced-motion` e no modo economy, que zeram `animation-duration` e
-   `transition-duration` globalmente (blocos acima).
+   Movimento: entradas curtas, uma cascata discreta e resposta imediata ao
+   toque. Nada coreografado; tudo morre em reduced-motion.
    --------------------------------------------------------------------------- */
 
 @keyframes rise-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes pop-in {
-  from { opacity: 0; transform: scale(0.965); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: scale(0.965);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
-.animate-pop { animation: pop-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-.animate-fade { animation: fade-in 160ms ease-out both; }
+.animate-pop {
+  animation: pop-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-fade {
+  animation: fade-in 160ms ease-out both;
+}
 
-/* Cascata da lista de salas: cada item entra 24ms depois do anterior. Só os
-   cinco primeiros — do sexto em diante a espera já seria perceptível como
-   lentidão, e eles entram junto com o quinto. */
+/* Cascata da lista de salas: cada item entra 24ms depois do anterior. */
 .room-list > li {
   animation: rise-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.room-list > li:nth-child(2) { animation-delay: 24ms; }
-.room-list > li:nth-child(3) { animation-delay: 48ms; }
-.room-list > li:nth-child(4) { animation-delay: 72ms; }
-.room-list > li:nth-child(5) { animation-delay: 96ms; }
-.room-list > li:nth-child(n + 6) { animation-delay: 120ms; }
+.room-list > li:nth-child(2) {
+  animation-delay: 24ms;
+}
+.room-list > li:nth-child(3) {
+  animation-delay: 48ms;
+}
+.room-list > li:nth-child(4) {
+  animation-delay: 72ms;
+}
+.room-list > li:nth-child(5) {
+  animation-delay: 96ms;
+}
+.room-list > li:nth-child(n + 6) {
+  animation-delay: 120ms;
+}
 
-/* Press: o toque responde na hora, sem deslocar nada. Fica fora das regras de
-   reduced-motion de propósito — não é movimento, é confirmação de estado. */
+/* Press: confirmação de estado, não movimento. */
 button:not(:disabled):active,
 a[href]:active {
   opacity: 0.88;
 }
 
 /* ---------------------------------------------------------------------------
-   Identidade fanzine-CRT (spec 14, docs/specs/14-identidade-fanzine-crt/spec.md).
-   Textura, chrome e realce progressivo. Tudo abaixo é estático: nada aqui usa
-   `animation` nem escapa das regras globais de reduced-motion/economy já
-   declaradas acima (FR-015).
+   Realce progressivo (FR-013/FR-014, docs/specs/14-identidade-fanzine-crt/spec.md).
+   Só `opacity`/`transform` e
+   nunca portão: sem JavaScript, `.reveal` não casa seletor e o conteúdo nasce
+   visível; o marcador `[data-reveal]` é a rede de segurança.
    --------------------------------------------------------------------------- */
-
-/* Grão: uma camada fixa por página, nas superfícies em escopo (FR-007). O SVG
-   `feTurbulence` em data-URI nasce achromático (`saturate 0`), então a regra de
-   "estado nunca por matiz" continua de pé. Sem `animation`/`transition` e sem
-   custo de layout: `background-image` é pintura pura, não dispara reflow. */
-.grain {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background-repeat: repeat;
-  background-size: var(--grain-size) var(--grain-size);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23g)'/%3E%3C/svg%3E");
-  opacity: var(--grain-opacity);
-}
-
-/* Barra de chrome: ÚNICO lugar do app com `backdrop-filter` (FR-011, AC-008).
-   Raio de 10px (≤ 12px), fundo translúcido e fio `--hairline` — a separação não
-   depende só do desfoque (FR-012). O fundo é acromático (R=G=B). */
-.chrome-blur {
-  background: rgb(10 10 10 / 0.72);
-  /* só o nome padrão: o Lightning CSS do Tailwind v4 adiciona o `-webkit-` para
-     os alvos que precisam. Declarar os dois à mão faz o minificador descartar o
-     sem prefixo, e aí o Firefox fica sem desfoque. */
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--hairline);
-}
-
-/* Arte ASCII (FR-010). Defesa em profundidade contra rolagem horizontal: a arte
-   já é orçada em ≤ 26 colunas (components/chrome/ascii.test.ts), mas `white-space:
-   pre` não quebra linha, então `overflow-x: clip` corta uma linha larga demais em
-   vez de arrastar o documento — em 320px a coluna útil é 272px. */
-.ascii {
-  max-width: 100%;
-  overflow-x: clip;
-}
-
-/* Realce progressivo (FR-013/FR-014). O seletor é ancorado no marcador `[data-js]`
-   que o script inline do layout raiz escreve em <html>: sem JavaScript ele não
-   existe, `.reveal` não casa nada e o conteúdo nasce visível (AC-001). Com JS, o
-   componente Reveal seta `[data-visible]` via IntersectionObserver. Anima SÓ
-   `opacity` e `transform` — nunca largura, altura ou offsets de layout (FR-016). */
 [data-js] .reveal {
   opacity: 0;
   transform: translateY(10px);
   transition:
-    opacity 380ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 380ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-js] .reveal[data-visible] {
@@ -417,20 +386,15 @@ a[href]:active {
   transform: none;
 }
 
-/* Rede de segurança (FR-014): se o bundle não carregar ou não hidratar — chunk
-   bloqueado, erro de rede, deploy skew — o script inline do layout marca
-   `[data-reveal]` depois de 1,2s e tudo aparece. Sem isto, uma falha de rede
-   deixaria o site inteiro invisível, o que seria a animação virando portão.
-   Vem depois de `[data-js] .reveal` (mesma especificidade) de propósito. */
 [data-reveal] .reveal {
   opacity: 1;
   transform: none;
 }
 
-/* FR-008: quando o usuário pede menos transparência, o grão e o desfoque saem
-   de cena. O fundo da barra volta a ser opaco para o conteúdo não vazar por trás. */
+/* FR-006: quando o usuário pede menos transparência, o glow e o desfoque saem
+   de cena; a barra volta a ser opaca para o conteúdo não vazar por trás. */
 @media (prefers-reduced-transparency: reduce) {
-  .grain {
+  .ambient {
     display: none;
   }
   .chrome-blur {

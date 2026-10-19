@@ -1,25 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Space_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProviderWrapper } from "@/components/SessionProviderWrapper";
 
-// Inter é o fallback do `--font-sans` (ver globals.css): a fonte que aparece é a
-// do sistema quando ele tem SF Pro, e esta quando não tem. Geist saiu — era
-// webfont paga em bytes em toda plataforma, inclusive nas que já têm a fonte
-// certa.
-const inter = Inter({
-  variable: "--font-inter",
+// Geist é o análogo livre mais próximo da MiSans da Kimi Platform, e Geist Mono
+// é a própria mono usada pela plataforma. As duas vêm do `next/font/google` —
+// zero dependência npm. A pilha de `--font-sans` ainda pede SF Pro primeiro,
+// então em macOS/iOS a fonte do sistema continua na frente (FR-003,
+// docs/specs/15-identidade-kimi/spec.md).
+const geist = Geist({
+  variable: "--font-geist",
   subsets: ["latin"],
+  display: "swap",
 });
 
-// Papel Display do redesign fanzine-CRT (FR-004, docs/specs/14-identidade-fanzine-crt/spec.md):
-// uma mono self-hosted, peso 700, subset latin. Não é dependência npm — o `next/font` baixa e
-// self-hospeda o arquivo no build, como o Inter acima. A variável alimenta `--font-display`
-// em globals.css.
-const spaceMono = Space_Mono({
-  variable: "--font-space-mono",
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
-  weight: ["700"],
   display: "swap",
 });
 
@@ -59,7 +56,7 @@ export const metadata: Metadata = {
 // app não precisa de `safe-area-inset` para o teclado virtual e a barra de
 // gestos não overlays o composer.
 export const viewport: Viewport = {
-  themeColor: "#0a0a0a",
+  themeColor: "#121212",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -74,10 +71,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      className={`${inter.variable} ${spaceMono.variable} h-full antialiased`}
+      className={`${geist.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {/* Marcador do realce progressivo (FR-014, docs/specs/14-identidade-fanzine-crt/spec.md).
+        {/* Marcador do realce progressivo (FR-013/FR-014, docs/specs/14-identidade-fanzine-crt/spec.md).
             Roda antes do conteúdo do body pintar e só então o CSS esconde `.reveal`. Sem JS o
             atributo não existe, `.reveal` não casa nenhum seletor e o conteúdo nasce visível
             (AC-001). O `setTimeout` é a rede de segurança de FR-014: se o bundle não hidratar
