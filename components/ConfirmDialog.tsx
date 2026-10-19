@@ -2,14 +2,14 @@
 
 import { useEffect, useId, useRef, type RefObject } from "react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { buttonClass } from "@/components/ui/Button";
+import { modalOverlayClass, modalPanelClass } from "@/components/ui/Modal";
+import { sectionLabelClass } from "@/components/ui/SectionLabel";
 
 // Dialog de confirmação para ação irreversível. Mesmo padrão de acessibilidade
 // já validado em LoadVideoModal (overlay, role=dialog, aria-modal, trap de Tab,
 // Escape, clique-fora, foco devolvido a quem abriu) — duplicar o trap de foco
 // dentro de cada chamador criaria um segundo lugar para ele divergir.
-//
-// Escopo deliberadamente mínimo: não é a extração ampla de `components/ui`,
-// que segue adiada para o redesign.
 export function ConfirmDialog({
   open,
   title,
@@ -94,7 +94,7 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="animate-fade fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] px-4"
+      className={modalOverlayClass}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -106,22 +106,19 @@ export function ConfirmDialog({
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         tabIndex={-1}
-        className="animate-pop flex w-full max-w-md flex-col gap-4 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] p-5"
+        className={`${modalPanelClass} flex flex-col gap-4`}
       >
-        <h2
-          id={titleId}
-          className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]"
-        >
+        <h2 id={titleId} className={sectionLabelClass}>
           {title}
         </h2>
-        <p id={descriptionId} className="text-sm text-[var(--ink)]">
+        <p id={descriptionId} className="text-body-sm text-[var(--ink)]">
           {description}
         </p>
 
         {error && (
           <p
             role="alert"
-            className="rounded-md border-2 border-[var(--ink)] px-3 py-2 text-sm font-semibold text-[var(--ink)]"
+            className="rounded-lg border border-[var(--ink)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--ink)]"
           >
             {error}
           </p>
@@ -133,7 +130,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="inline-flex min-h-11 items-center rounded-md border border-[var(--ink-muted)] px-4 py-2 text-sm text-[var(--ink)] hover:border-[var(--ink)] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-surface)]"
+            className={buttonClass({ variant: "outline", surface: true })}
           >
             {cancelLabel}
           </button>
@@ -141,7 +138,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className="inline-flex min-h-11 items-center rounded-md bg-[var(--invert-bg)] px-4 py-2 text-sm font-medium text-[var(--invert-fg)] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-surface)]"
+            className={buttonClass({ variant: "primary", surface: true })}
           >
             {busy ? busyLabel : confirmLabel}
           </button>

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { buttonClass } from "@/components/ui/Button";
 
 // Botão de exclusão de uma sala, renderizado por linha da lista de /rooms.
 // Fica por linha (e não a lista inteira) para manter `app/rooms/page.tsx` como
@@ -65,7 +66,7 @@ export function DeleteRoomButton({
           setOpen(true);
         }}
         aria-label={`excluir sala ${displayName ?? roomCode}`}
-        className="flex min-h-11 shrink-0 items-center rounded-md border border-[var(--ink-muted)] px-3 text-xs text-[var(--ink-muted)] hover:border-[var(--ink)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        className={buttonClass({ variant: "ghost", size: "sm", className: "shrink-0" })}
       >
         excluir sala
       </button>

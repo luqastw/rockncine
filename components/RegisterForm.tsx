@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -54,54 +56,47 @@ export function RegisterForm() {
       }}
       className="flex flex-col gap-4"
     >
-      <label className="flex flex-col gap-1 text-sm text-[var(--ink-muted)]">
+      <label className="flex flex-col gap-1.5 text-body-sm text-[var(--ink-muted)]">
         nome (opcional)
-        <input
+        <Input
           type="text"
           autoComplete="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="min-h-11 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 text-base text-[var(--ink)] sm:text-sm focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
         />
       </label>
-      <label className="flex flex-col gap-1 text-sm text-[var(--ink-muted)]">
+      <label className="flex flex-col gap-1.5 text-body-sm text-[var(--ink-muted)]">
         email
-        <input
+        <Input
           type="email"
           required
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="min-h-11 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 text-base text-[var(--ink)] sm:text-sm focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
         />
       </label>
-      <label className="flex flex-col gap-1 text-sm text-[var(--ink-muted)]">
+      <label className="flex flex-col gap-1.5 text-body-sm text-[var(--ink-muted)]">
         senha (mín. 8 caracteres)
-        <input
+        <Input
           type="password"
           required
           minLength={8}
           autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="min-h-11 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 text-base text-[var(--ink)] sm:text-sm focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
         />
       </label>
       {error && (
         <p
           role="alert"
-          className="rounded-md border-2 border-[var(--ink)] px-3 py-2 text-sm font-semibold text-[var(--ink)]"
+          className="rounded-lg border border-[var(--ink)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--ink)]"
         >
           {error}
         </p>
       )}
-      <button
-        type="submit"
-        disabled={loading}
-        className="min-h-11 rounded-md bg-[var(--invert-bg)] px-4 py-2 text-sm font-medium text-[var(--invert-fg)] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
-      >
+      <Button type="submit" disabled={loading} className="w-full">
         {loading ? "criando..." : "criar conta"}
-      </button>
+      </Button>
     </form>
   );
 }

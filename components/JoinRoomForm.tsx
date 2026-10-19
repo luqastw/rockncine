@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
 export function JoinRoomForm() {
   const router = useRouter();
@@ -16,7 +18,7 @@ export function JoinRoomForm() {
       }}
       className="flex gap-2"
     >
-      <input
+      <Input
         value={code}
         onChange={(e) => setCode(e.target.value)}
         placeholder="código da sala"
@@ -24,14 +26,11 @@ export function JoinRoomForm() {
         autoComplete="off"
         autoCapitalize="characters"
         spellCheck={false}
-        className="min-h-11 min-w-0 flex-1 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 font-mono text-base tracking-wider text-[var(--ink)] placeholder:text-[var(--ink-muted)] placeholder:tracking-normal sm:text-sm focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        className="min-w-0 flex-1 font-mono tracking-wider placeholder:tracking-normal"
       />
-      <button
-        type="submit"
-        className="min-h-11 shrink-0 rounded-md border border-[var(--ink-muted)] px-4 text-sm text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
-      >
+      <Button type="submit" variant="outline" className="shrink-0">
         entrar
-      </button>
+      </Button>
     </form>
   );
 }
