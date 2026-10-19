@@ -12,7 +12,7 @@ export function GenericIframe({ src }: { src: string }) {
   // caminho de escrita, não só o PATCH server-side.
   if (!isSafeEmbedUrl(src)) {
     return (
-      <div className="flex h-full w-full items-center justify-center p-6 text-center text-sm text-[var(--ink-muted)]">
+      <div className="flex h-full w-full items-center justify-center p-6 text-center text-body-sm text-[var(--ink-muted)]">
         link inválido pra incorporação.
       </div>
     );

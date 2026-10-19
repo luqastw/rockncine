@@ -213,7 +213,7 @@ describe("Chat — agrupamento por autor", () => {
     emitRemote({ text: "minha", authorId: "eu", authorName: "ana", ts: NOW });
     const own = screen.getByText("minha").closest("li") as HTMLElement;
 
-    expect(own.innerHTML).toContain("bg-[var(--bg-void)]");
+    expect(own.innerHTML).toContain("bg-[var(--bg-elevated)]");
     expect(own.innerHTML).toContain("text-[var(--ink)]");
     // a inversão fica reservada a CTA e estado ativo
     expect(own.innerHTML).not.toContain("invert-bg");

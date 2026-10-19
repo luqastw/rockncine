@@ -36,15 +36,15 @@ export function PlayerLoadStatus({
   const message = error ?? (timedOut ? "não foi possível carregar o player." : null);
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-[var(--scrim)] px-4 text-center text-sm text-[var(--ink-muted)]">
+    <div className="absolute inset-0 flex items-center justify-center bg-[var(--scrim)] px-4 text-center text-body-sm text-[var(--ink-muted)]">
       {message ? (
         <div
           role="alert"
-          className="flex flex-col items-center gap-2 rounded-md border-2 border-[var(--ink)] bg-[var(--bg-void)] px-3 py-2"
+          className="flex flex-col items-center gap-2 rounded-xl border border-[var(--ink)] bg-[var(--bg-void)] px-4 py-3"
         >
           <span className="font-semibold text-[var(--ink)]">{message}</span>
           {!error && (
-            <span className="text-xs text-[var(--ink-muted)]">
+            <span className="text-caption text-[var(--ink-muted)]">
               se você usa bloqueador de anúncios/rastreamento, tente liberar este site.
             </span>
           )}
@@ -67,7 +67,7 @@ export function PlayerLoadStatus({
         // anúncio nenhum (achado 5 da revisão de design).
         <span
           role="status"
-          className="rounded-md bg-[var(--bg-void)] px-3 py-2 text-[var(--ink-muted)]"
+          className="rounded-lg bg-[var(--bg-void)] px-3 py-2 text-[var(--ink-muted)]"
         >
           carregando player...
         </span>

@@ -149,7 +149,7 @@ export function PlayerShell({
                 type="button"
                 onClick={onToggleFullscreen}
                 aria-label={isFullscreen ? "sair da tela cheia" : "tela cheia"}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--ink-muted)] bg-[var(--bg-void)]/90 text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--hairline)] bg-[#121212b8] text-[var(--ink)] hover:bg-[var(--fill-1)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
               >
                 {isFullscreen ? (
                   <FullscreenExitIcon className="h-4 w-4" />

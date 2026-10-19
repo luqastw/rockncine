@@ -5,6 +5,10 @@ import { useMyPresence, useOthers, useStatus } from "@liveblocks/react";
 import { useChat } from "@/hooks/useChat";
 import { useChatFeed } from "@/hooks/useChatFeed";
 import { IdentityChip } from "@/components/room/IdentityChip";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { inputClass } from "@/components/ui/Input";
+import { sectionLabelClass } from "@/components/ui/SectionLabel";
 import { MAX_TEXT_LENGTH } from "@/lib/chat-event";
 import type { ChatEvent, SystemEvent } from "@/liveblocks.config";
 import type { ChatFeedItem } from "@/lib/chat-event";
@@ -137,7 +141,7 @@ const MessageItem = memo(function MessageItem({
       <div
         className={
           isSelf
-            ? "max-w-[85%] rounded-md border border-[var(--line)] bg-[var(--bg-void)] px-3 py-1.5"
+            ? "max-w-[85%] rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)] px-3 py-2"
             : "max-w-full"
         }
       >
@@ -149,21 +153,21 @@ const MessageItem = memo(function MessageItem({
         ) : (
           <span className="flex items-center gap-2">
             <IdentityChip name={item.authorName} userId={item.authorId} size="sm" />
-            <span className="min-w-0 truncate text-sm font-medium text-[var(--ink)]">
+            <span className="min-w-0 truncate text-body-sm font-medium text-[var(--ink)]">
               {item.authorName}
             </span>
-            {isSelf && <span className="text-xs text-[var(--ink-muted)]">(você)</span>}
+            {isSelf && <span className="text-caption text-[var(--ink-muted)]">(você)</span>}
             <time
               dateTime={new Date(item.ts).toISOString()}
-              className="ml-auto shrink-0 font-mono text-xs text-[var(--ink-muted)]"
+              className="ml-auto shrink-0 font-mono text-micro text-[var(--ink-muted)]"
             >
               {time}
             </time>
           </span>
         )}
-        {/* `--ink` sobre `--bg-void`: 17:1 de contraste, e a caixa é a única
-            diferença estrutural entre falar e falar (FR-017). */}
-        <p className="break-words text-[15px] leading-relaxed text-[var(--ink)]">
+        {/* A caixa elevada é a única diferença estrutural entre falar e falar
+            (FR-017); o contraste continua em 12:1. */}
+        <p className="break-words text-body leading-relaxed text-[var(--ink)]">
           {item.text}
         </p>
       </div>
@@ -173,7 +177,7 @@ const MessageItem = memo(function MessageItem({
 
 const SystemItem = memo(function SystemItem({ item }: { item: SystemEvent }) {
   return (
-    <li className="my-1.5 flex items-center gap-2 text-xs italic text-[var(--ink-muted)]">
+    <li className="my-1.5 flex items-center gap-2 text-caption italic text-[var(--ink-muted)]">
       <span className="h-px flex-1 bg-[var(--line)]" aria-hidden />
       <span className="min-w-0 text-center">
         <span className="sr-only">aviso da sala: </span>
@@ -200,7 +204,7 @@ function DividerLine({ label, strong }: { label: string; strong?: boolean }) {
   return (
     <li
       aria-hidden
-      className={`my-1.5 flex items-center gap-2 font-mono text-[10px] uppercase tracking-wide text-[var(--ink-muted)] ${strong ? "font-medium" : ""}`}
+      className={`my-1.5 flex items-center gap-2 font-mono text-micro uppercase tracking-wide text-[var(--ink-muted)] ${strong ? "font-medium" : ""}`}
     >
       <span className={`h-px flex-1 ${line}`} aria-hidden />
       <span className="shrink-0">{label}</span>
@@ -350,7 +354,7 @@ function EmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
         aria-expanded={open}
         aria-haspopup="true"
         aria-label="emoji"
-        className="flex h-11 w-11 items-center justify-center rounded-md border border-[var(--ink-muted)] text-base text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        className="flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--ink-muted)] text-base text-[var(--ink)] hover:border-[var(--ink)] hover:bg-[var(--fill-1)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
         <EmojiIcon />
       </button>
@@ -362,7 +366,7 @@ function EmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
           // `bottom-full` acima do botão: o popover abre para dentro da área do
           // log, que é onde o olho já está, e nunca empurra o composer para
           // baixo.
-          className="absolute right-0 bottom-full z-30 mb-2 flex gap-1 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] p-1"
+          className="absolute right-0 bottom-full z-30 mb-2 flex gap-1 rounded-xl border border-[var(--line)] bg-[var(--bg-surface)] p-1 shadow-[var(--shadow-pop)]"
         >
           {REACTION_EMOJIS.map((emoji) => (
             <button
@@ -373,7 +377,7 @@ function EmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
                 triggerRef.current?.focus();
               }}
               aria-label={`inserir ${emoji} na mensagem`}
-              className="flex h-11 w-11 items-center justify-center rounded-md text-base hover:bg-[var(--line)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-base hover:bg-[var(--fill-1)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
             >
               {emoji}
             </button>
@@ -613,19 +617,18 @@ export const Chat = memo(function Chat({
     // continua sendo só a do log.
     <div className="flex h-full min-h-0 flex-col gap-3 max-lg:overflow-y-auto">
       <div className="flex items-center gap-2">
-        <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
-          chat
-        </h2>
+        <h2 className={sectionLabelClass}>chat</h2>
         {/* Contador de não lidas (FR-015). O botão flutuante continua existindo
             — ele resolve o "quero ir lá", o contador resolve o "quanto me
             escapou". */}
         {unreadCount > 0 && (
-          <span
-            className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--invert-bg)] px-1.5 text-[10px] font-bold text-[var(--invert-fg)]"
+          <Badge
+            variant="solid"
+            className="h-5 min-w-5 justify-center px-1.5 text-micro font-bold"
             aria-label={`${unreadCount} mensagens não lidas`}
           >
             {unreadCount}
-          </span>
+          </Badge>
         )}
       </div>
 
@@ -644,7 +647,7 @@ export const Chat = memo(function Chat({
             setScrolledUp(list.scrollTop > 8);
             if (atBottom) markAsRead();
           }}
-          className="relative flex min-h-0 flex-1 flex-col overflow-y-auto rounded-md border border-[var(--line)] bg-[var(--bg-surface)] p-3"
+          className="relative flex min-h-0 flex-1 flex-col overflow-y-auto rounded-xl border border-[var(--line)] bg-[var(--bg-surface)] p-3"
         >
           {/* A barra de rolagem é escondida em toda a aplicação
               (app/globals.css), então "há conteúdo acima" não tem sinal. Esta
@@ -653,10 +656,9 @@ export const Chat = memo(function Chat({
             <span
               aria-hidden
               data-testid="chat-scroll-shadow"
-              className="pointer-events-none absolute inset-x-0 top-0 h-4 rounded-t-md"
+              className="pointer-events-none absolute inset-x-0 top-0 h-4 rounded-t-xl"
               style={{
-                background:
-                  "linear-gradient(to bottom, var(--bg-surface), rgb(20 20 20 / 0))",
+                background: "linear-gradient(to bottom, var(--bg-surface), transparent)",
               }}
             />
           )}
@@ -670,7 +672,7 @@ export const Chat = memo(function Chat({
           {typingNames.length > 0 && (
             <li
               aria-live="off"
-              className="mb-1 flex items-center gap-2 text-xs text-[var(--ink-muted)]"
+              className="mb-1 flex items-center gap-2 text-caption text-[var(--ink-muted)]"
             >
               <span aria-hidden className="flex gap-0.5">
                 <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--ink-muted)]" />
@@ -682,7 +684,7 @@ export const Chat = memo(function Chat({
             </li>
           )}
           {messages.length === 0 && (
-            <li className="text-sm text-[var(--ink-muted)]">nenhuma mensagem ainda.</li>
+            <li className="text-body-sm text-[var(--ink-muted)]">nenhuma mensagem ainda.</li>
           )}
           {entries.map((entry) => {
             if (entry.kind === "day") {
@@ -708,7 +710,7 @@ export const Chat = memo(function Chat({
           <button
             type="button"
             onClick={goToLatest}
-            className="absolute inset-x-3 bottom-3 min-h-11 rounded-md bg-[var(--invert-bg)] px-3 text-xs font-medium text-[var(--invert-fg)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+            className="absolute inset-x-3 bottom-3 min-h-11 rounded-lg bg-[var(--invert-bg)] px-3 text-caption font-medium text-[var(--invert-fg)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
           >
             novas mensagens ↓
           </button>
@@ -735,7 +737,7 @@ export const Chat = memo(function Chat({
             para a fila local de `useChat`, que despeja no `connected` — o que não
             existia antes desta spec. */}
         {notice && (
-          <p role="status" className="font-mono text-[11px] text-[var(--ink-muted)]">
+          <p role="status" className="font-mono text-caption text-[var(--ink-muted)]">
             {notice}
           </p>
         )}
@@ -768,15 +770,15 @@ export const Chat = memo(function Chat({
             placeholder="mensagem"
             aria-label="mensagem para o chat da sala"
             autoComplete="off"
-            className="max-h-24 min-h-11 min-w-0 flex-1 resize-none overflow-y-auto rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 text-base leading-5 text-[var(--ink)] placeholder:text-[var(--ink-muted)] sm:text-sm focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+            className={inputClass({
+              className:
+                "max-h-24 min-w-0 flex-1 resize-none overflow-y-auto leading-5",
+            })}
           />
           <EmojiButton onPick={insertEmoji} />
-          <button
-            type="submit"
-            className="min-h-11 shrink-0 rounded-md bg-[var(--invert-bg)] px-4 text-sm font-medium text-[var(--invert-fg)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
-          >
+          <Button type="submit" className="shrink-0">
             enviar
-          </button>
+          </Button>
         </div>
         {/* Nenhum corte mudo (FR-025): o teto de 500 caracteres é do validador de
             entrada, então quem escreve precisa enxergar onde ele está antes de
@@ -786,7 +788,7 @@ export const Chat = memo(function Chat({
           // anunciar a própria contagem a cada tecla é barulho. O texto de corte é
           // o que importa, e esse é raro.
           <p
-            className={`self-end font-mono text-[11px] ${
+            className={`self-end font-mono text-caption ${
               overLimit ? "text-[var(--ink)]" : "text-[var(--ink-muted)]"
             }`}
           >

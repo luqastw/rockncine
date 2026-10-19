@@ -1,18 +1,18 @@
-import Link from "next/link";
+import { PageShell } from "@/components/chrome/PageShell";
+import { ButtonLink } from "@/components/ui/Button";
 
 export default function RoomNotFound() {
   return (
-    <main className="mx-auto flex w-full min-h-dvh max-w-sm flex-col items-center justify-center gap-4 px-6 py-10 text-center">
-      <h1 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">sala não encontrada</h1>
-      <p className="text-sm text-[var(--ink-muted)]">
+    <PageShell width="sm" className="items-center justify-center gap-4 text-center">
+      <h1 className="text-title font-semibold tracking-tight text-[var(--ink)]">
+        sala não encontrada
+      </h1>
+      <p className="text-body-sm text-[var(--ink-muted)]">
         esse código não corresponde a nenhuma sala ativa. confira se digitou certo.
       </p>
-      <Link
-        href="/rooms"
-        className="min-h-11 rounded-md bg-[var(--invert-bg)] px-4 py-2 text-sm font-medium text-[var(--invert-fg)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)] inline-flex items-center"
-      >
+      <ButtonLink href="/rooms" variant="primary">
         voltar pro menu
-      </Link>
-    </main>
+      </ButtonLink>
+    </PageShell>
   );
 }

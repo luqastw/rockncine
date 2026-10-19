@@ -49,7 +49,7 @@ export function LastActionNote({
       : others.find((other) => other.presence?.userId === actorId)?.presence.name ?? "alguém";
 
   return (
-    <p className="text-xs text-[var(--ink-muted)]">
+    <p className="text-caption text-[var(--ink-muted)]">
       {name} {VERB[lastEvent.type]}
     </p>
   );

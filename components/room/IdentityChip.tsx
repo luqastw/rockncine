@@ -35,7 +35,7 @@ export const IdentityChip = memo(function IdentityChip({
       aria-hidden
       data-tone={tone}
       data-initials={initials}
-      className={`flex ${box} shrink-0 items-center justify-center rounded-[4px] font-medium text-[var(--pure-black)]`}
+      className={`flex ${box} shrink-0 items-center justify-center rounded-full font-semibold text-[var(--pure-black)]`}
       style={{ backgroundColor: toneToken(tone) }}
     >
       {initials}

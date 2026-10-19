@@ -40,7 +40,7 @@ function resolutionUnavailableReason(
 // cinco linhas e ficava com 434px de altura sobre um vídeo de 163 (medido).
 // Alvo de toque é físico; quem escala é o rótulo.
 function toggleButtonClass(disabled: boolean): string {
-  return `flex min-h-[44px] shrink-0 items-center justify-center rounded-md border border-[var(--ink-muted)] px-3 font-mono text-xs text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]${
+  return `flex min-h-[44px] shrink-0 items-center justify-center rounded-lg border border-[var(--ink-muted)] px-3 font-mono text-caption text-[var(--ink)] hover:border-[var(--ink)] hover:bg-[var(--fill-1)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]${
     disabled ? " cursor-not-allowed opacity-50" : ""
   }`;
 }
@@ -134,7 +134,7 @@ export function PlayerControls({
     // não couber fica a um swipe (e a um Tab: o browser rola o item focado para
     // dentro da vista) de distância. `min-w-[96px]` no slider para ele não
     // voltar a zero (achado 13 da revisão de design).
-    <div className="flex flex-nowrap items-center gap-2 overflow-x-auto rounded-md border border-[var(--ink-muted)] bg-[var(--bg-void)]/90 px-2 py-2 sm:gap-3 sm:px-3">
+    <div className="flex flex-nowrap items-center gap-2 overflow-x-auto rounded-xl border border-[var(--hairline)] bg-[#121212b8] px-2 py-2 backdrop-blur-md sm:gap-3 sm:px-3">
       <button
         type="button"
         onClick={controller.togglePlay}
@@ -149,7 +149,7 @@ export function PlayerControls({
         )}
       </button>
 
-      <span className="shrink-0 font-mono text-xs text-[var(--ink-muted)] tabular-nums">
+      <span className="shrink-0 font-mono text-caption text-[var(--ink-muted)] tabular-nums">
         {formatTime(displayTime)}
         {/* duração total sai abaixo de sm: a barra tem ~370px de itens de
             largura fixa e estourava a caixa do vídeo em tela de 360px
@@ -188,7 +188,7 @@ export function PlayerControls({
         type="button"
         onClick={controller.toggleMute}
         aria-label={isMuted ? "reativar áudio" : "mutar"}
-        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-lg text-[var(--ink)] hover:bg-[var(--fill-1)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
         {isMuted ? (
           <VolumeMutedIcon className="h-4 w-4" />
@@ -255,10 +255,10 @@ export function PlayerControls({
           aria-pressed={captions}
           aria-label={captions ? "desativar legenda" : "ativar legenda"}
           title={captions ? "desativar legenda" : "ativar legenda"}
-          className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-md border ${
+          className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-lg border ${
             captions
-              ? "border-[var(--ink)] bg-[var(--bg-surface)] text-[var(--ink)]"
-              : "border-[var(--ink-muted)] text-[var(--ink)] hover:border-[var(--ink)]"
+              ? "border-[var(--ink)] bg-[var(--fill-2)] text-[var(--ink)]"
+              : "border-[var(--ink-muted)] text-[var(--ink)] hover:border-[var(--ink)] hover:bg-[var(--fill-1)]"
           } disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]`}
         >
           <CaptionsIcon className="h-4 w-4" />
@@ -269,7 +269,7 @@ export function PlayerControls({
         type="button"
         onClick={onToggleFullscreen}
         aria-label={isFullscreen ? "sair da tela cheia" : "tela cheia"}
-        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--bg-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-lg text-[var(--ink)] hover:bg-[var(--fill-1)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
         {isFullscreen ? (
           <FullscreenExitIcon className="h-4 w-4" />

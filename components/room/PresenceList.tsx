@@ -67,10 +67,10 @@ export function PresenceTrigger({
       onClick={onToggle}
       aria-expanded={expanded}
       aria-controls="presence-list"
-      className="flex min-h-11 items-center gap-2 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+      className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--fill-1)] px-3 py-2 text-body-sm text-[var(--ink)] hover:border-[var(--ink-muted)] hover:bg-[var(--fill-2)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
     >
       <IdentityChip name={myPresence.name || myName} userId={myPresence.userId ?? myUserId} size="sm" />
-      <span className="font-mono text-xs text-[var(--ink-muted)]">{total} na sala</span>
+      <span className="font-mono text-caption text-[var(--ink-muted)]">{total} na sala</span>
       <ChevronDownIcon
         className={`ml-auto h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
       />
@@ -102,15 +102,15 @@ export function PresenceList({
       id="presence-list"
       className={`max-h-[30dvh] flex-col gap-2 overflow-y-auto ${expanded ? "flex" : "hidden"}`}
     >
-      <li className="flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--ink)]">
+      <li className="flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--fill-1)] px-3 py-2 text-body-sm text-[var(--ink)]">
         <IdentityChip name={myPresence.name || myName} userId={myId} size="md" />
         <span className="min-w-0 truncate">{myPresence.name || myName}</span>
-        <span className="text-xs text-[var(--ink-muted)]">(você)</span>
+        <span className="text-caption text-[var(--ink-muted)]">(você)</span>
       </li>
       {[...byUser].map(([userId, name]) => (
         <li
           key={userId}
-          className="flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--ink)]"
+          className="flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--fill-1)] px-3 py-2 text-body-sm text-[var(--ink)]"
         >
           <IdentityChip name={name} userId={userId} size="md" />
           <span className="min-w-0 truncate">{name}</span>

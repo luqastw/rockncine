@@ -35,18 +35,18 @@ export const SyncRing = memo(function SyncRing({
   const showChrome = !isFullscreen;
 
   // sem cor pra diferenciar estado: idle é borda sólida --line, "ao vivo" é
-  // borda sólida --outline-strong (branca) com pulso, sync-limitado é
-  // tracejada — três estados, três tratamentos estruturais, zero matiz.
+  // borda sólida --ink com pulso, sync-limitado é tracejada — três estados,
+  // três tratamentos estruturais, zero matiz.
   return (
     <div
       className={[
-        "relative rounded-lg transition-shadow duration-300",
+        "relative rounded-xl transition-shadow duration-300",
         showChrome &&
           (syncLimited
-            ? "border-2 border-dashed border-[var(--line)]"
+            ? "border border-dashed border-[var(--line)]"
             : isPlaying
-              ? "border-2 border-[var(--outline-strong)]"
-              : "border-2 border-[var(--line)]"),
+              ? "border border-[var(--ink)]"
+              : "border border-[var(--line)]"),
         showChrome && !syncLimited && isPlaying && !economyMode
           ? "animate-sync-pulse"
           : "",
@@ -59,11 +59,11 @@ export const SyncRing = memo(function SyncRing({
         <span
           key={flashKey}
           aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-lg animate-sync-flash"
+          className="pointer-events-none absolute inset-0 rounded-xl animate-sync-flash"
         />
       )}
       {syncLimited && (
-        <span className="absolute right-2 top-2 rounded-full border border-[var(--line)] bg-[var(--bg-surface)] px-2 py-0.5 text-xs text-[var(--ink-muted)]">
+        <span className="absolute right-2 top-2 rounded-full bg-[var(--fill-1)] px-2 py-0.5 text-caption text-[var(--ink-muted)]">
           sync limitado — controle manual
         </span>
       )}

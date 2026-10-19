@@ -4,6 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { useLoadVideo } from "@/hooks/useLoadVideo";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { CloseIcon } from "@/components/room/player/icons";
+import { Button } from "@/components/ui/Button";
+import { inputClass } from "@/components/ui/Input";
+import { iconButtonClass } from "@/components/ui/IconButton";
+import { modalOverlayClass, modalPanelClass } from "@/components/ui/Modal";
+import { sectionLabelClass } from "@/components/ui/SectionLabel";
 
 // Dialog próprio, sem dependência nova — overlay + painel, Escape/clique-fora
 // fecha, foco vai pro input ao abrir. Absorve o form que antes ficava fixo
@@ -81,7 +86,7 @@ export function LoadVideoModal({
 
   return (
     <div
-      className="animate-fade fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] px-4"
+      className={modalOverlayClass}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -91,20 +96,17 @@ export function LoadVideoModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="load-video-modal-title"
-        className="animate-pop w-full max-w-md rounded-md border border-[var(--line)] bg-[var(--bg-surface)] p-5"
+        className={modalPanelClass}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2
-            id="load-video-modal-title"
-            className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]"
-          >
+          <h2 id="load-video-modal-title" className={sectionLabelClass}>
             carregar vídeo
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="fechar"
-            className="flex h-11 w-11 items-center justify-center rounded-md text-[var(--ink-muted)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-surface)]"
+            className={iconButtonClass({ variant: "ghost", surface: true })}
           >
             <CloseIcon className="h-4 w-4" />
           </button>
@@ -138,19 +140,15 @@ export function LoadVideoModal({
             autoComplete="off"
             autoCapitalize="off"
             spellCheck={false}
-            className="min-h-11 w-full min-w-0 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-void)] px-3 py-2 text-base text-[var(--ink)] placeholder:text-[var(--ink-muted)] sm:text-sm focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-surface)]"
+            className={inputClass({ surface: true, className: "min-w-0" })}
           />
-          <button
-            type="submit"
-            disabled={loading}
-            className="min-h-11 shrink-0 rounded-md bg-[var(--invert-bg)] px-4 text-sm font-medium text-[var(--invert-fg)] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--bg-surface)]"
-          >
+          <Button type="submit" surface disabled={loading} className="shrink-0">
             {loading ? "carregando..." : "carregar"}
-          </button>
+          </Button>
           {error && (
             <p
               role="alert"
-              className="rounded-md border-2 border-[var(--ink)] px-3 py-2 text-sm font-semibold text-[var(--ink)]"
+              className="rounded-lg border border-[var(--ink)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--ink)]"
             >
               {error}
             </p>

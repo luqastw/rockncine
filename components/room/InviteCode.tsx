@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useEffect, useState } from "react";
+import { Button } from "@/components/ui/Button";
 
 type CopyStatus = "idle" | "copied" | "failed";
 
@@ -46,20 +47,16 @@ export const InviteCode = memo(function InviteCode({ code }: { code: string }) {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1 rounded-lg bg-[var(--fill-1)] py-1 pl-3 pr-1">
       <span
         id="invite-code-text"
-        className="select-all font-mono text-sm tracking-wider text-[var(--ink-muted)]"
+        className="select-all font-mono text-body-sm tracking-wider text-[var(--ink-muted)]"
       >
         {code}
       </span>
-      <button
-        type="button"
-        onClick={copy}
-        className="flex min-h-11 items-center rounded-md border border-[var(--ink-muted)] px-3 text-xs text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
-      >
+      <Button type="button" variant="ghost" size="sm" onClick={copy} className="shrink-0">
         {status === "copied" ? "link copiado" : status === "failed" ? "copie à mão" : "copiar convite"}
-      </button>
+      </Button>
       <span role="status" aria-live="polite" className="sr-only">
         {status === "copied"
           ? "link de convite copiado"

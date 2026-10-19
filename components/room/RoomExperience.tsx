@@ -31,6 +31,8 @@ import { usePlaybackState } from "@/hooks/usePlaybackClock";
 import { EconomySuggestion } from "@/components/room/EconomySuggestion";
 import { BroadcastControls } from "@/components/room/BroadcastControls";
 import { ScreenSharePlayer } from "@/components/room/ScreenSharePlayer";
+import { Badge } from "@/components/ui/Badge";
+import { iconButtonClass } from "@/components/ui/IconButton";
 import { parseBroadcast } from "@/lib/broadcast";
 
 // Exportado porque `RoomExperience` é o único consumidor do retorno de
@@ -405,20 +407,18 @@ export function RoomExperience({
     // ocupa 12px + 38px a partir da borda inferior, então 16px de respiro no
     // mobile deixavam o selo por cima do campo de mensagem (medido a 390px:
     // selo em y 794-832, input em y 784-828 — achado 1 da revisão de design).
-    <main className="room-shell mx-auto flex h-dvh w-full max-w-[1800px] flex-col gap-6 overflow-hidden px-6 pt-8 pb-14">
+    <main className="room-shell mx-auto flex h-dvh w-full max-w-[1800px] flex-col gap-5 overflow-hidden px-4 pt-6 pb-14 sm:px-6 lg:px-8">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link
             href="/rooms"
             aria-label="voltar para suas salas"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--ink-muted)] text-sm text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+            className={iconButtonClass({ variant: "outline", className: "shrink-0" })}
           >
             ←
           </Link>
           <div className="flex min-w-0 flex-col">
-            {/* papel "Display" da seção 8 do SPEC: título da sala é momento
-                grande, não texto de corpo (achado 20). */}
-            <h1 className="truncate text-lg font-semibold tracking-tight text-[var(--ink)]">
+            <h1 className="truncate text-heading font-semibold tracking-tight text-[var(--ink)]">
               {roomName || "sala sem nome"}
             </h1>
             <LastActionNote lastEvent={lastEvent} userId={userId} />
@@ -428,31 +428,31 @@ export function RoomExperience({
               transmissão seria um status mentindo sobre o que as pessoas estão
               vendo. */}
           {isPlayingNow && !syncLimited && !isBroadcasting && (
-            <span className="shrink-0 rounded-full bg-[var(--invert-bg)] px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-[var(--invert-fg)]">
+            <Badge variant="solid" className="uppercase tracking-wide">
               ao vivo
-            </span>
+            </Badge>
           )}
           {/* Indicador, não controle: quem liga/desliga é o botão de
-              `RoomActions` (44px, com `aria-pressed`). Esta pílula era um
-              segundo botão para a mesma preferência, com outro tratamento, sem
-              estado anunciado e 22px de altura — o menor alvo do app (achado 4
-              da revisão de design). Agora é status, no mesmo idioma do chip
-              "sync limitado" do `SyncRing`. */}
-          {economyMode && (
-            <span className="shrink-0 rounded-full border border-[var(--line)] bg-[var(--bg-surface)] px-2 py-0.5 text-xs text-[var(--ink-muted)]">
-              economy
-            </span>
-          )}
+              `RoomActions` (44px, com `aria-pressed`). */}
+          {economyMode && <Badge variant="soft">economy</Badge>}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           {connectionLabel ? (
-            <span role="status" aria-live="polite" className="font-mono text-xs text-[var(--ink-muted)]">
+            <span
+              role="status"
+              aria-live="polite"
+              className="font-mono text-caption text-[var(--ink-muted)]"
+            >
               {connectionLabel}
             </span>
           ) : (
             !syncLimited &&
             !isPlayingNow && (
-              <span role="status" aria-live="polite" className="font-mono text-xs text-[var(--ink-muted)]">
+              <span
+                role="status"
+                aria-live="polite"
+                className="font-mono text-caption text-[var(--ink-muted)]"
+              >
                 ○ pausado
               </span>
             )
@@ -468,7 +468,7 @@ export function RoomExperience({
             ? ({ padding: FULLSCREEN_PAD, "--fs-pad": FULLSCREEN_PAD } as React.CSSProperties)
             : undefined
         }
-        className={`relative flex min-h-0 flex-1 flex-col gap-6 bg-[var(--bg-void)] lg:flex-row ${
+        className={`relative flex min-h-0 flex-1 flex-col gap-5 bg-[var(--bg-void)] lg:flex-row ${
           isFullscreen ? "h-dvh w-dvw overflow-hidden" : ""
         } ${cssFullscreen ? "fixed inset-0 z-50" : ""}`}
       >
@@ -487,7 +487,7 @@ export function RoomExperience({
           // num contêiner que rola: se o conteúdo passar da caixa, o alinhamento
           // volta a ser pelo início.
           className={`relative flex min-h-0 flex-col gap-4 justify-safe-center overflow-y-auto p-4 -m-4 ${
-            showAside ? "lg:basis-[80%]" : "w-full"
+            showAside ? "lg:basis-[78%]" : "w-full"
           } ${isFullscreen ? "flex-1" : "max-lg:shrink-0"}`}
         >
           {isFullscreen && !isTheater && (
@@ -539,7 +539,7 @@ export function RoomExperience({
               {/* bg-black literal de propósito (não --bg-void): é a letterbox
                   atrás do vídeo, não uma superfície da UI — ver revisão de
                   consistência, achado 5 de docs/specs/06-consistencia-design/spec.md. */}
-              <div className="relative aspect-video w-full overflow-hidden rounded-md bg-black">
+              <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">
               {/* FR-004/FR-005: o storage de transmissão é autoritativo sobre o
                   que a área de vídeo exibe. Com transmissão, nada de
                   `PlayerShell`/`PlayerControls` — os frames SÃO a
@@ -615,18 +615,18 @@ export function RoomExperience({
                     <GenericIframe src={video.embedUrl!} />
                   ) : storageLoading ? (
                     <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6">
-                      <span className="h-2 w-40 rounded-full bg-[var(--line)]" aria-hidden />
-                      <span className="h-2 w-24 rounded-full bg-[var(--line)]" aria-hidden />
+                      <span className="h-2 w-40 rounded-full bg-[var(--fill-1)]" aria-hidden />
+                      <span className="h-2 w-24 rounded-full bg-[var(--fill-1)]" aria-hidden />
                       <span className="sr-only" role="status">
                         carregando a sala
                       </span>
                     </div>
                   ) : (
                     <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-6 text-center">
-                      <p className="text-xl font-semibold tracking-tight text-[var(--ink)]">
+                      <p className="text-title font-semibold tracking-tight text-[var(--ink)]">
                         nenhum vídeo carregado
                       </p>
-                      <p className="text-sm text-[var(--ink-muted)]">
+                      <p className="text-body-sm text-[var(--ink-muted)]">
                         use &quot;carregar vídeo&quot; pra começar
                       </p>
                     </div>
@@ -699,14 +699,14 @@ export function RoomExperience({
           // x=8 a y=51 em vez de x=4 a y=56). Mesma técnica de `p-4 -m-4` já
           // usada na coluna do vídeo logo acima. Efeito colateral medido: o
           // `-m-2` mantém a borda esquerda do conteúdo onde estava, mas o
-          // `lg:min-w-72` é mínimo de caixa de borda, então a largura útil da
-          // coluna cai 16px (288 → 272 no desktop, 342 → 326 a 390px). Em modo
-          // teatro vale o `p-4` de verdade, que ali é padding pintado do painel.
-          className={`w-full min-h-0 flex-col gap-6 overflow-y-auto max-lg:flex-1 lg:min-w-72 lg:basis-[20%] ${
+          // `lg:min-w-80` é mínimo de caixa de borda, então a largura útil da
+          // coluna cai 16px no desktop. Em modo teatro vale o `p-4` de
+          // verdade, que ali é padding pintado do painel.
+          className={`w-full min-h-0 flex-col gap-5 overflow-y-auto max-lg:flex-1 lg:min-w-80 lg:basis-[22%] ${
             showAside ? "flex" : "hidden"
           } ${
             isFullscreen && isTheater
-              ? "rounded-lg border border-[var(--line)] bg-[var(--bg-surface)] p-4"
+              ? "rounded-2xl border border-[var(--line)] bg-[var(--bg-surface)] p-4"
               : "p-2 -m-2"
           }`}
         >

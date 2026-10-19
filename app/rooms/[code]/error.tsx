@@ -8,12 +8,6 @@
 // e a página de erro oferecia só "voltar pro menu": sumir com a sala sem meio
 // de voltar.
 //
-// O erro mais provável na sala era exatamente o que a validação de payload
-// corrige: um `{ text: {...} }` chegado por broadcast derrubava o React
-// ("Objects are not valid as a React child") e cada participante perdia a
-// tela. O boundary contém a falha; a validação (`lib/chat-event.ts`,
-// `lib/playback/events.ts`) evita que ela chegue aqui.
-//
 // `retry` e não `reset`, conforme a doc desta versão
 // (`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/error.md`):
 // `retry` re-busca e re-renderiza os filhos do boundary, `reset` só limpa o
@@ -22,7 +16,8 @@
 // re-buscar é o que recupera.
 
 import { useEffect } from "react";
-import Link from "next/link";
+import { PageShell } from "@/components/chrome/PageShell";
+import { Button, ButtonLink } from "@/components/ui/Button";
 
 export default function RoomSegmentError({
   error,
@@ -38,29 +33,20 @@ export default function RoomSegmentError({
   }, [error]);
 
   return (
-    <main className="mx-auto flex w-full min-h-dvh max-w-sm flex-col items-center justify-center gap-4 px-6 py-10 text-center">
-      <h1 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">
+    <PageShell width="sm" className="items-center justify-center gap-4 text-center">
+      <h1 className="text-title font-semibold tracking-tight text-[var(--ink)]">
         a sala travou
       </h1>
-      <p className="text-sm text-[var(--ink-muted)]">
+      <p className="text-body-sm text-[var(--ink-muted)]">
         algo quebrou enquanto a sala estava aberta. você continua na sala — tente
         de novo.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <button
-          type="button"
-          onClick={() => retry()}
-          className="inline-flex min-h-11 items-center rounded-md bg-[var(--invert-bg)] px-4 py-2 text-sm font-medium text-[var(--invert-fg)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
-        >
-          tentar de novo
-        </button>
-        <Link
-          href="/rooms"
-          className="inline-flex min-h-11 items-center rounded-md border border-[var(--ink-muted)] px-4 py-2 text-sm text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
-        >
+        <Button onClick={() => retry()}>tentar de novo</Button>
+        <ButtonLink href="/rooms" variant="outline">
           suas salas
-        </Link>
+        </ButtonLink>
       </div>
-    </main>
+    </PageShell>
   );
 }

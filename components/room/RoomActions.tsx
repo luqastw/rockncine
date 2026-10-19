@@ -2,6 +2,8 @@
 
 import { memo } from "react";
 import { PlusIcon, TheaterIcon } from "@/components/room/player/icons";
+import { buttonClass } from "@/components/ui/Button";
+import { iconButtonClass } from "@/components/ui/IconButton";
 
 function EconomyIcon({ className }: { className?: string }) {
   return (
@@ -52,7 +54,7 @@ export const RoomActions = memo(function RoomActions({
       <button
         type="button"
         onClick={onLoadVideo}
-        className="flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-[var(--ink-muted)] px-3 py-2 text-xs text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        className={buttonClass({ variant: "outline", size: "sm", className: "shrink-0" })}
       >
         <PlusIcon className="h-3 w-3" />
         carregar vídeo
@@ -69,11 +71,11 @@ export const RoomActions = memo(function RoomActions({
         // linhas dentro do próprio botão e, no modo teatro, empurrava o botão de
         // teatro para fora do painel. O nome continua no `aria-label` e o estado
         // também aparece no chip do cabeçalho quando o modo está ligado.
-        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-md border focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)] ${
-          isEconomy
-            ? "border-[var(--ink)] text-[var(--ink)] bg-[var(--bg-surface)]"
-            : "border-[var(--ink-muted)] text-[var(--ink-muted)] hover:border-[var(--ink)] hover:text-[var(--ink)]"
-        }`}
+        className={iconButtonClass({
+          variant: "ghost",
+          active: isEconomy,
+          className: "shrink-0",
+        })}
       >
         <EconomyIcon className="h-4 w-4" />
       </button>
@@ -86,7 +88,10 @@ export const RoomActions = memo(function RoomActions({
           // escondido abaixo de lg: teatro pressupõe as duas colunas lado a
           // lado (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.1 / docs/specs/03-auditoria-ui-ux/spec.md, seção 10) — empilhado, o cálculo de altura do
           // vídeo não desconta o aside, e o chat fica espremido/cortado.
-          className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-md border border-[var(--ink-muted)] text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)] lg:flex"
+          className={iconButtonClass({
+            variant: "ghost",
+            className: "shrink-0 max-lg:hidden lg:inline-flex",
+          })}
         >
           <TheaterIcon className="h-4 w-4" />
         </button>

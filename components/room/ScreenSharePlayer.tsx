@@ -5,6 +5,8 @@ import { useTracks } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import type { BroadcastState } from "@/liveblocks.config";
 import { broadcasterLabel } from "@/lib/broadcast";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 
 // Quanto esperar a track antes de parar de dizer que ela está chegando.
 // Generoso o bastante para uma conexão lenta e para o spectator joining tarde,
@@ -116,15 +118,10 @@ export function ScreenSharePlayer({
       />
       <audio ref={audioElRef} autoPlay />
       <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-center gap-2 p-2">
-        <span
-          role="status"
-          className="rounded-full bg-[var(--invert-bg)] px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-[var(--invert-fg)]"
-        >
+        <Badge role="status" variant="solid" className="uppercase tracking-wide">
           transmitindo
-        </span>
-        <span className="rounded-full bg-[var(--bg-surface)] px-2 py-0.5 text-xs text-[var(--ink)]">
-          {broadcasterLabel(broadcast)}
-        </span>
+        </Badge>
+        <Badge variant="soft">{broadcasterLabel(broadcast)}</Badge>
       </div>
       {!videoTrack && (
         <TrackWait broadcast={broadcast} onGiveUp={onGiveUp} />
@@ -143,7 +140,7 @@ export function ScreenSharePlayer({
         <p
           role="status"
           aria-live="polite"
-          className="absolute inset-x-0 bottom-0 bg-[var(--scrim)] px-3 py-2 text-center text-xs text-[var(--ink)]"
+          className="absolute inset-x-0 bottom-0 bg-[var(--scrim)] px-3 py-2 text-center text-caption text-[var(--ink)]"
         >
           esta transmissão está sem áudio — o navegador não capturou o som da aba
         </p>
@@ -174,10 +171,10 @@ function TrackWait({ broadcast, onGiveUp }: { broadcast: BroadcastState; onGiveU
   if (!waitOver) {
     return (
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-6 text-center">
-        <p className="text-xl font-semibold tracking-tight text-[var(--ink)]">
+        <p className="text-title font-semibold tracking-tight text-[var(--ink)]">
           conectando à transmissão
         </p>
-        <p className="text-sm text-[var(--ink-muted)]">os quadros chegam em instantes</p>
+        <p className="text-body-sm text-[var(--ink-muted)]">os quadros chegam em instantes</p>
       </div>
     );
   }
@@ -190,21 +187,17 @@ function TrackWait({ broadcast, onGiveUp }: { broadcast: BroadcastState; onGiveU
   // uma sala que ninguém escolheu sair é pior do que uma sala esperando.
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
-      <p className="text-xl font-semibold tracking-tight text-[var(--ink)]">
+      <p className="text-title font-semibold tracking-tight text-[var(--ink)]">
         a transmissão não chegou
       </p>
-      <p className="text-sm text-[var(--ink-muted)]">
+      <p className="text-body-sm text-[var(--ink-muted)]">
         {broadcasterLabel(broadcast)} marcou que está transmitindo, mas os quadros não chegaram. a aba
         compartilhada pode ter sido fechada.
       </p>
-      <button
-        type="button"
-        onClick={onGiveUp}
-        className="inline-flex min-h-11 items-center rounded-md border border-[var(--ink-muted)] px-4 py-2 text-sm text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
-      >
+      <Button type="button" variant="outline" onClick={onGiveUp}>
         voltar ao player
-      </button>
-      <p className="text-xs text-[var(--ink-muted)]">
+      </Button>
+      <p className="text-caption text-[var(--ink-muted)]">
         se {broadcasterLabel(broadcast)} ainda estiver transmitindo, os quadros voltam sozinhos.
       </p>
     </div>

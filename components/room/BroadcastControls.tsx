@@ -24,6 +24,8 @@ import {
   type BroadcastQualityLevel,
 } from "@/lib/broadcast-quality";
 import { useLiveKitFailure } from "@/components/room/LiveKitProvider";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { sfuFailureHint } from "@/lib/sfu-connect";
 import {
   BROADCAST_HEARTBEAT_MS,
@@ -358,7 +360,7 @@ export function BroadcastControls({
   // inline lá dentro, que é como o componente ramifica.
   const seletorQualidade = (
     <label
-      className={`flex items-center gap-1 text-xs ${
+      className={`flex items-center gap-1 text-caption ${
         isBroadcaster ? "text-[var(--ink-muted)]" : "text-[var(--ink)]"
       }`}
     >
@@ -372,7 +374,7 @@ export function BroadcastControls({
             ? "a qualidade só muda na próxima transmissão"
             : `qualidade da transmissão: ${quality.detail}`
         }
-        className="min-h-11 rounded-md border border-[var(--ink-muted)] bg-transparent px-2 py-1 text-xs text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)] disabled:cursor-not-allowed disabled:border-[var(--line)] disabled:text-[var(--ink-muted)]"
+        className="min-h-11 rounded-lg border border-[var(--ink-muted)] bg-[var(--fill-1)] px-2 py-1 text-caption text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)] disabled:cursor-not-allowed disabled:border-[var(--line)] disabled:text-[var(--ink-muted)]"
       >
         {BROADCAST_QUALITY_LEVELS.map((level) => (
           <option key={level} value={level}>
@@ -386,23 +388,26 @@ export function BroadcastControls({
   if (isBroadcaster) {
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <span
+        <Badge
           role="status"
-          className="shrink-0 rounded-full bg-[var(--invert-bg)] px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-[var(--invert-fg)]"
+          variant="solid"
+          className="uppercase tracking-wide"
         >
           transmitindo
-        </span>
-        <button
+        </Badge>
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={() => {
             stopScreenShare();
             clearBroadcast();
           }}
           aria-label="parar transmissão"
-          className="flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-[var(--ink-muted)] px-3 py-2 text-xs text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+          className="shrink-0"
         >
           parar transmissão
-        </button>
+        </Button>
         {/* A track já foi criada com o preset escolhido; trocar exigiria
             republicar, o que derrubaria a transmissão no meio do filme. O motivo
             do desabilitado é nomeado, pelo mesmo motivo do botão de FR-009:
@@ -435,12 +440,12 @@ export function BroadcastControls({
                 : "iniciar transmissão de tela"
         }
         aria-busy={busy || undefined}
-        className="flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-[var(--ink-muted)] px-3 py-2 text-xs text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)] disabled:cursor-not-allowed disabled:border-[var(--line)] disabled:text-[var(--ink-muted)]"
+        className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--ink-muted)] px-3 py-2 text-body-sm text-[var(--ink)] transition-colors duration-150 hover:border-[var(--ink)] hover:bg-[var(--fill-1)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)] disabled:cursor-not-allowed disabled:border-[var(--line)] disabled:text-[var(--ink-muted)]"
       >
         transmitir tela
       </button>
       {otherBroadcaster && (
-        <span className="text-xs text-[var(--ink-muted)]">
+        <span className="text-caption text-[var(--ink-muted)]">
           {broadcasterLabel(otherBroadcaster)} está transmitindo
         </span>
       )}
@@ -449,14 +454,14 @@ export function BroadcastControls({
           abrir o DevTools, e o botão desabilitado sozinho parece decisão da
           sala. Some quando há transmissão alheia — aí o motivo já é outro. */}
       {blockedReason && !otherBroadcaster && auth.status !== "disabled" && (
-        <span role="status" aria-live="polite" className="text-xs text-[var(--ink-muted)]">
+        <span role="status" aria-live="polite" className="text-caption text-[var(--ink-muted)]">
           {blockedReason}
           {livekitReason && ` — ${livekitReason}`}
         </span>
       )}
       {seletorQualidade}
       {error && (
-        <span role="status" aria-live="polite" className="text-xs text-[var(--ink-muted)]">
+        <span role="status" aria-live="polite" className="text-caption text-[var(--ink-muted)]">
           {error}
         </span>
       )}
