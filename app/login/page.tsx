@@ -3,36 +3,32 @@ import Link from "next/link";
 import { LoginForm } from "@/components/LoginForm";
 import { PageShell } from "@/components/chrome/PageShell";
 import { Reveal } from "@/components/chrome/Reveal";
+import { Wordmark } from "@/components/chrome/Wordmark";
+import { Card } from "@/components/ui/Card";
 
-// Sem metadata por rota, todas as páginas herdavam o mesmo `<title>rockncine</title>`
-// do layout raiz — abas e histórico ficavam indistinguíveis.
 export const metadata: Metadata = { title: "entrar · rockncine" };
 
 export default function LoginPage() {
   return (
     <PageShell width="sm" chrome className="justify-center gap-8">
-      <Reveal as="header" className="flex flex-col gap-1">
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-[var(--ink)]">
-          rockncine
-        </h1>
-        {/* A chegada só dizia "entrar na conta": quem nunca viu o produto não
-            descobria o que ele faz em lugar nenhum antes de criar conta (achado
-            9 da revisão de design). A promessa é a mesma do `<meta
-            name="description">`; o rótulo da ação continua no botão e no
-            título da aba. */}
-        <p className="text-sm text-[var(--ink-muted)]">
+      <Reveal as="header" className="flex flex-col gap-2">
+        <Wordmark className="mb-2" />
+        <h1 className="text-title font-semibold tracking-tight text-[var(--ink)]">entrar</h1>
+        <p className="text-body-sm text-[var(--ink-muted)]">
           assista junto, em sync — link colado, sala compartilhada.
         </p>
       </Reveal>
 
-      <Reveal className="flex flex-col gap-8">
-        <LoginForm />
+      <Reveal className="flex flex-col gap-6">
+        <Card className="p-6 sm:p-8">
+          <LoginForm />
+        </Card>
 
-        <p className="text-sm text-[var(--ink-muted)]">
+        <p className="text-center text-body-sm text-[var(--ink-muted)]">
           sem conta?{" "}
           <Link
             href="/register"
-            className="rounded-sm text-[var(--ink)] underline focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+            className="rounded-sm text-[var(--ink)] underline decoration-[var(--ink-muted)] underline-offset-4 hover:decoration-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
           >
             cadastrar
           </Link>

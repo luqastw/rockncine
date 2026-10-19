@@ -5,8 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // redeclara as fontes do documento que ele substitui. Fora do build do Next não
 // faz sentido baixar nada, então vira stub.
 vi.mock("next/font/google", () => ({
-  Inter: () => ({ variable: "--font-inter", className: "font-inter" }),
-  Space_Mono: () => ({ variable: "--font-space-mono", className: "font-space-mono" }),
+  Geist: () => ({ variable: "--font-geist", className: "font-geist" }),
+  Geist_Mono: () => ({ variable: "--font-geist-mono", className: "font-geist-mono" }),
 }));
 
 import NotFound from "@/app/not-found";
@@ -26,25 +26,25 @@ afterEach(() => {
 });
 
 /**
- * A linguagem dos estados (FR-019): fio (`--hairline`), arte ASCII decorativa
- * (`<pre aria-hidden>`) e a marca acessível fora da arte.
+ * A linguagem dos estados (FR-007): fio (`--hairline`), glow ambiente
+ * decorativo e a marca acessível fora de qualquer nó `aria-hidden`.
  */
 function assertLinguagemDoEstado(container: HTMLElement) {
   expect(container.querySelector('[class*="hairline"]')).toBeTruthy();
-  expect(container.querySelector('pre[aria-hidden="true"]')).toBeTruthy();
+  expect(container.querySelector('[class*="ambient"]')).toBeTruthy();
 
   const marca = screen.getByText("rockncine");
   expect(marca.closest('[aria-hidden="true"]')).toBeNull();
 }
 
-describe("estados de erro (FR-019)", () => {
-  it("AC-016: o 404 exibe fio e arte ASCII decorativa, com a marca fora da arte", () => {
+describe("estados de erro (FR-007)", () => {
+  it("AC-016: o 404 exibe fio e glow decorativo, com a marca acessível", () => {
     const { container } = render(<NotFound />);
     assertLinguagemDoEstado(container);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("página não encontrada");
   });
 
-  it("AC-016: o erro de segmento exibe fio e arte ASCII decorativa", () => {
+  it("AC-016: o erro de segmento exibe fio e glow decorativo", () => {
     const { container } = render(<SegmentError error={new Error("boom")} reset={() => {}} />);
     assertLinguagemDoEstado(container);
   });

@@ -1,60 +1,42 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
 import { PageShell } from "@/components/chrome/PageShell";
-import { AsciiArt } from "@/components/chrome/AsciiArt";
-import { ERROR_ART } from "@/components/chrome/ascii";
+import { Wordmark } from "@/components/chrome/Wordmark";
+import { Button, ButtonLink } from "@/components/ui/Button";
 
 // Boundary de erro do segmento raiz. Não envolve o `layout.tsx` acima dele —
 // a falha no próprio layout raiz é coberta por `app/global-error.tsx`, que
-// substitui o layout inteiro (achado 7 da revisão de design: este comentário
-// antes afirmava que o global era `global-error.tsx` sem que o arquivo
-// existisse).
+// substitui o layout inteiro.
 //
-// Sem este arquivo, qualquer erro no servidor (Postgres fora do ar, por
-// exemplo) caía na tela de erro default do Next, fora da linguagem visual do
-// resto do app (achado 23).
-//
-// No redesign (FR-019, docs/specs/14-identidade-fanzine-crt/spec.md) o estado
-// ganha fio e arte ASCII decorativa. Sem `Reveal` de propósito: num erro, o
-// conteúdo tem de aparecer sem depender do IntersectionObserver.
+// A linguagem é a da spec 15: wordmark, fio, título sans e controles
+// primitivos. Sem `Reveal` de propósito: num erro, o conteúdo tem de aparecer
+// sem depender do IntersectionObserver.
 export default function SegmentError({ error, reset }: { error: Error; reset: () => void }) {
-  // O `error` era declarado no tipo e ignorado: nenhum 500 em produção deixava
-  // rastro. O `digest` é o que o Next expõe do lado do servidor e é o que
-  // correlaciona a tela com o log — sem ele não há como investigar o ocorrido.
+  // O `digest` é o que o Next expõe do lado do servidor e é o que correlaciona
+  // a tela com o log — sem ele não há como investigar o ocorrido.
   useEffect(() => {
-    console.error(`erro na tela (digest: ${(error as Error & { digest?: string }).digest ?? "—"})`, error);
+    console.error(
+      `erro na tela (digest: ${(error as Error & { digest?: string }).digest ?? "—"})`,
+      error,
+    );
   }, [error]);
 
   return (
     <PageShell width="sm" className="items-center justify-center gap-4 text-center">
-      <AsciiArt art={ERROR_ART} />
-      {/* fio de separação do estado de erro (FR-019) */}
+      <Wordmark />
       <span aria-hidden="true" className="h-px w-16 bg-[var(--hairline)]" />
-      <p className="font-display text-xs uppercase tracking-[0.2em] text-[var(--ink-muted)]">
-        rockncine
-      </p>
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-[var(--ink)]">
+      <h1 className="text-title font-semibold tracking-tight text-[var(--ink)]">
         alguma coisa quebrou
       </h1>
-      <p className="text-sm text-[var(--ink-muted)]">
+      <p className="text-body-sm text-[var(--ink-muted)]">
         não foi possível carregar esta tela. tente de novo em alguns segundos.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <button
-          type="button"
-          onClick={reset}
-          className="inline-flex min-h-11 items-center rounded-md bg-[var(--invert-bg)] px-4 py-2 text-sm font-medium text-[var(--invert-fg)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
-        >
-          tentar de novo
-        </button>
-        <Link
-          href="/rooms"
-          className="inline-flex min-h-11 items-center rounded-md border border-[var(--ink-muted)] px-4 py-2 text-sm text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
-        >
+        <Button onClick={reset}>tentar de novo</Button>
+        <ButtonLink href="/rooms" variant="outline">
           voltar pro menu
-        </Link>
+        </ButtonLink>
       </div>
     </PageShell>
   );

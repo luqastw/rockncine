@@ -9,6 +9,10 @@ import { DeleteRoomButton } from "@/components/DeleteRoomButton";
 import { SignOutButton } from "@/components/SignOutButton";
 import { PageShell } from "@/components/chrome/PageShell";
 import { Reveal } from "@/components/chrome/Reveal";
+import { ButtonLink } from "@/components/ui/Button";
+import { Card, cardClass, cardHoverClass } from "@/components/ui/Card";
+import { sectionLabelClass } from "@/components/ui/SectionLabel";
+import { cx } from "@/lib/cx";
 import { SOURCE_LABEL } from "@/lib/video-source";
 
 export const metadata: Metadata = { title: "suas salas · rockncine" };
@@ -20,7 +24,7 @@ export const metadata: Metadata = { title: "suas salas · rockncine" };
 const PAGE_SIZE = 20;
 
 // Data relativa para os casos que importam ("hoje", "ontem", "há 3 dias") e
-// data absoluta no resto. `toLocaleDateString` sem o ano em `DD/MM` fazia uma
+// data absoluta no resto. `toLocaleDateString` sem o ano em `DD/MM` faz uma
 // sala de janeiro do ano passado ser indistinguível de uma de ontem.
 function formatWhen(date: Date) {
   const now = new Date();
@@ -95,44 +99,38 @@ export default async function RoomsPage({
   const visiveis = temProxima ? memberships.slice(0, PAGE_SIZE) : memberships;
 
   return (
-    // O invólucro único (FR-018, docs/specs/14-identidade-fanzine-crt/spec.md) agora é o
-    // `PageShell`: ele é dono da largura da coluna (`w-full` + `max-w-*` para o `mx-auto`
-    // não desligar o stretch — ver comentário original desta página), do padding e do grão.
-    // A marca saiu deste arquivo e vive no `ChromeBar`.
-    <PageShell width="md" chrome className="justify-center gap-10">
-      {/* A marca está no ChromeBar; este h1 preserva a semântica de título da página
-          sem duplicar o texto visível. Mantém o papel Display da spec 06 (AC-003:
-          mesmo font-weight e letter-spacing nos h1) para o guard de consistência
-          continuar valendo. */}
+    // O invólucro único (FR-018) é o `PageShell`: largura, padding e glow vivem
+    // ali. A marca saiu deste arquivo e vive no `ChromeBar`.
+    <PageShell width="md" chrome className="justify-safe-center gap-10">
+      {/* A marca está no ChromeBar; este h1 preserva a semântica de título da página. */}
       <h1 className="sr-only font-semibold tracking-tight">suas salas</h1>
 
       <Reveal as="header" className="flex items-start justify-between gap-4">
-        <p className="text-sm text-[var(--ink-muted)]">
-          {session?.user?.name ?? session?.user?.email}
-        </p>
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className={sectionLabelClass}>sua conta</span>
+          <p className="truncate text-body-sm text-[var(--ink)]">
+            {session?.user?.name ?? session?.user?.email}
+          </p>
+        </div>
         <SignOutButton />
       </Reveal>
 
-      <Reveal as="section" className="flex flex-col gap-3">
-        <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
-          criar sala
-        </h2>
-        <CreateRoomForm />
+      <Reveal as="section" className="grid gap-4 sm:grid-cols-2">
+        <Card className="flex flex-col gap-3 p-4">
+          <h2 className={sectionLabelClass}>criar sala</h2>
+          <CreateRoomForm />
+        </Card>
+
+        <Card className="flex flex-col gap-3 p-4">
+          <h2 className={sectionLabelClass}>entrar por código</h2>
+          <JoinRoomForm />
+        </Card>
       </Reveal>
 
       <Reveal as="section" className="flex flex-col gap-3">
-        <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
-          entrar por código
-        </h2>
-        <JoinRoomForm />
-      </Reveal>
-
-      <Reveal as="section" className="flex flex-col gap-3">
-        <h2 className="font-mono text-xs uppercase tracking-wide text-[var(--ink-muted)]">
-          suas salas
-        </h2>
+        <h2 className={sectionLabelClass}>suas salas</h2>
         {visiveis.length === 0 ? (
-          <p className="text-sm text-[var(--ink-muted)]">
+          <p className="text-body-sm text-[var(--ink-muted)]">
             {pagina > 1
               ? "não há mais salas nesta página."
               : "nenhuma sala ainda — crie uma acima ou entre por código."}
@@ -148,10 +146,15 @@ export default async function RoomsPage({
               <li key={room.code} className="flex items-stretch gap-2">
                 <Link
                   href={`/rooms/${room.code}`}
-                  className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 rounded-md border border-[var(--ink-muted)] bg-[var(--bg-surface)] px-3 py-2 hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+                  className={cx(
+                    "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3",
+                    cardClass,
+                    cardHoverClass,
+                    "focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]",
+                  )}
                 >
                   <span className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm text-[var(--ink)]">
+                    <span className="truncate text-body-sm text-[var(--ink)]">
                       {room.name || "sala sem nome"}
                     </span>
                     {/* O que está tocando. A fonte já vinha no select da
@@ -159,12 +162,12 @@ export default async function RoomsPage({
                         lista responde é "qual sala eu vou abrir", e o nome não
                         basta quando todas se chamam "sala". `truncate`
                         mantém o cartão com a mesma altura dos outros. */}
-                    <span className="truncate text-xs text-[var(--ink-muted)]">
+                    <span className="truncate font-mono text-caption text-[var(--ink-muted)]">
                       {room.code}
                       {room.videoSource ? ` · ${SOURCE_LABEL[room.videoSource]}` : ""}
                     </span>
                   </span>
-                  <span className="shrink-0 text-xs text-[var(--ink-muted)]">
+                  <span className="shrink-0 text-caption text-[var(--ink-muted)]">
                     {room.ownerId === userId ? "sua · " : ""}
                     {formatWhen(room.updatedAt)}
                   </span>
@@ -186,23 +189,25 @@ export default async function RoomsPage({
         {(pagina > 1 || temProxima) && (
           <nav aria-label="páginas de salas" className="flex items-center justify-between gap-2">
             {pagina > 1 ? (
-              <Link
+              <ButtonLink
                 href={`/rooms?pagina=${pagina - 1}`}
-                className="inline-flex min-h-11 items-center rounded-md border border-[var(--ink-muted)] px-3 text-sm text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+                variant="outline"
+                size="sm"
               >
                 ← anteriores
-              </Link>
+              </ButtonLink>
             ) : (
               <span />
             )}
-            <span className="font-mono text-xs text-[var(--ink-muted)]">página {pagina}</span>
+            <span className="font-mono text-caption text-[var(--ink-muted)]">página {pagina}</span>
             {temProxima ? (
-              <Link
+              <ButtonLink
                 href={`/rooms?pagina=${pagina + 1}`}
-                className="inline-flex min-h-11 items-center rounded-md border border-[var(--ink-muted)] px-3 text-sm text-[var(--ink)] hover:border-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+                variant="outline"
+                size="sm"
               >
                 mais →
-              </Link>
+              </ButtonLink>
             ) : (
               <span />
             )}
