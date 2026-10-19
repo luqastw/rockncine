@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { buttonClass } from "@/components/ui/Button";
 import { modalOverlayClass, modalPanelClass } from "@/components/ui/Modal";
@@ -90,9 +91,14 @@ export function ConfirmDialog({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
 
-  if (!open) return null;
+  // Portal obrigatório: o diálogo é aberto por um botão dentro de um `<li>` da
+  // lista de salas, e esse `<li>` tem animação de entrada com `transform`. Um
+  // ancestral transformado vira containing block de `position: fixed`, então o
+  // overlay deixava de cobrir a viewport e o painel era recortado no meio da
+  // lista. Montar no `body` devolve o `fixed` ao viewport.
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
       className={modalOverlayClass}
       onMouseDown={(e) => {
@@ -144,6 +150,7 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

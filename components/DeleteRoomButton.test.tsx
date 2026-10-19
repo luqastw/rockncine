@@ -46,6 +46,11 @@ describe("DeleteRoomButton — abertura do modal", () => {
     expect(within(dialog).getByRole("button", { name: "cancelar" })).toBeTruthy();
     expect(within(dialog).getByRole("button", { name: "excluir sala" })).toBeTruthy();
 
+    // Regressão: o diálogo é portal para o `body`. Dentro do `<li>` da lista,
+    // que anima com `transform`, o `position: fixed` ficava preso ao item e o
+    // painel era recortado no meio da lista.
+    expect(dialog.parentElement?.parentElement).toBe(document.body);
+
     await waitFor(() => {
       expect(dialog.contains(document.activeElement)).toBe(true);
     });
