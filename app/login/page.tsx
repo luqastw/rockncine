@@ -3,7 +3,6 @@ import Link from "next/link";
 import { LoginForm } from "@/components/LoginForm";
 import { PageShell } from "@/components/chrome/PageShell";
 import { Reveal } from "@/components/chrome/Reveal";
-import { Wordmark } from "@/components/chrome/Wordmark";
 import { Card } from "@/components/ui/Card";
 
 export const metadata: Metadata = { title: "entrar · rockncine" };
@@ -12,7 +11,6 @@ export default function LoginPage() {
   return (
     <PageShell width="sm" chrome className="justify-center gap-8">
       <Reveal as="header" className="flex flex-col gap-2">
-        <Wordmark className="mb-2" />
         <h1 className="text-title font-semibold tracking-tight text-[var(--ink)]">entrar</h1>
         <p className="text-body-sm text-[var(--ink-muted)]">
           assista junto, em sync — link colado, sala compartilhada.
