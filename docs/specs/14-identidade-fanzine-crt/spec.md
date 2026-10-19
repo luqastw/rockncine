@@ -1,6 +1,6 @@
 # Spec: identidade fanzine-CRT — textura, ASCII e movimento no chrome do site
 
-**Status:** rascunho
+**Status:** substituída pela spec 15 (identidade Kimi Platform)
 **Pesquisa:** `research.md`
 **Irmãos:** `tasks.md` (a gerar na `sdd-plan`)
 

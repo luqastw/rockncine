@@ -23,10 +23,11 @@ de redirecionamento; histórico completo do monolito continua disponível no git
 | 10 | [Exclusão de sala pelo dono e limite de histórico do chat](10-exclusao-sala-limite-chat/spec.md) | implementado (verificação manual em navegador pendente) |
 | 12 | [Transmissão por screen share](12-transmissao-screen-share/spec.md) — modo transmissão via LiveKit Cloud, contornando o sync layer | implementado (captura real, track do SFU, áudio e troca de aba sem verificação em browser; FR-044 a FR-048 corrigem o teto de 15 fps no encoder, também pendentes de browser) |
 | 13 | [Chat da sala](13-chat-sala/spec.md) — feed fora do estado da sala, envio em fila, log legível, composer de verdade | implementado (medição de altura do painel em device real segue manual) |
-| 14 | [Identidade fanzine-CRT](14-identidade-fanzine-crt/spec.md) — textura, ASCII, blur e movimento no chrome (`/`, auth, `/rooms`, 404/erro); sala fora do escopo | implementado (AC-003 pendente de browser com reduced-transparency) |
+| 14 | [Identidade fanzine-CRT](14-identidade-fanzine-crt/spec.md) — textura, ASCII, blur e movimento no chrome (`/`, auth, `/rooms`, 404/erro); sala fora do escopo | substituída pela 15 |
+| 15 | [Identidade Kimi Platform](15-identidade-kimi/spec.md) — paleta neutra, Geist/Geist Mono, superfícies, primitivos e sala | implementado (auditoria visual em browser pendente — AC-012) |
 
-A pasta é numerada, não datada — as rodadas 02 a 14 do arquivo original foram todas escritas em
-2026-08-20/21, então uma data não separaria a ordem real de nada.
+A pasta é numerada, não datada — as rodadas 02 a 15 do arquivo original foram todas escritas em
+2026-08-20/21 e nas semanas seguintes, então uma data não separaria a ordem real de nada.
 
 ---
 
@@ -77,6 +78,11 @@ como "pendente" com 14.1-14.4/14.6-14.7 já implementados (só o 14.5, código d
 caracteres, segue aberto em `lib/room-code.ts`); a 08 aparecia como "rascunho" e está implementada,
 com o CA1.2 atendido só em parte (o cooldown do YouTube mudou de duração, 400 → 1500 ms, mas
 continua sendo timeout fixo em vez de resolução por evento); e a 09 não estava na tabela.
+
+**O que a spec 15 substituiu.** A identidade fanzine-CRT da spec 14 (grão, ASCII, Space Mono) saiu
+de cena. Os tokens de cor e o fio `--hairline` continuam; entram a paleta neutra da Kimi Platform,
+Geist/Geist Mono, o glow ambiente, os primitivos de `components/ui/` e a linguagem de sala. A regra
+de estado sem matiz (FR-044 da spec 01, FR-018 da spec 13) foi preservada.
 
 **O que a spec 13 mudou no chat.** O estado do feed saiu do componente de sala para uma store de
 módulo (`lib/chat-feed.ts`), assinada dentro do `<Chat>`; `useChat` voltou a ser só o emissor e não
