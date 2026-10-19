@@ -54,8 +54,15 @@ export const InviteCode = memo(function InviteCode({ code }: { code: string }) {
       >
         {code}
       </span>
-      <Button type="button" variant="ghost" size="sm" onClick={copy} className="shrink-0">
-        {status === "copied" ? "link copiado" : status === "failed" ? "copie à mão" : "copiar convite"}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={copy}
+        aria-label="copiar link de convite"
+        className="shrink-0"
+      >
+        {status === "copied" ? "copiado" : status === "failed" ? "copie" : "copiar"}
       </Button>
       <span role="status" aria-live="polite" className="sr-only">
         {status === "copied"

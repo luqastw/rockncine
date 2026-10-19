@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useOthers, useStatus, useStorage } from "@liveblocks/react";
 import { useYouTubeSync } from "@/hooks/useYouTubeSync";
@@ -140,6 +140,31 @@ export function RoomExperience({
   // só o emissor, dentro do `<Chat>`, e o reset da store no mount.
   useRoomLeaveAnnouncement(userId);
   const presence = usePresenceDisclosure();
+
+  // Elemento estável passado ao `<Chat>`: como o objeto é o mesmo entre renders
+  // da sala, o React pula a subárvore da presença quando o log ou o draft do
+  // chat mudam. É o que preserva o isolamento de render da spec 13 mesmo com o
+  // gatilho dentro do painel do chat.
+  const presenceAccessory = useMemo(
+    () => (
+      <div className="relative">
+        <PresenceTrigger
+          expanded={presence.expanded}
+          onToggle={presence.toggle}
+          myUserId={userId}
+          myName={userName}
+        />
+        <div
+          className={`absolute right-0 top-full z-40 mt-2 w-64 rounded-xl border border-[var(--line)] bg-[var(--bg-surface)] p-2 shadow-[var(--shadow-pop)] ${
+            presence.expanded ? "block" : "hidden"
+          }`}
+        >
+          <PresenceList expanded={presence.expanded} myUserId={userId} myName={userName} />
+        </div>
+      </div>
+    ),
+    [presence.expanded, presence.toggle, userId, userName],
+  );
 
   const {
     resolution,
@@ -408,7 +433,7 @@ export function RoomExperience({
     // mobile deixavam o selo por cima do campo de mensagem (medido a 390px:
     // selo em y 794-832, input em y 784-828 — achado 1 da revisão de design).
     <main className="room-shell mx-auto flex h-dvh w-full max-w-[1800px] flex-col gap-5 overflow-hidden px-4 pt-6 pb-14 sm:px-6 lg:px-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--line)] pb-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link
             href="/rooms"
@@ -417,47 +442,71 @@ export function RoomExperience({
           >
             ←
           </Link>
-          <div className="flex min-w-0 flex-col">
-            <h1 className="truncate text-heading font-semibold tracking-tight text-[var(--ink)]">
-              {roomName || "sala sem nome"}
-            </h1>
-            <LastActionNote lastEvent={lastEvent} userId={userId} />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <h1 className="min-w-0 truncate text-heading font-semibold tracking-tight text-[var(--ink)]">
+                {roomName || "sala sem nome"}
+              </h1>
+              {/* `!isBroadcasting`: este selo descreve o player, e no modo
+                  transmissão o player não está na tela. Deixá-lo aceso sobre a
+                  transmissão seria um status mentindo sobre o que as pessoas
+                  estão vendo. */}
+              {isPlayingNow && !syncLimited && !isBroadcasting && (
+                <Badge variant="solid" className="uppercase tracking-wide">
+                  ao vivo
+                </Badge>
+              )}
+              {/* Indicador, não controle: quem liga/desliga é o botão de
+                  `RoomActions` (44px, com `aria-pressed`). */}
+              {economyMode && <Badge variant="soft">economy</Badge>}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <LastActionNote lastEvent={lastEvent} userId={userId} />
+              {connectionLabel ? (
+                <span
+                  role="status"
+                  aria-live="polite"
+                  className="font-mono text-caption text-[var(--ink-muted)]"
+                >
+                  {connectionLabel}
+                </span>
+              ) : (
+                !syncLimited &&
+                !isPlayingNow && (
+                  <span
+                    role="status"
+                    aria-live="polite"
+                    className="font-mono text-caption text-[var(--ink-muted)]"
+                  >
+                    ○ pausado
+                  </span>
+                )
+              )}
+            </div>
           </div>
-          {/* `!isBroadcasting`: este selo descreve o player, e no modo
-              transmissão o player não está na tela. Deixá-lo aceso sobre a
-              transmissão seria um status mentindo sobre o que as pessoas estão
-              vendo. */}
-          {isPlayingNow && !syncLimited && !isBroadcasting && (
-            <Badge variant="solid" className="uppercase tracking-wide">
-              ao vivo
-            </Badge>
-          )}
-          {/* Indicador, não controle: quem liga/desliga é o botão de
-              `RoomActions` (44px, com `aria-pressed`). */}
-          {economyMode && <Badge variant="soft">economy</Badge>}
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {connectionLabel ? (
-            <span
-              role="status"
-              aria-live="polite"
-              className="font-mono text-caption text-[var(--ink-muted)]"
-            >
-              {connectionLabel}
-            </span>
-          ) : (
-            !syncLimited &&
-            !isPlayingNow && (
-              <span
-                role="status"
-                aria-live="polite"
-                className="font-mono text-caption text-[var(--ink-muted)]"
-              >
-                ○ pausado
-              </span>
-            )
-          )}
+
+        {/* Ações da sala no mesmo bloco do convite: no mobile o botão de
+            transmissão fica ao lado do código, sem uma linha própria abaixo do
+            vídeo. O chat começa na mesma altura da moldura do vídeo. */}
+        <div className="flex min-w-0 flex-wrap items-center gap-2 lg:mr-3">
           <InviteCode code={roomCode} />
+          {livekitUrl !== null && (
+            <BroadcastControls
+              broadcast={broadcast}
+              userId={userId}
+              userName={userName}
+              videoSourceUrl={video?.sourceUrl ?? null}
+            />
+          )}
+          <RoomActions
+            onLoadVideo={openLoadModal}
+            onToggleTheater={toggleTheater}
+            isTheater={isTheater}
+            showTheaterToggle={isFullscreen}
+            onToggleEconomy={toggleEconomy}
+            isEconomy={economyMode}
+          />
         </div>
       </header>
 
@@ -480,13 +529,10 @@ export function RoomExperience({
           // (box-shadow que sangra ~15px pra fora da caixa) era recortado
           // nos três lados em vez de vazar pro gap. A margem negativa
           // cancela o respiro na largura ocupada pelos irmãos flex.
-          // `justify-safe-center` (ver globals.css): centraliza a caixa do vídeo
-          // no eixo vertical da coluna — em tela alta ela ficava colada no topo
-          // com todo o vazio embaixo (medido a 1440x1200: 16px acima contra
-          // 450px abaixo). O `safe` é o que impede o recorte clássico de `center`
-          // num contêiner que rola: se o conteúdo passar da caixa, o alinhamento
-          // volta a ser pelo início.
-          className={`relative flex min-h-0 flex-col gap-4 justify-safe-center overflow-y-auto p-4 -m-4 ${
+          // O vídeo começa no topo da coluna para alinhar com o painel do
+          // chat. Em tela cheia, `flex-1` e o teto de altura já dimensionam a
+          // caixa; não há centralização vertical para desalinhar as colunas.
+          className={`relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4 -m-4 ${
             showAside ? "lg:basis-[78%]" : "w-full"
           } ${isFullscreen ? "flex-1" : "max-lg:shrink-0"}`}
         >
@@ -647,18 +693,6 @@ export function RoomExperience({
               </div>
             </SyncRing>
 
-            {/* Ações da área de vídeo. Ficam aqui, e não na fileira de
-                `RoomActions` dentro da aside, porque aquela fileira já lota a
-                256px do painel (ver o comentário de medição em `RoomActions`):
-                mais um botão de 44px espremia o resto. */}
-            {livekitUrl !== null && (
-              <BroadcastControls
-                broadcast={broadcast}
-                userId={userId}
-                userName={userName}
-                videoSourceUrl={video?.sourceUrl ?? null}
-              />
-            )}
           </div>
 
           {!isBroadcasting && hasGeneric && isSafeEmbedUrl(video!.embedUrl!) && (
@@ -710,36 +744,19 @@ export function RoomExperience({
               : "p-2 -m-2"
           }`}
         >
-          {/* A presença perdeu o cabeçalho próprio (FR-021): o gatilho e as
-              ações da sala dividiam a mesma fileira, e com o `<h2>presença` por
-              cima eram duas linhas de cabeçalho para um painel de 272px. O que
-              sobra é a fileira única com quem está na sala, as ações e — logo
-              abaixo, só quando aberto — a lista. */}
-          <section className="flex shrink-0 flex-col gap-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <PresenceTrigger
-                expanded={presence.expanded}
-                onToggle={presence.toggle}
-                myUserId={userId}
-                myName={userName}
-              />
-              <RoomActions
-                onLoadVideo={openLoadModal}
-                onToggleTheater={toggleTheater}
-                isTheater={isTheater}
-                showTheaterToggle={isFullscreen}
-                onToggleEconomy={toggleEconomy}
-                isEconomy={economyMode}
-              />
-            </div>
-            <PresenceList expanded={presence.expanded} myUserId={userId} myName={userName} />
-          </section>
+          {/* O chat ocupa a coluna inteira; a presença é um popover do header,
+              então o log começa na mesma altura da moldura do vídeo. */}
           {/* `min-h-11` (e não `min-h-0`) no bloco do chat: é o piso que
               garante altura para o próprio composer (44px), que fica preso no
               rodapé dele. Sem o piso, em viewport muito curta o bloco encolhia
               a menos que o campo de mensagem e o campo era recortado. */}
           <section className="flex min-h-11 flex-1 flex-col gap-3">
-            <Chat userId={userId} userName={userName} roomCode={roomCode} />
+            <Chat
+              userId={userId}
+              userName={userName}
+              roomCode={roomCode}
+              headerAccessory={presenceAccessory}
+            />
           </section>
         </aside>
 

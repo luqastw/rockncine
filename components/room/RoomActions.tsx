@@ -54,10 +54,15 @@ export const RoomActions = memo(function RoomActions({
       <button
         type="button"
         onClick={onLoadVideo}
-        className={buttonClass({ variant: "outline", size: "sm", className: "shrink-0" })}
+        aria-label="carregar vídeo"
+        className={buttonClass({
+          variant: "outline",
+          size: "sm",
+          className: "shrink-0 max-sm:min-w-11 max-sm:px-0",
+        })}
       >
         <PlusIcon className="h-3 w-3" />
-        carregar vídeo
+        <span className="hidden sm:inline">carregar vídeo</span>
       </button>
       <button
         type="button"

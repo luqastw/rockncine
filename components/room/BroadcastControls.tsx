@@ -360,7 +360,7 @@ export function BroadcastControls({
   // inline lá dentro, que é como o componente ramifica.
   const seletorQualidade = (
     <label
-      className={`flex items-center gap-1 text-caption ${
+      className={`hidden items-center gap-1 text-caption sm:flex ${
         isBroadcaster ? "text-[var(--ink-muted)]" : "text-[var(--ink)]"
       }`}
     >
@@ -406,7 +406,8 @@ export function BroadcastControls({
           aria-label="parar transmissão"
           className="shrink-0"
         >
-          parar transmissão
+          <span className="sm:hidden">parar</span>
+          <span className="hidden sm:inline">parar transmissão</span>
         </Button>
         {/* A track já foi criada com o preset escolhido; trocar exigiria
             republicar, o que derrubaria a transmissão no meio do filme. O motivo
@@ -442,7 +443,8 @@ export function BroadcastControls({
         aria-busy={busy || undefined}
         className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--ink-muted)] px-3 py-2 text-body-sm text-[var(--ink)] transition-colors duration-150 hover:border-[var(--ink)] hover:bg-[var(--fill-1)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)] disabled:cursor-not-allowed disabled:border-[var(--line)] disabled:text-[var(--ink-muted)]"
       >
-        transmitir tela
+        <span className="sm:hidden">transmitir</span>
+        <span className="hidden sm:inline">transmitir tela</span>
       </button>
       {otherBroadcaster && (
         <span className="text-caption text-[var(--ink-muted)]">

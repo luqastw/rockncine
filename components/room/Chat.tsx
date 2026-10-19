@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMyPresence, useOthers, useStatus } from "@liveblocks/react";
 import { useChat } from "@/hooks/useChat";
 import { useChatFeed } from "@/hooks/useChatFeed";
@@ -406,12 +406,18 @@ export const Chat = memo(function Chat({
   userId,
   userName,
   roomCode,
+  headerAccessory,
 }: {
   userId: string;
   userName: string;
   // Só para a store saber de qual sala é o feed (FR-007). Não é usado para mais
   // nada aqui dentro.
   roomCode: string;
+  // Slot memoizado pelo pai (presença): como o elemento é o MESMO objeto entre
+  // renders da sala, o React pula a subárvore quando o log ou o draft mudam —
+  // o isolamento de render da spec 13 continua valendo sem mover o gatilho
+  // para fora do painel do chat.
+  headerAccessory?: ReactNode;
 }) {
   const messages = useChatFeed(roomCode);
   const { sendMessage } = useChat({ userId, userName });
@@ -616,39 +622,44 @@ export const Chat = memo(function Chat({
     // rolagem. Em `lg+` o chat recebe a altura cheia da coluna e a rolagem
     // continua sendo só a do log.
     <div className="flex h-full min-h-0 flex-col gap-3 max-lg:overflow-y-auto">
-      <div className="flex items-center gap-2">
-        <h2 className={sectionLabelClass}>chat</h2>
-        {/* Contador de não lidas (FR-015). O botão flutuante continua existindo
-            — ele resolve o "quero ir lá", o contador resolve o "quanto me
-            escapou". */}
-        {unreadCount > 0 && (
-          <Badge
-            variant="solid"
-            className="h-5 min-w-5 justify-center px-1.5 text-micro font-bold"
-            aria-label={`${unreadCount} mensagens não lidas`}
-          >
-            {unreadCount}
-          </Badge>
-        )}
-      </div>
+      {/* O painel inteiro é a superfície do chat: o topo (com o rótulo e a
+          presença) encosta na mesma altura da moldura do vídeo, e a borda não
+          fica deslocada pela linha de cabeçalho. */}
+      <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-[var(--line)] bg-[var(--bg-surface)]">
+        <div className="flex items-center gap-2 px-3 pb-2 pt-3">
+          <h2 className={sectionLabelClass}>chat</h2>
+          {/* Contador de não lidas (FR-015). O botão flutuante continua existindo
+              — ele resolve o "quero ir lá", o contador resolve o "quanto me
+              escapou". */}
+          {unreadCount > 0 && (
+            <Badge
+              variant="solid"
+              className="h-5 min-w-5 justify-center px-1.5 text-micro font-bold"
+              aria-label={`${unreadCount} mensagens não lidas`}
+            >
+              {unreadCount}
+            </Badge>
+          )}
+          {headerAccessory && <div className="ml-auto">{headerAccessory}</div>}
+        </div>
 
-      <div className="relative flex min-h-0 flex-1 flex-col">
-        <ul
-          ref={listRef}
-          role="log"
-          aria-live="polite"
-          aria-relevant="additions"
-          onScroll={() => {
-            const list = listRef.current;
-            if (!list) return;
-            const distance = list.scrollHeight - list.scrollTop - list.clientHeight;
-            const atBottom = distance < PIN_THRESHOLD_PX;
-            pinnedRef.current = atBottom;
-            setScrolledUp(list.scrollTop > 8);
-            if (atBottom) markAsRead();
-          }}
-          className="relative flex min-h-0 flex-1 flex-col overflow-y-auto rounded-xl border border-[var(--line)] bg-[var(--bg-surface)] p-3"
-        >
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <ul
+            ref={listRef}
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions"
+            onScroll={() => {
+              const list = listRef.current;
+              if (!list) return;
+              const distance = list.scrollHeight - list.scrollTop - list.clientHeight;
+              const atBottom = distance < PIN_THRESHOLD_PX;
+              pinnedRef.current = atBottom;
+              setScrolledUp(list.scrollTop > 8);
+              if (atBottom) markAsRead();
+            }}
+            className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-3"
+          >
           {/* A barra de rolagem é escondida em toda a aplicação
               (app/globals.css), então "há conteúdo acima" não tem sinal. Esta
               sombra é esse sinal, e ela só aparece quando há mesmo (FR-016). */}
@@ -656,7 +667,7 @@ export const Chat = memo(function Chat({
             <span
               aria-hidden
               data-testid="chat-scroll-shadow"
-              className="pointer-events-none absolute inset-x-0 top-0 h-4 rounded-t-xl"
+              className="pointer-events-none absolute inset-x-0 top-0 h-4"
               style={{
                 background: "linear-gradient(to bottom, var(--bg-surface), transparent)",
               }}
@@ -715,6 +726,7 @@ export const Chat = memo(function Chat({
             novas mensagens ↓
           </button>
         )}
+        </div>
       </div>
 
       {/* O composer fica preso no rodapé do chat quando o conteúdo rola: o
