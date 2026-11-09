@@ -1,39 +1,37 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import { useMutation, useOthers, useStatus, useStorage } from "@liveblocks/react";
+import { useCallback, useState } from "react";
+import { useStorage } from "@liveblocks/react";
 import { useYouTubeSync } from "@/hooks/useYouTubeSync";
 import { useVimeoSync } from "@/hooks/useVimeoSync";
 import { useNativeVideoSync } from "@/hooks/useNativeVideoSync";
 import { useLastRoomEvent } from "@/hooks/useLastRoomEvent";
 import { useRoomJoinAnnouncement } from "@/hooks/useRoomJoinAnnouncement";
 import { useRoomLeaveAnnouncement } from "@/hooks/useRoomLeaveAnnouncement";
+import { useEconomyMode } from "@/hooks/useEconomyMode";
+import { useBroadcastGate } from "@/hooks/useBroadcastGate";
+import { useReleaseOnLeave } from "@/hooks/useReleaseOnLeave";
+import { useRoomShortcuts } from "@/hooks/useRoomShortcuts";
+import { useStageLayout } from "@/hooks/useStageLayout";
 import { SyncRing } from "@/components/room/SyncRing";
-import {
-  PresenceList,
-  PresenceTrigger,
-  usePresenceDisclosure,
-} from "@/components/room/PresenceList";
-import { GenericIframe } from "@/components/room/GenericIframe";
+import { usePresenceAccessory } from "@/components/room/PresenceAccessory";
 import { isSafeEmbedUrl } from "@/lib/video-source";
-import { NativeVideoPlayer } from "@/components/room/NativeVideoPlayer";
 import { PlayerLoadStatus } from "@/components/room/PlayerLoadStatus";
 import { PlayerShell } from "@/components/room/player/PlayerShell";
 import { LoadVideoModal } from "@/components/room/player/LoadVideoModal";
 import { RoomActions } from "@/components/room/RoomActions";
-import { InviteCode } from "@/components/room/InviteCode";
-import { LastActionNote } from "@/components/room/LastActionNote";
-import { PlayIcon } from "@/components/room/player/icons";
+import { RoomHeader } from "@/components/room/RoomHeader";
+import {
+  NATIVE_CONTAINER_ID,
+  VIMEO_CONTAINER_ID,
+  VideoSurface,
+  YT_CONTAINER_ID,
+} from "@/components/room/VideoSurface";
 import { Chat } from "@/components/room/Chat";
 import { useVideoQuality } from "@/hooks/useVideoQuality";
 import { usePlaybackState } from "@/hooks/usePlaybackClock";
 import { EconomySuggestion } from "@/components/room/EconomySuggestion";
-import { BroadcastControls } from "@/components/room/BroadcastControls";
 import { ScreenSharePlayer } from "@/components/room/ScreenSharePlayer";
-import { Badge } from "@/components/ui/Badge";
-import { iconButtonClass } from "@/components/ui/IconButton";
-import { parseBroadcast } from "@/lib/broadcast";
 
 // Exportado porque `RoomExperience` é o único consumidor do retorno de
 // `useVideoQuality`, e o teste da sala monta a prop a partir daqui em vez de
@@ -51,18 +49,6 @@ const FULLSCREEN_PAD = "clamp(0.75rem,2.5vmin,2.5rem)";
 // PAGE_CHROME = 10rem — está escrito literalmente na classe do vídeo abaixo
 // (o Tailwind não extrai classe montada por interpolação); mudar um exige
 // mudar o outro.
-const SEEK_STEP_S = 5;
-
-const YT_CONTAINER_ID = "yt-player";
-const VIMEO_CONTAINER_ID = "vimeo-player";
-const NATIVE_CONTAINER_ID = "native-player";
-
-const CONNECTION_LABEL: Partial<Record<ReturnType<typeof useStatus>, string>> = {
-  initial: "conectando...",
-  connecting: "conectando...",
-  reconnecting: "reconectando...",
-  disconnected: "desconectado — tentando religar...",
-};
 
 export function RoomExperience({
   roomCode,
@@ -85,48 +71,8 @@ export function RoomExperience({
 }) {
   const video = useStorage((root) => root.video);
   const player = useStorage((root) => root.player);
-  // Estado de transmissão, no storage do Liveblocks e não em memória: é o que
-  // chega para quem entra depois sem esperar evento
-  // (FR-014, docs/specs/12-transmissao-screen-share/spec.md). O valor cru pode
-  // ser `undefined` numa sala criada antes deste campo existir, e pode ser
-  // qualquer coisa se um cliente escrever malformado — o parser é a fronteira e
-  // devolve `null` (AC-009), que é o modo player.
-  const rawBroadcast = useStorage((root) => root.broadcast);
-  const broadcast = parseBroadcast(rawBroadcast);
-  // O `livekitUrl` entra no gate junto com o storage, e não só para esconder o
-  // botão: `ScreenSharePlayer` usa `useTracks`, que exige o contexto de room e
-  // LANÇA sem ele. O storage sobrevive à queda do Livekit — ele é o que
-  // sobrevive —, então `broadcast !== null` sozinho não prova que o SFU está de
-  // pé neste cliente. Sem wrapper, o modo player é o estado correto e é o que a
-  // sala mostra.
-  const isBroadcasting = broadcast !== null && livekitUrl !== null;
-
-  // "Desisti de esperar a transmissão" é estado LOCAL de quem assiste, não
-  // estado da sala: o storage continua dizendo que há transmissão, e se a track
-  // chegar depois ela volta a ser exibida. Só o transmissor encerra transmissão
-  // (FR-017/FR-019) — um espectador que sai da espera não cancela a transmissão
-  // de outra pessoa, e mexer no storage aqui seria tomar uma decisão que não é
-  // dele.
-  //
-  // Zera sozinha quando a transmissão termina ou quando outra começa, sem
-  // efeito: a escotilha guarda A QUAL transmissão ela se refere, e a validade é
-  // derivada comparando com a chave da transmissão atual. Uma escotilha é
-  // decisão sobre UMA transmissão — sobreviver à seguinte seria prender o
-  // espectador numa sala que ele já escolheu não ver.
-  //
-  // `startedAt` entra na chave porque ele é escrito uma vez por transmissão, ao
-  // contrário de `broadcasterId`: só o id não distinguiria "desisti da
-  // transmissão do bruno" de "desisti da transmissão do bruno", quando a segunda
-  // é uma transmissão nova e a escotilha antiga não vale. Reset por `useEffect`
-  // resolveria, mas cascateia render e o valor é derivável — derivar é mais
-  // barato que sincronizar.
-  const broadcastKey = broadcast === null ? null : `${broadcast.broadcasterId}:${broadcast.startedAt}`;
-  const [gaveUpFor, setGaveUpFor] = useState<string | null>(null);
-  const gaveUpOnBroadcast = gaveUpFor !== null && gaveUpFor === broadcastKey;
-  const giveUpOnBroadcast = useCallback(() => setGaveUpFor(broadcastKey), [broadcastKey]);
-  const othersCount = useOthers((others) => others.length);
+  const { broadcast, isBroadcasting, showScreenShare, giveUpOnBroadcast } = useBroadcastGate(livekitUrl);
   const lastEvent = useLastRoomEvent();
-  const status = useStatus();
   const [loadModalOpen, setLoadModalOpen] = useState(false);
   // fica aqui (nível de sala, sempre montado) e não dentro de <Chat> — o
   // aside com o Chat desmonta/remonta ao entrar em fullscreen ou alternar
@@ -139,32 +85,7 @@ export function RoomExperience({
   // (medido em docs/specs/13-chat-sala/research.md, seção 2). O que fica aqui é
   // só o emissor, dentro do `<Chat>`, e o reset da store no mount.
   useRoomLeaveAnnouncement(userId);
-  const presence = usePresenceDisclosure();
-
-  // Elemento estável passado ao `<Chat>`: como o objeto é o mesmo entre renders
-  // da sala, o React pula a subárvore da presença quando o log ou o draft do
-  // chat mudam. É o que preserva o isolamento de render da spec 13 mesmo com o
-  // gatilho dentro do painel do chat.
-  const presenceAccessory = useMemo(
-    () => (
-      <div className="relative">
-        <PresenceTrigger
-          expanded={presence.expanded}
-          onToggle={presence.toggle}
-          myUserId={userId}
-          myName={userName}
-        />
-        <div
-          className={`absolute right-0 top-full z-40 mt-2 w-64 rounded-xl border border-[var(--line)] bg-[var(--bg-surface)] p-2 shadow-[var(--shadow-pop)] ${
-            presence.expanded ? "block" : "hidden"
-          }`}
-        >
-          <PresenceList expanded={presence.expanded} myUserId={userId} myName={userName} />
-        </div>
-      </div>
-    ),
-    [presence.expanded, presence.toggle, userId, userName],
-  );
+  const presenceAccessory = usePresenceAccessory(userId, userName);
 
   const {
     resolution,
@@ -182,67 +103,19 @@ export function RoomExperience({
   } = videoQuality;
   const effectiveResolution = economyMode && resolution === "720p" ? "480p" : resolution;
 
-  useEffect(() => {
-    if (economyMode) {
-      document.documentElement.classList.add("reduce-motion");
-    } else {
-      document.documentElement.classList.remove("reduce-motion");
-    }
-    return () => document.documentElement.classList.remove("reduce-motion");
-  }, [economyMode]);
+  useEconomyMode(economyMode);
 
-  const stageRef = useRef<HTMLDivElement | null>(null);
-  const [nativeFullscreen, setNativeFullscreen] = useState(false);
-  // fallback pra onde a Fullscreen API não existe pra elemento comum (Safari
-  // no iPhone): o botão simplesmente não fazia nada, sem retorno nenhum
-  // (achado 19). Aqui o stage vira `fixed inset-0` e o modo teatro continua
-  // funcionando igual.
-  const [cssFullscreen, setCssFullscreen] = useState(false);
-  const isFullscreen = nativeFullscreen || cssFullscreen;
-  const [isTheater, setIsTheater] = useState(false);
+  const {
+    stageRef,
+    isFullscreen,
+    cssFullscreen,
+    isTheater,
+    showAside,
+    toggleFullscreen,
+    toggleTheater,
+    exitCssFullscreen,
+  } = useStageLayout();
 
-  useEffect(() => {
-    const onFsChange = () => {
-      const active = document.fullscreenElement === stageRef.current;
-      setNativeFullscreen(active);
-      if (!active) setIsTheater(false); // não fica "grudado" ao reentrar depois
-    };
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
-  }, []);
-
-  useEffect(() => {
-    // o botão de teatro só existe (clicável) em lg+ (docs/specs/03-auditoria-ui-ux/spec.md, seção 10, item
-    // 4) — mas isso só fecha a porta de ENTRAR nesse estado por clique. Sem
-    // isso aqui, redimensionar a janela pra baixo de lg com teatro já ligado
-    // deixava `isTheater` grudado em `true`, reproduzindo o mesmo layout
-    // quebrado (aside disputando altura com o vídeo empilhado) por resize
-    // em vez de clique.
-    const mql = window.matchMedia("(min-width: 1024px)");
-    const onChange = (e: MediaQueryListEvent | MediaQueryList) => {
-      if (!e.matches) setIsTheater(false);
-    };
-    onChange(mql);
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
-
-  const toggleFullscreen = useCallback(() => {
-    const stage = stageRef.current;
-    const nativeSupported = !!document.fullscreenEnabled && !!stage?.requestFullscreen;
-    if (!nativeSupported) {
-      setCssFullscreen((v) => {
-        if (v) setIsTheater(false);
-        return !v;
-      });
-      return;
-    }
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
-    } else {
-      stage?.requestFullscreen?.().catch(() => {});
-    }
-  }, []);
 
   // identidade estável — RoomExperience re-renderiza a cada evento do
   // Liveblocks (chat, presença, sync); um `() => setLoadModalOpen(false)`
@@ -250,7 +123,6 @@ export function RoomExperience({
   // efeito de teclado do modal enquanto ele está aberto (docs/specs/03-auditoria-ui-ux/spec.md, seção 10).
   const closeLoadModal = useCallback(() => setLoadModalOpen(false), []);
   const openLoadModal = useCallback(() => setLoadModalOpen(true), []);
-  const toggleTheater = useCallback(() => setIsTheater((v) => !v), []);
   const toggleFps = useCallback(() => {
     const next = fpsLimit === "auto" ? "30" : fpsLimit === "30" ? "60" : "auto";
     setFpsLimit(next);
@@ -301,7 +173,6 @@ export function RoomExperience({
       : hasDirectMedia
         ? nativeController
         : null;
-  const connectionLabel = CONNECTION_LABEL[status];
 
   // "ao vivo" e o anel de sync saem do player local, não do snapshot cru do
   // storage: ninguém escreve `isPlaying:false` ao fechar a aba, então uma sala
@@ -317,107 +188,20 @@ export function RoomExperience({
   const { isPlaying: playingFromClock } = usePlaybackState();
   const isPlayingNow = activeController ? playingFromClock : false;
 
-  // Os hooks de sync recriam o objeto `controller` a cada render. Com
-  // `activeController` nas deps do listener de teclado abaixo, o handler
-  // global seria removido e re-adicionado a cada render durante toda a sessão.
-  // A ref mantém o valor corrente sem entrar no ciclo de inscrição.
-  //
-  // O comentário original citava os 2,5–4 Hz de re-render como o motivo
-  // (polling do YouTube, `timeupdate` do `<video>`) — essa frequência saiu do
-  // caminho quando o playhead foi para a store externa, mas a troca de
-  // identidade do objeto a cada render continua valendo, e o sintoma (listener
-  // global re-inscrito o tempo todo) é o mesmo.
-  const controllerRef = useRef(activeController);
-  useEffect(() => {
-    controllerRef.current = activeController;
+  useReleaseOnLeave();
+  useRoomShortcuts({
+    activeController,
+    loadModalOpen,
+    cssFullscreen,
+    isBroadcasting,
+    toggleFullscreen,
+    exitCssFullscreen,
   });
 
-  // se eu for o último a sair, devolvo o storage pra "pausado". Só quando não
-  // há mais ninguém: zerar o flag com gente assistindo faria a correção de
-  // drift dos outros puxar o vídeo de volta.
-  const releasePlayingFlag = useMutation(({ storage }) => {
-    const snapshot = storage.get("player");
-    if (!snapshot?.isPlaying) return;
-    storage.update({ player: { ...snapshot, isPlaying: false, updatedAt: Date.now() } });
-  }, []);
-
-  useEffect(() => {
-    const onHide = () => {
-      if (othersCount > 0) return;
-      releasePlayingFlag();
-    };
-    window.addEventListener("pagehide", onHide);
-    return () => window.removeEventListener("pagehide", onHide);
-  }, [othersCount, releasePlayingFlag]);
-
-  // Atalhos de teclado do player (achado 27). Ignorados enquanto o foco está
-  // num campo de texto ou o modal está aberto — senão espaço/f/m viravam
-  // caracteres perdidos no meio de uma mensagem do chat.
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (
-        loadModalOpen ||
-        (target &&
-          (target.tagName === "INPUT" ||
-            target.tagName === "TEXTAREA" ||
-            target.isContentEditable))
-      ) {
-        return;
-      }
-
-      // Sem essa guarda, `preventDefault()` sequestrava Ctrl+F/Cmd+F (busca
-      // do browser), Ctrl+K (barra de endereço em alguns browsers) e Cmd+M
-      // (minimizar no macOS) — nenhum atalho deste handler tem combinação
-      // com modificador, então qualquer tecla com Ctrl/Cmd/Alt não é dele
-      // (achado 5, docs/specs/05-code-review-seguranca/spec.md).
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-      if (e.key === "Escape" && cssFullscreen) {
-        setCssFullscreen(false);
-        setIsTheater(false);
-        return;
-      }
-      if (e.key === "f") {
-        e.preventDefault();
-        toggleFullscreen();
-        return;
-      }
-
-      // lido da ref, não do estado: ver comentário em `controllerRef` acima.
-      const controller = controllerRef.current;
-      if (!controller?.isReady) return;
-
-      // No modo transmissão o player não está na tela: os frames são a
-      // sincronização (docs/specs/12-transmissao-screen-share/spec.md, seção 1).
-      // Sem esta guarda, espaço/m/f agiram sobre o player escondido que ainda
-      // está montado por baixo — e mudavam o volume de um vídeo que ninguém vê.
-      if (isBroadcasting) return;
-
-      if (e.key === " " || e.key === "k") {
-        e.preventDefault();
-        controller.togglePlay();
-      } else if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        controller.seek(Math.max(controller.currentTime - SEEK_STEP_S, 0));
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        controller.seek(controller.currentTime + SEEK_STEP_S);
-      } else if (e.key === "m") {
-        e.preventDefault();
-        controller.toggleMute();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [cssFullscreen, loadModalOpen, toggleFullscreen, isBroadcasting]);
-
-  // YouTube não tem parâmetro oficial pra desligar a tela de sugestões que
-  // desenha por cima ao pausar (ver docs/specs/01-fundacao-mvp/spec.md, seção 7) — cobrimos com um
-  // overlay nosso, que também funciona como affordance extra de play.
-  const showYoutubePauseOverlay = hasYouTube && youtubeController.isReady && !youtubeController.isPlaying;
-
-  const showAside = !isFullscreen || isTheater;
+  const onAcceptEconomySuggestion = useCallback(() => {
+    setEconomyMode(true);
+    setResolution("480p");
+  }, [setEconomyMode, setResolution]);
 
   return (
     // A casca é de altura fixa (`room-shell` = `h-dvh` + `overflow-hidden`), como
@@ -433,82 +217,26 @@ export function RoomExperience({
     // mobile deixavam o selo por cima do campo de mensagem (medido a 390px:
     // selo em y 794-832, input em y 784-828 — achado 1 da revisão de design).
     <main className="room-shell mx-auto flex h-dvh w-full max-w-[1800px] flex-col gap-5 overflow-hidden px-4 pt-6 pb-14 sm:px-6 lg:px-8">
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--line)] pb-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link
-            href="/rooms"
-            aria-label="voltar para suas salas"
-            className={iconButtonClass({ variant: "outline", className: "shrink-0" })}
-          >
-            ←
-          </Link>
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <div className="flex min-w-0 items-center gap-2">
-              <h1 className="min-w-0 truncate text-heading font-semibold tracking-tight text-[var(--ink)]">
-                {roomName || "sala sem nome"}
-              </h1>
-              {/* `!isBroadcasting`: este selo descreve o player, e no modo
-                  transmissão o player não está na tela. Deixá-lo aceso sobre a
-                  transmissão seria um status mentindo sobre o que as pessoas
-                  estão vendo. */}
-              {isPlayingNow && !syncLimited && !isBroadcasting && (
-                <Badge variant="solid" className="uppercase tracking-wide">
-                  ao vivo
-                </Badge>
-              )}
-              {/* Indicador, não controle: quem liga/desliga é o botão de
-                  `RoomActions` (44px, com `aria-pressed`). */}
-              {economyMode && <Badge variant="soft">economy</Badge>}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <LastActionNote lastEvent={lastEvent} userId={userId} />
-              {connectionLabel ? (
-                <span
-                  role="status"
-                  aria-live="polite"
-                  className="font-mono text-caption text-[var(--ink-muted)]"
-                >
-                  {connectionLabel}
-                </span>
-              ) : (
-                !syncLimited &&
-                !isPlayingNow && (
-                  <span
-                    role="status"
-                    aria-live="polite"
-                    className="font-mono text-caption text-[var(--ink-muted)]"
-                  >
-                    ○ pausado
-                  </span>
-                )
-              )}
-            </div>
-          </div>
-        </div>
+      <RoomHeader
+        roomCode={roomCode}
+        roomName={roomName}
+        userId={userId}
+        userName={userName}
+        livekitUrl={livekitUrl}
+        broadcast={broadcast}
+        videoSourceUrl={video?.sourceUrl ?? null}
+        lastEvent={lastEvent}
+        isPlayingNow={isPlayingNow}
+        syncLimited={syncLimited}
+        isBroadcasting={isBroadcasting}
+        economyMode={economyMode}
+        isTheater={isTheater}
+        isFullscreen={isFullscreen}
+        onLoadVideo={openLoadModal}
+        onToggleTheater={toggleTheater}
+        onToggleEconomy={toggleEconomy}
+      />
 
-        {/* Ações da sala no mesmo bloco do convite: no mobile o botão de
-            transmissão fica ao lado do código, sem uma linha própria abaixo do
-            vídeo. O chat começa na mesma altura da moldura do vídeo. */}
-        <div className="flex min-w-0 flex-wrap items-center gap-2 lg:mr-3">
-          <InviteCode code={roomCode} />
-          {livekitUrl !== null && (
-            <BroadcastControls
-              broadcast={broadcast}
-              userId={userId}
-              userName={userName}
-              videoSourceUrl={video?.sourceUrl ?? null}
-            />
-          )}
-          <RoomActions
-            onLoadVideo={openLoadModal}
-            onToggleTheater={toggleTheater}
-            isTheater={isTheater}
-            showTheaterToggle={isFullscreen}
-            onToggleEconomy={toggleEconomy}
-            isEconomy={economyMode}
-          />
-        </div>
-      </header>
 
       <div
         ref={stageRef}
@@ -593,7 +321,7 @@ export function RoomExperience({
                   inclusive o "nenhum vídeo carregado": `video` e `player` não
                   foram tocados, então o vídeo que já estava carregado está
                   intacto. */}
-              {isBroadcasting && !gaveUpOnBroadcast ? (
+              {showScreenShare ? (
                 // `broadcast` é não-nulo sempre que `isBroadcasting` é: o gate
                 // só acrescenta a condição do Livekit. O `!` fica explícito
                 // porque um `null` aqui renderizaria um player com um
@@ -628,55 +356,15 @@ export function RoomExperience({
                   captions={hasYouTube ? captions : null}
                   onToggleCaptions={hasYouTube ? toggleCaptions : undefined}
                 >
-                  {hasYouTube ? (
-                    <>
-                      <div id={YT_CONTAINER_ID} className="h-full w-full" />
-                      {showYoutubePauseOverlay && (
-                        <button
-                          type="button"
-                          onClick={() => youtubeController.play()}
-                          aria-label="tocar"
-                          // z-20: acima da camada que captura ponteiro sobre o
-                          // iframe (z-10 em PlayerShell) e ABAIXO da barra de
-                          // controles (z-30) — antes era z-10 e cobria a barra
-                          // inteira sempre que o vídeo estava pausado, deixando
-                          // tela cheia/scrubber/volume inclicáveis (achado 2).
-                          // anel de foco: era `focus:outline-none` sem anel
-                          // nenhum, num alvo que ocupa a tela inteira do player
-                          // (achado 17). `ring-inset` porque o botão sangra até
-                          // a borda da caixa.
-                          className="absolute inset-0 z-20 flex items-center justify-center bg-[var(--bg-void)] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[var(--outline-strong)]"
-                        >
-                          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--invert-bg)] text-[var(--invert-fg)]">
-                            <PlayIcon className="h-7 w-7" />
-                          </span>
-                        </button>
-                      )}
-                    </>
-                  ) : hasVimeo ? (
-                    <div id={VIMEO_CONTAINER_ID} className="h-full w-full" />
-                  ) : hasDirectMedia ? (
-                    <NativeVideoPlayer containerId={NATIVE_CONTAINER_ID} />
-                  ) : hasGeneric ? (
-                    <GenericIframe src={video.embedUrl!} />
-                  ) : storageLoading ? (
-                    <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6">
-                      <span className="h-2 w-40 rounded-full bg-[var(--fill-1)]" aria-hidden />
-                      <span className="h-2 w-24 rounded-full bg-[var(--fill-1)]" aria-hidden />
-                      <span className="sr-only" role="status">
-                        carregando a sala
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-6 text-center">
-                      <p className="text-title font-semibold tracking-tight text-[var(--ink)]">
-                        nenhum vídeo carregado
-                      </p>
-                      <p className="text-body-sm text-[var(--ink-muted)]">
-                        use &quot;carregar vídeo&quot; pra começar
-                      </p>
-                    </div>
-                  )}
+                  <VideoSurface
+                    video={video}
+                    hasYouTube={hasYouTube}
+                    hasVimeo={hasVimeo}
+                    hasDirectMedia={hasDirectMedia}
+                    hasGeneric={hasGeneric}
+                    storageLoading={storageLoading}
+                    youtubeController={youtubeController}
+                  />
                 </PlayerShell>
               )}
               {/* O scrim de carregamento/erro pertence ao player. Sobre a
@@ -775,7 +463,7 @@ export function RoomExperience({
       <EconomySuggestion
         isLowEnd={isLowEnd}
         hasSeenSuggestion={hasSeenSuggestion}
-        onAccept={() => { setEconomyMode(true); setResolution("480p"); }}
+        onAccept={onAcceptEconomySuggestion}
         onDismiss={dismissSuggestion}
       />
     </main>
