@@ -2,17 +2,17 @@ import { Liveblocks } from "@liveblocks/node";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { findRoomForMember } from "@/lib/room-access";
-
-// instanciado dentro do handler (não no top-level do módulo) pra não quebrar a
-// coleta de página do Next em build sem LIVEBLOCKS_SECRET_KEY definida ainda.
-function getLiveblocksClient() {
-  return new Liveblocks({ secret: process.env.LIVEBLOCKS_SECRET_KEY! });
-}
+import { liveblocksSecretKey } from "@/lib/env";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return new Response("não autenticado.", { status: 401 });
+  }
+
+  const secret = liveblocksSecretKey();
+  if (!secret) {
+    return new Response("tempo real não configurado.", { status: 503 });
   }
 
   const payload: unknown = await req.json().catch(() => null);
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     return new Response(access.message, { status: access.status });
   }
 
-  const liveblocks = getLiveblocksClient();
+  const liveblocks = new Liveblocks({ secret });
   const session_ = liveblocks.prepareSession(session.user.id, {
     userInfo: {
       name: session.user.name ?? session.user.email ?? "sem nome",
