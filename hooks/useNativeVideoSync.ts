@@ -1,17 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useEventListener, useStorage } from "@liveblocks/react";
+import { useStorage } from "@liveblocks/react";
 import { isHlsUrl } from "@/lib/video-source";
 import { HLS_MODULE, setMaxBufferLength, type Hls, type HlsStatic } from "@/lib/hls";
 import {
   resetPlaybackClock,
 } from "@/hooks/usePlaybackClock";
-import { useSyncChannel } from "@/hooks/useSyncChannel";
+import { useDriftCheck, useRemotePlayerEvents, useSyncChannel } from "@/hooks/useSyncChannel";
 import {
   expectedPlaybackTime,
   DRIFT_THRESHOLD_NATIVE_S,
-  CHECK_INTERVAL_MS,
   REMOTE_APPLY_COOLDOWN_MS,
   usePlaybackController,
   setIsPlayingLocal,
@@ -20,8 +19,7 @@ import {
   setVolumeLocal,
   setIsMutedLocal,
 } from "@/hooks/playerController";
-import { parsePlayerEvent, shouldApplyPlayerEvent } from "@/lib/playback/events";
-import { skewFor, updateSkew, type SkewSamples } from "@/lib/playback/clock";
+import { skewFor } from "@/lib/playback/clock";
 import type { FpsLimit, Resolution } from "@/lib/playback/types";
 
 // Mesmo esqueleto de useYouTubeSync/useVimeoSync (constantes de drift/cooldown,
@@ -40,13 +38,8 @@ export function useNativeVideoSync({
   fpsLimit?: FpsLimit;
 }) {
   const video = useStorage((root) => root.video);
-  const playerStorage = useStorage((root) => root.player);
-  const playerStorageRef = useRef(playerStorage);
-  useEffect(() => {
-    playerStorageRef.current = playerStorage;
-  }, [playerStorage]);
-
-  const { emitLocal, lastAppliedTsRef } = useSyncChannel({ userId, source: "DIRECT_MEDIA" });
+  const channel = useSyncChannel({ userId, source: "DIRECT_MEDIA" });
+  const { emitLocal, skewRef, playerStorageRef } = channel;
 
   const videoElRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -67,8 +60,6 @@ export function useNativeVideoSync({
   const loadedUrlRef = useRef<string | null>(null);
   const targetResolutionRef = useRef(targetResolution);
   const fpsLimitRef = useRef(fpsLimit);
-  // desvio de relógio estimado por ator e maior `ts` já aplicado (last-write-wins)
-  const skewRef = useRef<SkewSamples>({});
 
   // Estado do player vai para a store externa (`usePlaybackClock`), não para
   // `useState` aqui dentro. A diferença é o efeito em cascata: `timeupdate` do
@@ -305,6 +296,8 @@ export function useNativeVideoSync({
       videoEl.removeEventListener("volumechange", onVolumeChange);
     };
   }, [
+    playerStorageRef,
+    skewRef,
     video?.embedUrl,
     video?.loadedAt,
     emitLocal,
@@ -353,66 +346,37 @@ export function useNativeVideoSync({
     setMaxBufferLength(hls, fpsLimit === "30" ? 2 : null);
   }, [fpsLimit]);
 
-  useEventListener(({ event }) => {
-    // O payload chega de outro cliente e vira `currentTime` direto: passa por
-    // validação de formato antes de qualquer coisa (lib/playback/events).
-    const parsed = parsePlayerEvent(event);
-    if (!parsed) return;
-
-    // Alimenta a estimativa de desvio de relógio com o `ts` do remetente.
-    skewRef.current = updateSkew(skewRef.current, parsed.actorId, parsed.ts, Date.now());
-
-    const videoEl = videoElRef.current;
-    if (!videoEl) return;
-
-    if (
-      !shouldApplyPlayerEvent(parsed, {
-        selfId: userId,
-        localSource: "DIRECT_MEDIA",
-        lastAppliedTs: lastAppliedTsRef.current,
-      })
-    ) {
-      return;
-    }
-    lastAppliedTsRef.current = parsed.ts;
-
-    applyRemote(() => {
-      if (parsed.type === "PLAY") {
-        videoEl.currentTime = parsed.time;
-        videoEl.play().catch(() => {});
-      } else if (parsed.type === "PAUSE") {
-        videoEl.currentTime = parsed.time;
-        videoEl.pause();
-      } else if (parsed.type === "SEEK") {
-        videoEl.currentTime = parsed.time;
-      }
-    });
+  useRemotePlayerEvents(channel, {
+    isAttached: () => videoElRef.current !== null,
+    apply: (parsed) => {
+      const videoEl = videoElRef.current!;
+      applyRemote(() => {
+        if (parsed.type === "PLAY") {
+          videoEl.currentTime = parsed.time;
+          videoEl.play().catch(() => {});
+        } else if (parsed.type === "PAUSE") {
+          videoEl.currentTime = parsed.time;
+          videoEl.pause();
+        } else if (parsed.type === "SEEK") {
+          videoEl.currentTime = parsed.time;
+        }
+      });
+    },
   });
 
   // drift correction — só pra quem não é o dono da última ação
-  useEffect(() => {
-    const interval = window.setInterval(() => {
+  useDriftCheck(channel, {
+    isReady,
+    thresholdS: DRIFT_THRESHOLD_NATIVE_S,
+    isApplyingRemoteRef,
+    applyRemote,
+    readTime: () => videoElRef.current?.currentTime ?? null,
+    getDuration: () => videoElRef.current?.duration || 0,
+    seekTo: (expected) => {
       const videoEl = videoElRef.current;
-      const snapshot = playerStorageRef.current;
-      if (!videoEl || !snapshot || !isReady) return;
-      if (isApplyingRemoteRef.current) return;
-      if (snapshot.lastActorId === userId) return;
-
-      const { time: expected, stale } = expectedPlaybackTime(
-        snapshot,
-        videoEl.duration || 0,
-        skewFor(skewRef.current, snapshot.lastActorId),
-      );
-      if (stale) return; // snapshot abandonado: não arrasta ninguém
-      if (Math.abs(videoEl.currentTime - expected) > DRIFT_THRESHOLD_NATIVE_S) {
-        applyRemote(() => {
-          videoEl.currentTime = expected;
-        });
-      }
-    }, CHECK_INTERVAL_MS);
-
-    return () => window.clearInterval(interval);
-  }, [isReady, userId, applyRemote]);
+      if (videoEl) videoEl.currentTime = expected;
+    },
+  });
 
   // Rejeitar a promise de play() por `AbortError` é o comportamento normal
   // quando outra chamada (pause()/mudar currentTime) interrompe um play()

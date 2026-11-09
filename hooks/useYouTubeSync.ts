@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useEventListener, useStorage } from "@liveblocks/react";
+import { useStorage } from "@liveblocks/react";
 import { loadYouTubeIframeApi } from "@/lib/youtube-iframe";
-import { useSyncChannel } from "@/hooks/useSyncChannel";
+import { useDriftCheck, useRemotePlayerEvents, useSyncChannel } from "@/hooks/useSyncChannel";
 import {
   getPlaybackSnapshot,
   resetPlaybackClock,
@@ -11,7 +11,6 @@ import {
 import {
   expectedPlaybackTime,
   DRIFT_THRESHOLD_YOUTUBE_S,
-  CHECK_INTERVAL_MS,
   SEEK_WHILE_PAUSED_THRESHOLD_S,
   REMOTE_APPLY_COOLDOWN_MS,
   usePlaybackController,
@@ -21,8 +20,7 @@ import {
   setVolumeLocal,
   setIsMutedLocal,
 } from "@/hooks/playerController";
-import { parsePlayerEvent, shouldApplyPlayerEvent } from "@/lib/playback/events";
-import { skewFor, updateSkew, type SkewSamples } from "@/lib/playback/clock";
+import { skewFor } from "@/lib/playback/clock";
 
 const TIME_POLL_MS = 400; // YT API não emite timeupdate — só leitura pra UI do scrubber
 
@@ -51,21 +49,14 @@ export function useYouTubeSync({
   captions?: boolean;
 }) {
   const video = useStorage((root) => root.video);
-  const playerStorage = useStorage((root) => root.player);
-  const playerStorageRef = useRef(playerStorage);
-  useEffect(() => {
-    playerStorageRef.current = playerStorage;
-  }, [playerStorage]);
-
-  const { emitLocal, lastAppliedTsRef } = useSyncChannel({ userId, source: "YOUTUBE" });
+  const channel = useSyncChannel({ userId, source: "YOUTUBE" });
+  const { emitLocal, skewRef, playerStorageRef } = channel;
 
   const playerRef = useRef<YT.Player | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isApplyingRemoteRef = useRef(false);
   const loadedVideoIdRef = useRef<string | null>(null);
-  // desvio de relógio estimado por ator e maior `ts` já aplicado (last-write-wins)
-  const skewRef = useRef<SkewSamples>({});
 
   // Estado do player vai para a store externa (`usePlaybackClock`), não para
   // `useState` aqui dentro.
@@ -276,42 +267,24 @@ export function useYouTubeSync({
   }, [captions, isReady, applyCaptionPreference]);
 
   // aplica PLAY/PAUSE/SEEK vindos de outros participantes
-  useEventListener(({ event }) => {
-    // O payload chega de outro cliente e vira `seekTo` direto: passa por
-    // validação de formato antes de qualquer coisa (lib/playback/events).
-    const parsed = parsePlayerEvent(event);
-    if (!parsed) return;
-
-    // Alimenta a estimativa de desvio de relógio com o `ts` do remetente.
-    skewRef.current = updateSkew(skewRef.current, parsed.actorId, parsed.ts, Date.now());
-
-    const player = playerRef.current;
-    if (!player) return;
-
-    if (
-      !shouldApplyPlayerEvent(parsed, {
-        selfId: userId,
-        localSource: "YOUTUBE",
-        lastAppliedTs: lastAppliedTsRef.current,
-      })
-    ) {
-      return;
-    }
-    lastAppliedTsRef.current = parsed.ts;
-
-    applyRemote(() => {
-      if (parsed.type === "PLAY") {
-        player.seekTo(parsed.time, true);
-        player.playVideo();
-        setIsPlayingLocal(true);
-      } else if (parsed.type === "PAUSE") {
-        player.seekTo(parsed.time, true);
-        player.pauseVideo();
-        setIsPlayingLocal(false);
-      } else if (parsed.type === "SEEK") {
-        player.seekTo(parsed.time, true);
-      }
-    });
+  useRemotePlayerEvents(channel, {
+    isAttached: () => playerRef.current !== null,
+    apply: (parsed) => {
+      const player = playerRef.current!;
+      applyRemote(() => {
+        if (parsed.type === "PLAY") {
+          player.seekTo(parsed.time, true);
+          player.playVideo();
+          setIsPlayingLocal(true);
+        } else if (parsed.type === "PAUSE") {
+          player.seekTo(parsed.time, true);
+          player.pauseVideo();
+          setIsPlayingLocal(false);
+        } else if (parsed.type === "SEEK") {
+          player.seekTo(parsed.time, true);
+        }
+      });
+    },
   });
 
   // polling leve só pra UI (scrubber/tempo) — API do YouTube não emite
@@ -332,49 +305,33 @@ export function useYouTubeSync({
   }, [isReady]);
 
   // drift correction (seguidores) + detecção de seek-enquanto-pausado (quem controla)
-  useEffect(() => {
-    const interval = window.setInterval(() => {
+  useDriftCheck(channel, {
+    isReady,
+    thresholdS: DRIFT_THRESHOLD_YOUTUBE_S,
+    isApplyingRemoteRef,
+    applyRemote,
+    readTime: () => {
       const player = playerRef.current;
-      const snapshot = playerStorageRef.current;
-      if (!player || !snapshot || !isReady) return;
-      if (isApplyingRemoteRef.current) return;
-
-      let localTime: number;
+      if (!player) return null;
       try {
-        localTime = player.getCurrentTime();
+        return player.getCurrentTime();
       } catch {
-        return;
+        return null;
       }
-
-      const { time: expected, stale } = expectedPlaybackTime(
-        snapshot,
-        // Lido da store no instante do tick, e não de um `duration` capturado
-        // no render: com o estado fora do React, um valor de closure ficaria
-        // congelado e o clamp por duração pararia de valer depois do primeiro
-        // load.
-        getPlaybackSnapshot().duration,
-        skewFor(skewRef.current, snapshot.lastActorId),
-      );
-      if (stale) return; // snapshot abandonado: não arrasta ninguém (ver playerController)
-      const diff = localTime - expected;
-      const isOwner = snapshot.lastActorId === userId;
-      const isPaused = player.getPlayerState() === window.YT.PlayerState.PAUSED;
-
-      if (isOwner && isPaused && Math.abs(diff) > SEEK_WHILE_PAUSED_THRESHOLD_S) {
+    },
+    // Lido da store no instante do tick, e não de um `duration` capturado
+    // no render: com o estado fora do React, um valor de closure ficaria
+    // congelado e o clamp por duração pararia de valer depois do primeiro
+    // load.
+    getDuration: () => getPlaybackSnapshot().duration,
+    seekTo: (expected) => playerRef.current?.seekTo(expected, true),
+    onOwnerTick: (localTime, diff) => {
+      const isPaused = playerRef.current?.getPlayerState() === window.YT.PlayerState.PAUSED;
+      if (isPaused && Math.abs(diff) > SEEK_WHILE_PAUSED_THRESHOLD_S) {
         emitLocal("SEEK", localTime, false);
-        return;
       }
-
-      if (!isOwner && Math.abs(diff) > DRIFT_THRESHOLD_YOUTUBE_S) {
-        applyRemote(() => player.seekTo(expected, true));
-      }
-    }, CHECK_INTERVAL_MS);
-
-    return () => window.clearInterval(interval);
-    // `duration` sai das deps de propósito: com o estado do player na store
-    // externa, este efeito não re-assina a cada tick — e `expectedPlaybackTime`
-    // já é clampado pela duração que o próprio player fornece.
-  }, [isReady, userId, emitLocal, applyRemote]);
+    },
+  });
 
   // controles imperativos — chamados pela nossa própria barra (chrome nativo
   // do YouTube fica escondido via controls:0/disablekb:1). Os listeners acima

@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useEventListener, useStorage } from "@liveblocks/react";
-import { useSyncChannel } from "@/hooks/useSyncChannel";
+import { useStorage } from "@liveblocks/react";
+import { useDriftCheck, useRemotePlayerEvents, useSyncChannel } from "@/hooks/useSyncChannel";
 import {
   VIMEO_MODULE,
   type VimeoPlayer,
@@ -16,7 +16,6 @@ import {
 import {
   expectedPlaybackTime,
   DRIFT_THRESHOLD_NATIVE_S,
-  CHECK_INTERVAL_MS,
   usePlaybackController,
   setIsPlayingLocal,
   setCurrentTime,
@@ -24,8 +23,7 @@ import {
   setVolumeLocal,
   setIsMutedLocal,
 } from "@/hooks/playerController";
-import { parsePlayerEvent, shouldApplyPlayerEvent } from "@/lib/playback/events";
-import { skewFor, updateSkew, type SkewSamples } from "@/lib/playback/clock";
+import { skewFor } from "@/lib/playback/clock";
 import type { Resolution } from "@/lib/playback/types";
 
 const RESOLUTION_MAX_HEIGHT: Record<Resolution, number> = {
@@ -78,13 +76,8 @@ export function useVimeoSync({
   targetResolution?: Resolution;
 }) {
   const video = useStorage((root) => root.video);
-  const playerStorage = useStorage((root) => root.player);
-  const playerStorageRef = useRef(playerStorage);
-  useEffect(() => {
-    playerStorageRef.current = playerStorage;
-  }, [playerStorage]);
-
-  const { emitLocal, lastAppliedTsRef } = useSyncChannel({ userId, source: "VIMEO" });
+  const channel = useSyncChannel({ userId, source: "VIMEO" });
+  const { emitLocal, skewRef, playerStorageRef } = channel;
 
   const playerRef = useRef<VimeoPlayer | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -96,8 +89,6 @@ export function useVimeoSync({
   const buildTokenRef = useRef(0);
   const isApplyingRemoteRef = useRef(false);
   const loadedVideoIdRef = useRef<string | null>(null);
-  // desvio de relógio estimado por ator e maior `ts` já aplicado (last-write-wins)
-  const skewRef = useRef<SkewSamples>({});
   // A resolução é aplicada por efeitos próprios; mantê-la fora das deps do
   // efeito de criação abaixo é o que impede alternar 720p/480p de RECARREGAR o
   // vídeo (e de deixar `isReady` preso em false no meio do caminho).
@@ -300,76 +291,43 @@ export function useVimeoSync({
     }
   }, [targetResolution]);
 
-  useEventListener(({ event }) => {
-    // O payload chega de outro cliente e vira `setCurrentTime` direto: passa
-    // por validação de formato antes de qualquer coisa (lib/playback/events).
-    const parsed = parsePlayerEvent(event);
-    if (!parsed) return;
-
-    // Alimenta a estimativa de desvio de relógio com o `ts` do remetente.
-    skewRef.current = updateSkew(skewRef.current, parsed.actorId, parsed.ts, Date.now());
-
-    const player = playerRef.current;
-    if (!player) return;
-
-    if (
-      !shouldApplyPlayerEvent(parsed, {
-        selfId: userId,
-        localSource: "VIMEO",
-        lastAppliedTs: lastAppliedTsRef.current,
-      })
-    ) {
-      return;
-    }
-    lastAppliedTsRef.current = parsed.ts;
-
-    if (parsed.type === "PLAY") {
-      applyRemote(async () => {
-        await player.setCurrentTime(parsed.time);
-        await player.play();
-        setIsPlayingLocal(true);
-      });
-    } else if (parsed.type === "PAUSE") {
-      applyRemote(async () => {
-        await player.setCurrentTime(parsed.time);
-        await player.pause();
-        setIsPlayingLocal(false);
-      });
-    } else if (parsed.type === "SEEK") {
-      applyRemote(() => player.setCurrentTime(parsed.time));
-      setCurrentTime(parsed.time);
-    }
+  useRemotePlayerEvents(channel, {
+    isAttached: () => playerRef.current !== null,
+    apply: (parsed) => {
+      const player = playerRef.current!;
+      if (parsed.type === "PLAY") {
+        applyRemote(async () => {
+          await player.setCurrentTime(parsed.time);
+          await player.play();
+          setIsPlayingLocal(true);
+        });
+      } else if (parsed.type === "PAUSE") {
+        applyRemote(async () => {
+          await player.setCurrentTime(parsed.time);
+          await player.pause();
+          setIsPlayingLocal(false);
+        });
+      } else if (parsed.type === "SEEK") {
+        applyRemote(() => player.setCurrentTime(parsed.time));
+        setCurrentTime(parsed.time);
+      }
+    },
   });
 
   // drift correction — só pra quem não é o dono da última ação (o dono já
   // está coberto pelos eventos nativos play/pause/seeked acima).
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      const player = playerRef.current;
-      const snapshot = playerStorageRef.current;
-      if (!player || !snapshot || !isReady) return;
-      if (isApplyingRemoteRef.current) return;
-      if (snapshot.lastActorId === userId) return;
-
-      player.getCurrentTime().then((localTime) => {
-        const { time: expected, stale } = expectedPlaybackTime(
-          snapshot,
-          // Lido da store no instante do tick, não de um `duration` capturado
-          // no render: com o estado fora do React, um valor de closure ficaria
-          // congelado e o clamp por duração pararia de valer.
-          getPlaybackSnapshot().duration,
-          skewFor(skewRef.current, snapshot.lastActorId),
-        );
-        if (stale) return; // snapshot abandonado: não arrasta ninguém
-        if (Math.abs(localTime - expected) > DRIFT_THRESHOLD_NATIVE_S) {
-          applyRemote(() => player.setCurrentTime(expected));
-        }
-      });
-    }, CHECK_INTERVAL_MS);
-
-    return () => window.clearInterval(interval);
-    // `duration` sai das deps de propósito: lido da store dentro do tick.
-  }, [isReady, userId, applyRemote]);
+  useDriftCheck(channel, {
+    isReady,
+    thresholdS: DRIFT_THRESHOLD_NATIVE_S,
+    isApplyingRemoteRef,
+    applyRemote,
+    readTime: () => playerRef.current?.getCurrentTime() ?? null,
+    // Lido da store no instante do tick, não de um `duration` capturado
+    // no render: com o estado fora do React, um valor de closure ficaria
+    // congelado e o clamp por duração pararia de valer.
+    getDuration: () => getPlaybackSnapshot().duration,
+    seekTo: (expected) => playerRef.current?.setCurrentTime(expected),
+  });
 
   // controles imperativos — chamados pela nossa própria barra (chrome nativo
   // do Vimeo fica escondido via controls:false). Os listeners 'play'/'pause'
