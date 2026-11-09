@@ -2,9 +2,6 @@
 # Gate de verificação do RockNCine — fonte canônica.
 #
 # É o que `npm run gate` executa e o que o CI roda a cada push/PR.
-# A skill `.commandcode/skills/quality-gate/` referencia este arquivo; ele mora
-# aqui (e não dentro da skill) porque `.commandcode/` é local e não vai para o
-# repositório — se o script vivesse lá, o CI quebraria num clone limpo.
 #
 # Roda, na ordem que funciona neste repo:
 #   next typegen -> tsc --noEmit -> eslint . -> vitest run -> next build

@@ -39,6 +39,10 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-Frame-Options", value: "DENY" },
   {
+    key: "Content-Security-Policy",
+    value: "base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'",
+  },
+  {
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
   },

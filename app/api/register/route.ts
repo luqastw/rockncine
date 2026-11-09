@@ -18,11 +18,23 @@ export async function POST(req: Request) {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "email inválido." }, { status: 400 });
   }
+  if (email.length > 254) {
+    return NextResponse.json({ error: "email inválido." }, { status: 400 });
+  }
   if (password.length < 8) {
     return NextResponse.json(
       { error: "senha precisa de ao menos 8 caracteres." },
       { status: 400 },
     );
+  }
+  if (Buffer.byteLength(password, "utf8") > 72) {
+    return NextResponse.json(
+      { error: "senha deve ter no máximo 72 bytes." },
+      { status: 400 },
+    );
+  }
+  if (name && name.length > 80) {
+    return NextResponse.json({ error: "nome deve ter no máximo 80 caracteres." }, { status: 400 });
   }
 
   // caminho rápido só para não pagar bcrypt em email já cadastrado. Quem

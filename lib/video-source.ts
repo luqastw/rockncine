@@ -84,6 +84,7 @@ async function resolveVimeo(rawUrl: string, idFromUrl: string): Promise<string> 
   try {
     const res = await fetch(
       `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(rawUrl)}`,
+      { signal: AbortSignal.timeout(5_000) },
     );
     if (!res.ok) return idFromUrl; // fallback: usa o id já extraído da URL
     const data: { html?: string } = await res.json();

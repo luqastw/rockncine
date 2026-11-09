@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { checkRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 
 export const authOptions: AuthOptions = {
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 14 },
   pages: {
     signIn: "/login",
   },
