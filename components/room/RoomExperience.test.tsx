@@ -247,7 +247,7 @@ async function iniciarCompleto() {
   vi.stubGlobal("open", vi.fn());
   mocks.setScreenShareEnabled.mockResolvedValue({});
   renderRoom();
-  fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
+  fireEvent.click(screen.getByRole("button", { name: "transmitir tela" }));
   await waitFor(() => expect(mocks.setScreenShareEnabled).toHaveBeenCalled());
   const [ligado, captura, publicacao] = mocks.setScreenShareEnabled.mock.calls[0];
   return {
@@ -411,7 +411,7 @@ describe("botão de transmissão (FR-009, FR-010, AC-004, AC-005)", () => {
   it("sem transmissão, o botão está habilitado e é o de iniciar", () => {
     renderRoom();
 
-    const button = screen.getByRole("button", { name: "iniciar transmissão de tela" });
+    const button = screen.getByRole("button", { name: "transmitir tela" });
     expect((button as HTMLButtonElement).disabled).toBe(false);
   });
 
@@ -421,7 +421,7 @@ describe("botão de transmissão (FR-009, FR-010, AC-004, AC-005)", () => {
     renderRoom();
 
     expect(screen.getByRole("button", { name: "parar transmissão" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "iniciar transmissão de tela" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "transmitir tela" })).toBeNull();
   });
 });
 
@@ -438,7 +438,7 @@ describe("iniciar transmissão (FR-006, FR-007, FR-008)", () => {
     });
 
     renderRoom();
-    fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
+    fireEvent.click(screen.getByRole("button", { name: "transmitir tela" }));
     await waitFor(() => expect(ordem).toHaveLength(2));
 
     expect(open).toHaveBeenCalledWith("https://youtu.be/dQw4w9WgXcQ", "_blank", "noopener");
@@ -452,7 +452,7 @@ describe("iniciar transmissão (FR-006, FR-007, FR-008)", () => {
     mocks.setScreenShareEnabled.mockResolvedValue({});
 
     renderRoom();
-    fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
+    fireEvent.click(screen.getByRole("button", { name: "transmitir tela" }));
 
     await waitFor(() => {
       const write = mocks.writes.find(([key]) => key === "broadcast");
@@ -474,7 +474,7 @@ describe("iniciar transmissão (FR-006, FR-007, FR-008)", () => {
     mocks.setScreenShareEnabled.mockRejectedValue(negado());
 
     renderRoom();
-    fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
+    fireEvent.click(screen.getByRole("button", { name: "transmitir tela" }));
 
     expect(
       await screen.findByText("a captura de tela foi cancelada ou negada."),
@@ -1038,7 +1038,7 @@ describe("falha depois da captura concedida", () => {
     mocks.setScreenShareEnabled.mockRejectedValueOnce(falha);
 
     renderRoom();
-    fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
+    fireEvent.click(screen.getByRole("button", { name: "transmitir tela" }));
 
     expect(await screen.findByText(/não conseguiu publicar/i)).toBeTruthy();
     // A distinction que faltava: cancelamento é do usuário, esta falha é nossa.
@@ -1056,7 +1056,7 @@ describe("falha depois da captura concedida", () => {
     mocks.setScreenShareEnabled.mockRejectedValueOnce(falha);
 
     renderRoom();
-    fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
+    fireEvent.click(screen.getByRole("button", { name: "transmitir tela" }));
 
     await waitFor(() => {
       expect(mocks.setScreenShareEnabled).toHaveBeenCalledWith(false);
@@ -1071,7 +1071,7 @@ describe("falha depois da captura concedida", () => {
     mocks.setScreenShareEnabled.mockRejectedValueOnce(negado());
 
     renderRoom();
-    fireEvent.click(screen.getByRole("button", { name: "iniciar transmissão de tela" }));
+    fireEvent.click(screen.getByRole("button", { name: "transmitir tela" }));
 
     expect(await screen.findByText("a captura de tela foi cancelada ou negada.")).toBeTruthy();
     expect(mocks.setScreenShareEnabled).not.toHaveBeenCalledWith(false);

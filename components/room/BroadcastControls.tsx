@@ -154,14 +154,19 @@ export function BroadcastControls({
 
   // FR-003/FR-017/FR-019 compartilham a mesma escrita: "não há transmissão" é um
   // único estado, alcançado por botão, por `track.onended` e por saída da sala.
-  const clearBroadcast = useMutation(({ storage }) => {
-    storage.set("broadcast", null);
-  }, []);
+  const clearBroadcast = useMutation(
+    ({ storage }) => {
+      const current = storage.get("broadcast");
+      if (current && current.broadcasterId !== userId) return;
+      storage.set("broadcast", null);
+    },
+    [userId],
+  );
 
   // Devolve a promise para que quem chama possa esperar o desligamento. A
   // captura que sobra é o pior estado possível desta feature — o SO continua
   // enviando a tela e o app não diz nada — então a limpeza na falha precisa
-  //aguardar, não disparar e seguir.
+  // aguardar, não disparar e seguir.
   const stopScreenShare = useCallback(async () => {
     try {
       await localParticipant.setScreenShareEnabled(false);
@@ -230,7 +235,7 @@ export function BroadcastControls({
       // segurando nitidez e dropping frames. O próprio Livekit força `motion` em
       // screen share porque o caminho `detail` é "untested/buggy".
       //
-      // A qualidade, essa sim, éResolution/bitrate — a alavanca certa para
+      // A qualidade, essa sim, é resolução/bitrate — a alavanca certa para
       // banda apertada, e por isso uma escolha do host (lib/broadcast-quality.ts).
       //
       // `resolution` sem valor explícito vira `ScreenSharePresets.h1080fps30`
@@ -438,7 +443,7 @@ export function BroadcastControls({
               ? blockedReason
               : busy
                 ? "abrindo o seletor de tela"
-                : "iniciar transmissão de tela"
+                : "transmitir tela"
         }
         aria-busy={busy || undefined}
         className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--ink-muted)] px-3 py-2 text-body-sm text-[var(--ink)] transition-colors duration-150 hover:border-[var(--ink)] hover:bg-[var(--fill-1)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)] disabled:cursor-not-allowed disabled:border-[var(--line)] disabled:text-[var(--ink-muted)]"

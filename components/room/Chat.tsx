@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMyPresence, useOthers, useStatus } from "@liveblocks/react";
 import { useChat } from "@/hooks/useChat";
 import { useChatFeed } from "@/hooks/useChatFeed";
@@ -318,6 +318,7 @@ function EmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const panelId = useId();
 
   const close = useCallback((devolverFoco: boolean) => {
     setOpen(false);
@@ -352,7 +353,7 @@ function EmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
-        aria-haspopup="true"
+        aria-controls={open ? panelId : undefined}
         aria-label="emoji"
         className="flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--ink-muted)] text-base text-[var(--ink)] hover:border-[var(--ink)] hover:bg-[var(--fill-1)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
@@ -361,6 +362,7 @@ function EmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
       {open && (
         <div
           ref={panelRef}
+          id={panelId}
           role="group"
           aria-label="emojis"
           // `bottom-full` acima do botão: o popover abre para dentro da área do
@@ -679,7 +681,7 @@ export const Chat = memo(function Chat({
               anuncia "bruno está digitando" a cada tecla que o bruno dá — o log
               é a conversa, não o status de quem está com o dedo no teclado. Um
               descendente com `aria-live="off"` é a forma documentada de ficar
-              fora das Dream Reader Notification. */}
+              fora das notificações do leitor de tela. */}
           {typingNames.length > 0 && (
             <li
               aria-live="off"
