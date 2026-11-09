@@ -12,13 +12,17 @@ import {
 import {
   getPlaybackSnapshot,
   resetPlaybackClock,
-  setPlayback,
 } from "@/hooks/usePlaybackClock";
 import {
   expectedPlaybackTime,
   DRIFT_THRESHOLD_NATIVE_S,
   CHECK_INTERVAL_MS,
-  type PlaybackController,
+  usePlaybackController,
+  setIsPlayingLocal,
+  setCurrentTime,
+  setDuration,
+  setVolumeLocal,
+  setIsMutedLocal,
 } from "@/hooks/playerController";
 import { parsePlayerEvent, shouldApplyPlayerEvent } from "@/lib/playback/events";
 import { skewFor, updateSkew, type SkewSamples } from "@/lib/playback/clock";
@@ -112,11 +116,6 @@ export function useVimeoSync({
   // subárvore inteira — chat com 30 itens, presença, sync ring — quatro vezes
   // por segundo, sem nada naqueles componentes ter mudado. Ver
   // `hooks/usePlaybackClock.ts`.
-  const setIsPlayingLocal = useCallback((isPlaying: boolean) => setPlayback({ isPlaying }), []);
-  const setCurrentTime = useCallback((currentTime: number) => setPlayback({ currentTime }), []);
-  const setDuration = useCallback((duration: number) => setPlayback({ duration }), []);
-  const setVolumeLocal = useCallback((volume: number) => setPlayback({ volume }), []);
-  const setIsMutedLocal = useCallback((isMuted: boolean) => setPlayback({ isMuted }), []);
 
   // Zera o relógio ao desmontar: a store é de módulo e sobrevive à sala.
   useEffect(() => resetPlaybackClock, []);
@@ -455,7 +454,7 @@ export function useVimeoSync({
       });
       broadcast(evt);
     },
-    [userId, commitPlayer, broadcast, applyRemote, setCurrentTime],
+    [userId, commitPlayer, broadcast, applyRemote],
   );
 
   const setVolume = useCallback(
@@ -467,7 +466,7 @@ export function useVimeoSync({
         setIsMutedLocal(false);
       }
     },
-    [setVolumeLocal, setIsMutedLocal],
+    [],
   );
 
   const toggleMute = useCallback(() => {
@@ -476,29 +475,10 @@ export function useVimeoSync({
     const next = !getPlaybackSnapshot().isMuted;
     player.setMuted(next);
     setIsMutedLocal(next);
-  }, [setIsMutedLocal]);
+  }, []);
 
-  // Campos de estado como GETTERS sobre a store, não valores copiados: a
-  // leitura imperativa (teclado, drift correction) tem que ver o valor do
-  // instante da chamada, e quem precisa REAGIR assina a store por hook.
-  // Ver `hooks/usePlaybackClock.ts`.
-  const controller: PlaybackController = {
+  const controller = usePlaybackController({
     isReady,
-    get isPlaying() {
-      return getPlaybackSnapshot().isPlaying;
-    },
-    get currentTime() {
-      return getPlaybackSnapshot().currentTime;
-    },
-    get duration() {
-      return getPlaybackSnapshot().duration;
-    },
-    get volume() {
-      return getPlaybackSnapshot().volume;
-    },
-    get isMuted() {
-      return getPlaybackSnapshot().isMuted;
-    },
     error,
     resolution: targetResolution,
     fpsLimit: "auto",
@@ -508,7 +488,7 @@ export function useVimeoSync({
     seek,
     setVolume,
     toggleMute,
-  };
+  });
 
   return { isReady, error, controller };
 }

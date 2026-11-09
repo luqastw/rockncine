@@ -1,4 +1,5 @@
 import type { FpsLimit, Resolution } from "@/lib/playback/types";
+import { getPlaybackSnapshot, setPlayback } from "@/hooks/usePlaybackClock";
 
 // Formato comum que todo hook de sync (YouTube/Vimeo/mídia nativa) retorna —
 // PlayerControls não sabe qual backend está por trás, só chama esses métodos.
@@ -76,3 +77,61 @@ export type PlaybackController = {
   setVolume: (v: number) => void;
   toggleMute: () => void;
 };
+
+export const setIsPlayingLocal = (isPlaying: boolean) => setPlayback({ isPlaying });
+export const setCurrentTime = (currentTime: number) => setPlayback({ currentTime });
+export const setDuration = (duration: number) => setPlayback({ duration });
+export const setVolumeLocal = (volume: number) => setPlayback({ volume });
+export const setIsMutedLocal = (isMuted: boolean) => setPlayback({ isMuted });
+
+type ControllerParts = Pick<
+  PlaybackController,
+  | "isReady"
+  | "error"
+  | "resolution"
+  | "fpsLimit"
+  | "play"
+  | "pause"
+  | "togglePlay"
+  | "seek"
+  | "setVolume"
+  | "toggleMute"
+>;
+
+// Os campos de estado são GETTERS sobre a store, não valores copiados.
+//
+// É o que mantém a leitura correta sem re-render: `controller.currentTime`
+// usado pelo handler de teclado ou pelo drift correction tem que ser o valor
+// do instante da chamada, e um valor copiado no render carregaria o
+// playhead de até 4 Hz atrás. O componente que precisa REAGIR ao valor
+// assina a store por hook (`useCurrentTime` / `usePlaybackState`), não por
+// este objeto — ver `hooks/usePlaybackClock.ts`.
+export function usePlaybackController(parts: ControllerParts): PlaybackController {
+  return {
+    isReady: parts.isReady,
+    get isPlaying() {
+      return getPlaybackSnapshot().isPlaying;
+    },
+    get currentTime() {
+      return getPlaybackSnapshot().currentTime;
+    },
+    get duration() {
+      return getPlaybackSnapshot().duration;
+    },
+    get volume() {
+      return getPlaybackSnapshot().volume;
+    },
+    get isMuted() {
+      return getPlaybackSnapshot().isMuted;
+    },
+    error: parts.error,
+    resolution: parts.resolution,
+    fpsLimit: parts.fpsLimit,
+    play: parts.play,
+    pause: parts.pause,
+    togglePlay: parts.togglePlay,
+    seek: parts.seek,
+    setVolume: parts.setVolume,
+    toggleMute: parts.toggleMute,
+  };
+}

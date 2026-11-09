@@ -7,7 +7,6 @@ import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
 import {
   getPlaybackSnapshot,
   resetPlaybackClock,
-  setPlayback,
 } from "@/hooks/usePlaybackClock";
 import {
   expectedPlaybackTime,
@@ -15,7 +14,12 @@ import {
   CHECK_INTERVAL_MS,
   SEEK_WHILE_PAUSED_THRESHOLD_S,
   REMOTE_APPLY_COOLDOWN_MS,
-  type PlaybackController,
+  usePlaybackController,
+  setIsPlayingLocal,
+  setCurrentTime,
+  setDuration,
+  setVolumeLocal,
+  setIsMutedLocal,
 } from "@/hooks/playerController";
 import { parsePlayerEvent, shouldApplyPlayerEvent } from "@/lib/playback/events";
 import { skewFor, updateSkew, type SkewSamples } from "@/lib/playback/clock";
@@ -79,11 +83,6 @@ export function useYouTubeSync({
   //
   // `isReady` e `error` continuam em `useState`: mudam em transições, não em
   // fluxo, e `RoomExperience` precisa deles no render para escolher a tela.
-  const setIsPlayingLocal = useCallback((isPlaying: boolean) => setPlayback({ isPlaying }), []);
-  const setCurrentTime = useCallback((currentTime: number) => setPlayback({ currentTime }), []);
-  const setDuration = useCallback((duration: number) => setPlayback({ duration }), []);
-  const setVolumeLocal = useCallback((volume: number) => setPlayback({ volume }), []);
-  const setIsMutedLocal = useCallback((isMuted: boolean) => setPlayback({ isMuted }), []);
 
   // Zera o relógio ao desmontar: a store é de módulo e sobrevive à sala.
   useEffect(() => resetPlaybackClock, []);
@@ -365,7 +364,7 @@ export function useYouTubeSync({
       }
     }, TIME_POLL_MS);
     return () => window.clearInterval(interval);
-  }, [isReady, setCurrentTime, setDuration]);
+  }, [isReady]);
 
   // drift correction (seguidores) + detecção de seek-enquanto-pausado (quem controla)
   useEffect(() => {
@@ -465,7 +464,7 @@ export function useYouTubeSync({
       });
       broadcast(evt);
     },
-    [userId, commitPlayer, broadcast, setCurrentTime],
+    [userId, commitPlayer, broadcast],
   );
 
   const setVolume = useCallback(
@@ -477,7 +476,7 @@ export function useYouTubeSync({
         setIsMutedLocal(false);
       }
     },
-    [setVolumeLocal, setIsMutedLocal],
+    [],
   );
 
   const toggleMute = useCallback(() => {
@@ -491,29 +490,10 @@ export function useYouTubeSync({
       player.mute();
       setIsMutedLocal(true);
     }
-  }, [setIsMutedLocal]);
+  }, []);
 
-  // Campos de estado como GETTERS sobre a store, não valores copiados: a
-  // leitura imperativa (teclado, drift correction) tem que ver o valor do
-  // instante da chamada, e quem precisa REAGIR assina a store por hook.
-  // Ver `hooks/usePlaybackClock.ts`.
-  const controller: PlaybackController = {
+  const controller = usePlaybackController({
     isReady,
-    get isPlaying() {
-      return getPlaybackSnapshot().isPlaying;
-    },
-    get currentTime() {
-      return getPlaybackSnapshot().currentTime;
-    },
-    get duration() {
-      return getPlaybackSnapshot().duration;
-    },
-    get volume() {
-      return getPlaybackSnapshot().volume;
-    },
-    get isMuted() {
-      return getPlaybackSnapshot().isMuted;
-    },
     error,
     play,
     pause,
@@ -521,10 +501,9 @@ export function useYouTubeSync({
     seek,
     setVolume,
     toggleMute,
-    // o YouTube decide a qualidade sozinho — não há nível para nós limitarmos
     resolution: null,
     fpsLimit: "auto",
-  };
+  });
 
   return { isReady, error, controller };
 }

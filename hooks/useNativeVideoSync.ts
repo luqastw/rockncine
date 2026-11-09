@@ -5,9 +5,7 @@ import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@l
 import { isHlsUrl } from "@/lib/video-source";
 import { HLS_MODULE, setMaxBufferLength, type Hls, type HlsStatic } from "@/lib/hls";
 import {
-  getPlaybackSnapshot,
   resetPlaybackClock,
-  setPlayback,
 } from "@/hooks/usePlaybackClock";
 import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
 import {
@@ -15,7 +13,12 @@ import {
   DRIFT_THRESHOLD_NATIVE_S,
   CHECK_INTERVAL_MS,
   REMOTE_APPLY_COOLDOWN_MS,
-  type PlaybackController,
+  usePlaybackController,
+  setIsPlayingLocal,
+  setCurrentTime,
+  setDuration,
+  setVolumeLocal,
+  setIsMutedLocal,
 } from "@/hooks/playerController";
 import { parsePlayerEvent, shouldApplyPlayerEvent } from "@/lib/playback/events";
 import { skewFor, updateSkew, type SkewSamples } from "@/lib/playback/clock";
@@ -82,11 +85,6 @@ export function useNativeVideoSync({
   // `isReady` e `error` continuam em `useState`: mudam em transições, não em
   // fluxo, e `RoomExperience` precisa do valor no render para escolher a tela
   // do player.
-  const setIsPlayingLocal = useCallback((isPlaying: boolean) => setPlayback({ isPlaying }), []);
-  const setCurrentTime = useCallback((currentTime: number) => setPlayback({ currentTime }), []);
-  const setDuration = useCallback((duration: number) => setPlayback({ duration }), []);
-  const setVolumeLocal = useCallback((volume: number) => setPlayback({ volume }), []);
-  const setIsMutedLocal = useCallback((isMuted: boolean) => setPlayback({ isMuted }), []);
 
   const applyRemote = useCallback((fn: () => void) => {
     isApplyingRemoteRef.current = true;
@@ -360,11 +358,6 @@ export function useNativeVideoSync({
     commitPlayer,
     broadcast,
     applyRemote,
-    setCurrentTime,
-    setDuration,
-    setVolumeLocal,
-    setIsMutedLocal,
-    setIsPlayingLocal,
   ]);
 
   useEffect(() => {
@@ -530,31 +523,8 @@ export function useNativeVideoSync({
   // conseguir clicar em qualquer coisa.
   const canCapResolution = isHlsUrl(video?.embedUrl ?? "") && hlsSupported === true;
 
-  // Os campos de estado são GETTERS sobre a store, não valores copiados.
-  //
-  // É o que mantém a leitura correta sem re-render: `controller.currentTime`
-  // usado pelo handler de teclado ou pelo drift correction tem que ser o valor
-  // do instante da chamada, e um valor copiado no render carregaria o
-  // playhead de até 4 Hz atrás. O componente que precisa REAGIR ao valor
-  // assina a store por hook (`useCurrentTime` / `usePlaybackState`), não por
-  // este objeto — ver `hooks/usePlaybackClock.ts`.
-  const controller: PlaybackController = {
+  const controller = usePlaybackController({
     isReady,
-    get isPlaying() {
-      return getPlaybackSnapshot().isPlaying;
-    },
-    get currentTime() {
-      return getPlaybackSnapshot().currentTime;
-    },
-    get duration() {
-      return getPlaybackSnapshot().duration;
-    },
-    get volume() {
-      return getPlaybackSnapshot().volume;
-    },
-    get isMuted() {
-      return getPlaybackSnapshot().isMuted;
-    },
     error,
     resolution: canCapResolution ? targetResolution : null,
     fpsLimit,
@@ -564,7 +534,7 @@ export function useNativeVideoSync({
     seek,
     setVolume,
     toggleMute,
-  };
+  });
 
   return { isReady, error, controller };
 }
