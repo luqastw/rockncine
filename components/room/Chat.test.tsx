@@ -551,6 +551,24 @@ describe("Chat — indicador de digitação", () => {
     vi.useRealTimers();
   });
 
+  it("desmontar digitando grava typing:false na presence", () => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    const { unmount } = renderChat();
+    act(() => {
+      fireEvent.change(field(), { target: { value: "oi" } });
+    });
+    expect(mocks.updateMyPresence).toHaveBeenLastCalledWith({ typing: true });
+    unmount();
+    expect(mocks.updateMyPresence).toHaveBeenLastCalledWith({ typing: false });
+    vi.useRealTimers();
+  });
+
+  it("desmontar sem ter digitado não escreve presence", () => {
+    const { unmount } = renderChat();
+    unmount();
+    expect(mocks.updateMyPresence).not.toHaveBeenCalled();
+  });
+
   it("enviar desliga o indicador na hora", () => {
     vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
     renderChat();
