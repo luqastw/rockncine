@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStorage } from "@liveblocks/react";
 import { loadYouTubeIframeApi } from "@/lib/youtube-iframe";
+import { useApplyRemote } from "@/hooks/useApplyRemote";
 import { useDriftCheck, useRemotePlayerEvents, useSyncChannel } from "@/hooks/useSyncChannel";
 import {
   getPlaybackSnapshot,
@@ -55,7 +56,6 @@ export function useYouTubeSync({
   const playerRef = useRef<YT.Player | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isApplyingRemoteRef = useRef(false);
   const loadedVideoIdRef = useRef<string | null>(null);
 
   // Estado do player vai para a store externa (`usePlaybackClock`), não para
@@ -75,13 +75,7 @@ export function useYouTubeSync({
 
   // YouTube IFrame API não retorna Promise — timeout de fallback (1500ms)
   // garante que o flag não fica preso se onStateChange não disparar (spec 08, CA1.2).
-  const applyRemote = useCallback((fn: () => void) => {
-    isApplyingRemoteRef.current = true;
-    fn();
-    window.setTimeout(() => {
-      isApplyingRemoteRef.current = false;
-    }, REMOTE_APPLY_COOLDOWN_MS);
-  }, []);
+  const { applyRemote, isApplyingRemoteRef } = useApplyRemote({ cooldownMs: REMOTE_APPLY_COOLDOWN_MS });
 
   // Desligar legenda e LIGAR legenda são dois casos, e o de desligar é o que
   // exige os reforços:

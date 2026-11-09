@@ -279,7 +279,7 @@ describe("useVimeoSync: eventos remotos e eco", () => {
     expect(lb.broadcast).toHaveBeenCalledTimes(1);
   });
 
-  it("BUG: ação local enquanto a aplicação remota está pendente é descartada", async () => {
+  it("ação local enquanto a aplicação remota está pendente é descartada", async () => {
     await mount();
     const gate = deferred();
     player().setCurrentTime.mockReturnValueOnce(gate.promise);
@@ -291,7 +291,7 @@ describe("useVimeoSync: eventos remotos e eco", () => {
     expect(getPlaybackSnapshot().isPlaying).toBe(false);
   });
 
-  it("BUG: applyRemote não rastreia a chamada anterior e a flag zera quando a primeira promessa resolve", async () => {
+  it("applyRemote rastreia a chamada mais recente: a flag só zera quando a última promessa resolve", async () => {
     await mount();
     const first = deferred();
     const second = deferred();
@@ -302,7 +302,12 @@ describe("useVimeoSync: eventos remotos e eco", () => {
     first.resolve();
     await flush();
     fire("pause", { seconds: 31 });
+    expect(lb.commits).toEqual([]);
+    expect(lb.broadcast).not.toHaveBeenCalled();
 
+    second.resolve();
+    await flush();
+    fire("pause", { seconds: 32 });
     expect(lb.commits).toHaveLength(1);
     expect(lb.broadcast).toHaveBeenCalledTimes(1);
   });

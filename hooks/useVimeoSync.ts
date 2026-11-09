@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStorage } from "@liveblocks/react";
+import { useApplyRemote } from "@/hooks/useApplyRemote";
 import { useDriftCheck, useRemotePlayerEvents, useSyncChannel } from "@/hooks/useSyncChannel";
 import {
   VIMEO_MODULE,
@@ -25,6 +26,8 @@ import {
 } from "@/hooks/playerController";
 import { skewFor } from "@/lib/playback/clock";
 import type { Resolution } from "@/lib/playback/types";
+
+const VIMEO_REMOTE_APPLY_FALLBACK_MS = 400;
 
 const RESOLUTION_MAX_HEIGHT: Record<Resolution, number> = {
   "720p": 720,
@@ -87,7 +90,6 @@ export function useVimeoSync({
   // o `import()` deixaria o player ser criado contra um container já
   // desmontado.
   const buildTokenRef = useRef(0);
-  const isApplyingRemoteRef = useRef(false);
   const loadedVideoIdRef = useRef<string | null>(null);
   // A resolução é aplicada por efeitos próprios; mantê-la fora das deps do
   // efeito de criação abaixo é o que impede alternar 720p/480p de RECARREGAR o
@@ -108,18 +110,10 @@ export function useVimeoSync({
 
   // API do Vimeo é baseada em Promise — o cooldown termina quando a promise
   // resolve, não num timeout fixo (evita reabrir a janela cedo demais).
-  const applyRemote = useCallback((fn: () => unknown) => {
-    isApplyingRemoteRef.current = true;
-    const result = fn();
-    const clear = () => {
-      isApplyingRemoteRef.current = false;
-    };
-    if (result && typeof (result as Promise<unknown>).then === "function") {
-      (result as Promise<unknown>).then(clear, clear);
-    } else {
-      window.setTimeout(clear, 400);
-    }
-  }, []);
+  const { applyRemote, isApplyingRemoteRef } = useApplyRemote({
+    cooldownMs: VIMEO_REMOTE_APPLY_FALLBACK_MS,
+    awaitPromise: true,
+  });
 
   useEffect(() => {
     targetResolutionRef.current = targetResolution;

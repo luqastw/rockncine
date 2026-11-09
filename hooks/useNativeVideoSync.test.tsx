@@ -288,7 +288,7 @@ describe("useNativeVideoSync: eventos remotos e eco", () => {
     expect(getPlaybackSnapshot().currentTime).toBe(70);
   });
 
-  it("BUG: ação local dentro do cooldown é descartada e nunca chega aos outros", async () => {
+  it("ação local dentro do cooldown é descartada e não chega aos outros", async () => {
     await mountReady();
     remote();
     tick(500);
@@ -300,7 +300,7 @@ describe("useNativeVideoSync: eventos remotos e eco", () => {
     expect(getPlaybackSnapshot().isPlaying).toBe(false);
   });
 
-  it("BUG: applyRemote não cancela o timeout anterior e a flag zera antes do cooldown da segunda chamada", async () => {
+  it("applyRemote cancela o timeout anterior: a flag segue ativa até o cooldown da segunda chamada", async () => {
     await mountReady();
     remote({ ts: NOW + 10 });
     tick(1000);
@@ -308,9 +308,23 @@ describe("useNativeVideoSync: eventos remotos e eco", () => {
 
     tick(600);
     domEvent("pause");
+    expect(lb.commits).toEqual([]);
+    expect(lb.broadcast).not.toHaveBeenCalled();
 
+    tick(900);
+    domEvent("pause");
     expect(lb.commits).toHaveLength(1);
     expect(lb.broadcast).toHaveBeenCalledTimes(1);
+  });
+
+  it("unmount cancela o timeout de cooldown pendente", async () => {
+    const hook = await mountReady();
+    remote();
+    const clearSpy = vi.spyOn(window, "clearTimeout");
+    hook.unmount();
+
+    expect(clearSpy).toHaveBeenCalled();
+    clearSpy.mockRestore();
   });
 
   it("segunda chamada de applyRemote ainda protege antes do primeiro timeout vencer", async () => {

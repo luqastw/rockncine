@@ -7,6 +7,7 @@ import { HLS_MODULE, setMaxBufferLength, type Hls, type HlsStatic } from "@/lib/
 import {
   resetPlaybackClock,
 } from "@/hooks/usePlaybackClock";
+import { useApplyRemote } from "@/hooks/useApplyRemote";
 import { useDriftCheck, useRemotePlayerEvents, useSyncChannel } from "@/hooks/useSyncChannel";
 import {
   expectedPlaybackTime,
@@ -56,7 +57,6 @@ export function useNativeVideoSync({
   // até haver resposta — que é o comportamento correto para um controle
   // inerte.
   const [hlsSupported, setHlsSupported] = useState<boolean | null>(null);
-  const isApplyingRemoteRef = useRef(false);
   const loadedUrlRef = useRef<string | null>(null);
   const targetResolutionRef = useRef(targetResolution);
   const fpsLimitRef = useRef(fpsLimit);
@@ -72,13 +72,7 @@ export function useNativeVideoSync({
   // fluxo, e `RoomExperience` precisa do valor no render para escolher a tela
   // do player.
 
-  const applyRemote = useCallback((fn: () => void) => {
-    isApplyingRemoteRef.current = true;
-    fn();
-    window.setTimeout(() => {
-      isApplyingRemoteRef.current = false;
-    }, REMOTE_APPLY_COOLDOWN_MS);
-  }, []);
+  const { applyRemote, isApplyingRemoteRef } = useApplyRemote({ cooldownMs: REMOTE_APPLY_COOLDOWN_MS });
 
   // Zera o relógio ao desmontar: a store é de módulo e sobrevive à sala.
   useEffect(() => resetPlaybackClock, []);
@@ -298,6 +292,7 @@ export function useNativeVideoSync({
   }, [
     playerStorageRef,
     skewRef,
+    isApplyingRemoteRef,
     video?.embedUrl,
     video?.loadedAt,
     emitLocal,
