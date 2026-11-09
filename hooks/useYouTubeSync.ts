@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@liveblocks/react";
+import { useEventListener, useStorage } from "@liveblocks/react";
 import { loadYouTubeIframeApi } from "@/lib/youtube-iframe";
-import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
+import { useSyncChannel } from "@/hooks/useSyncChannel";
 import {
   getPlaybackSnapshot,
   resetPlaybackClock,
@@ -57,11 +57,7 @@ export function useYouTubeSync({
     playerStorageRef.current = playerStorage;
   }, [playerStorage]);
 
-  const broadcast = useBroadcastEvent();
-
-  const commitPlayer = useMutation(({ storage }, player: RoomStorage["player"]) => {
-    storage.update({ player });
-  }, []);
+  const { emitLocal, lastAppliedTsRef } = useSyncChannel({ userId, source: "YOUTUBE" });
 
   const playerRef = useRef<YT.Player | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -70,7 +66,6 @@ export function useYouTubeSync({
   const loadedVideoIdRef = useRef<string | null>(null);
   // desvio de relógio estimado por ator e maior `ts` já aplicado (last-write-wins)
   const skewRef = useRef<SkewSamples>({});
-  const lastAppliedTsRef = useRef<number | null>(null);
 
   // Estado do player vai para a store externa (`usePlaybackClock`), não para
   // `useState` aqui dentro.
@@ -236,39 +231,9 @@ export function useYouTubeSync({
             if (!player) return;
 
             if (e.data === window.YT.PlayerState.PLAYING) {
-              const time = player.getCurrentTime();
-              const evt: PlayerEvent = {
-                type: "PLAY",
-                time,
-                source: "YOUTUBE",
-                actorId: userId,
-                ts: Date.now(),
-              };
-              lastAppliedTsRef.current = evt.ts;
-              commitPlayer({
-                isPlaying: true,
-                currentTime: time,
-                updatedAt: evt.ts,
-                lastActorId: userId,
-              });
-              broadcast(evt);
+              emitLocal("PLAY", player.getCurrentTime());
             } else if (e.data === window.YT.PlayerState.PAUSED) {
-              const time = player.getCurrentTime();
-              const evt: PlayerEvent = {
-                type: "PAUSE",
-                time,
-                source: "YOUTUBE",
-                actorId: userId,
-                ts: Date.now(),
-              };
-              lastAppliedTsRef.current = evt.ts;
-              commitPlayer({
-                isPlaying: false,
-                currentTime: time,
-                updatedAt: evt.ts,
-                lastActorId: userId,
-              });
-              broadcast(evt);
+              emitLocal("PAUSE", player.getCurrentTime());
             }
           },
         },
@@ -396,21 +361,7 @@ export function useYouTubeSync({
       const isPaused = player.getPlayerState() === window.YT.PlayerState.PAUSED;
 
       if (isOwner && isPaused && Math.abs(diff) > SEEK_WHILE_PAUSED_THRESHOLD_S) {
-        const evt: PlayerEvent = {
-          type: "SEEK",
-          time: localTime,
-          source: "YOUTUBE",
-          actorId: userId,
-          ts: Date.now(),
-        };
-        lastAppliedTsRef.current = evt.ts;
-        commitPlayer({
-          isPlaying: false,
-          currentTime: localTime,
-          updatedAt: evt.ts,
-          lastActorId: userId,
-        });
-        broadcast(evt);
+        emitLocal("SEEK", localTime, false);
         return;
       }
 
@@ -423,7 +374,7 @@ export function useYouTubeSync({
     // `duration` sai das deps de propósito: com o estado do player na store
     // externa, este efeito não re-assina a cada tick — e `expectedPlaybackTime`
     // já é clampado pela duração que o próprio player fornece.
-  }, [isReady, userId, commitPlayer, broadcast, applyRemote]);
+  }, [isReady, userId, emitLocal, applyRemote]);
 
   // controles imperativos — chamados pela nossa própria barra (chrome nativo
   // do YouTube fica escondido via controls:0/disablekb:1). Os listeners acima
@@ -448,23 +399,9 @@ export function useYouTubeSync({
       if (!player) return;
       player.seekTo(seconds, true);
       setCurrentTime(seconds);
-      const evt: PlayerEvent = {
-        type: "SEEK",
-        time: seconds,
-        source: "YOUTUBE",
-        actorId: userId,
-        ts: Date.now(),
-      };
-      lastAppliedTsRef.current = evt.ts;
-      commitPlayer({
-        isPlaying: player.getPlayerState() === window.YT.PlayerState.PLAYING,
-        currentTime: seconds,
-        updatedAt: evt.ts,
-        lastActorId: userId,
-      });
-      broadcast(evt);
+      emitLocal("SEEK", seconds, player.getPlayerState() === window.YT.PlayerState.PLAYING);
     },
-    [userId, commitPlayer, broadcast],
+    [emitLocal],
   );
 
   const setVolume = useCallback(

@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@liveblocks/react";
+import { useEventListener, useStorage } from "@liveblocks/react";
 import { isHlsUrl } from "@/lib/video-source";
 import { HLS_MODULE, setMaxBufferLength, type Hls, type HlsStatic } from "@/lib/hls";
 import {
   resetPlaybackClock,
 } from "@/hooks/usePlaybackClock";
-import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
+import { useSyncChannel } from "@/hooks/useSyncChannel";
 import {
   expectedPlaybackTime,
   DRIFT_THRESHOLD_NATIVE_S,
@@ -46,11 +46,7 @@ export function useNativeVideoSync({
     playerStorageRef.current = playerStorage;
   }, [playerStorage]);
 
-  const broadcast = useBroadcastEvent();
-
-  const commitPlayer = useMutation(({ storage }, player: RoomStorage["player"]) => {
-    storage.update({ player });
-  }, []);
+  const { emitLocal, lastAppliedTsRef } = useSyncChannel({ userId, source: "DIRECT_MEDIA" });
 
   const videoElRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -73,7 +69,6 @@ export function useNativeVideoSync({
   const fpsLimitRef = useRef(fpsLimit);
   // desvio de relógio estimado por ator e maior `ts` já aplicado (last-write-wins)
   const skewRef = useRef<SkewSamples>({});
-  const lastAppliedTsRef = useRef<number | null>(null);
 
   // Estado do player vai para a store externa (`usePlaybackClock`), não para
   // `useState` aqui dentro. A diferença é o efeito em cascata: `timeupdate` do
@@ -267,61 +262,19 @@ export function useNativeVideoSync({
       setIsPlayingLocal(true);
       setError(null);
       if (isApplyingRemoteRef.current) return;
-      const evt: PlayerEvent = {
-        type: "PLAY",
-        time: videoEl.currentTime,
-        source: "DIRECT_MEDIA",
-        actorId: userId,
-        ts: Date.now(),
-      };
-      lastAppliedTsRef.current = evt.ts;
-      commitPlayer({
-        isPlaying: true,
-        currentTime: videoEl.currentTime,
-        updatedAt: evt.ts,
-        lastActorId: userId,
-      });
-      broadcast(evt);
+      emitLocal("PLAY", videoEl.currentTime);
     };
 
     const onPause = () => {
       setIsPlayingLocal(false);
       if (isApplyingRemoteRef.current) return;
-      const evt: PlayerEvent = {
-        type: "PAUSE",
-        time: videoEl.currentTime,
-        source: "DIRECT_MEDIA",
-        actorId: userId,
-        ts: Date.now(),
-      };
-      lastAppliedTsRef.current = evt.ts;
-      commitPlayer({
-        isPlaying: false,
-        currentTime: videoEl.currentTime,
-        updatedAt: evt.ts,
-        lastActorId: userId,
-      });
-      broadcast(evt);
+      emitLocal("PAUSE", videoEl.currentTime);
     };
 
     const onSeeked = () => {
       setCurrentTime(videoEl.currentTime);
       if (isApplyingRemoteRef.current) return;
-      const evt: PlayerEvent = {
-        type: "SEEK",
-        time: videoEl.currentTime,
-        source: "DIRECT_MEDIA",
-        actorId: userId,
-        ts: Date.now(),
-      };
-      lastAppliedTsRef.current = evt.ts;
-      commitPlayer({
-        isPlaying: !videoEl.paused,
-        currentTime: videoEl.currentTime,
-        updatedAt: evt.ts,
-        lastActorId: userId,
-      });
-      broadcast(evt);
+      emitLocal("SEEK", videoEl.currentTime, !videoEl.paused);
     };
 
     const onTimeUpdate = () => setCurrentTime(videoEl.currentTime);
@@ -354,9 +307,7 @@ export function useNativeVideoSync({
   }, [
     video?.embedUrl,
     video?.loadedAt,
-    userId,
-    commitPlayer,
-    broadcast,
+    emitLocal,
     applyRemote,
   ]);
 

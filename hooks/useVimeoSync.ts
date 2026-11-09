@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useBroadcastEvent, useEventListener, useMutation, useStorage } from "@liveblocks/react";
-import type { PlayerEvent, RoomStorage } from "@/liveblocks.config";
+import { useEventListener, useStorage } from "@liveblocks/react";
+import { useSyncChannel } from "@/hooks/useSyncChannel";
 import {
   VIMEO_MODULE,
   type VimeoPlayer,
@@ -84,11 +84,7 @@ export function useVimeoSync({
     playerStorageRef.current = playerStorage;
   }, [playerStorage]);
 
-  const broadcast = useBroadcastEvent();
-
-  const commitPlayer = useMutation(({ storage }, player: RoomStorage["player"]) => {
-    storage.update({ player });
-  }, []);
+  const { emitLocal, lastAppliedTsRef } = useSyncChannel({ userId, source: "VIMEO" });
 
   const playerRef = useRef<VimeoPlayer | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -102,7 +98,6 @@ export function useVimeoSync({
   const loadedVideoIdRef = useRef<string | null>(null);
   // desvio de relógio estimado por ator e maior `ts` já aplicado (last-write-wins)
   const skewRef = useRef<SkewSamples>({});
-  const lastAppliedTsRef = useRef<number | null>(null);
   // A resolução é aplicada por efeitos próprios; mantê-la fora das deps do
   // efeito de criação abaixo é o que impede alternar 720p/480p de RECARREGAR o
   // vídeo (e de deixar `isReady` preso em false no meio do caminho).
@@ -264,53 +259,21 @@ export function useVimeoSync({
         const at = seconds ?? 0;
         setIsPlayingLocal(true);
         if (isApplyingRemoteRef.current) return;
-        const evt: PlayerEvent = {
-          type: "PLAY",
-          time: at,
-          source: "VIMEO",
-          actorId: userId,
-          ts: Date.now(),
-        };
-        lastAppliedTsRef.current = evt.ts;
-        commitPlayer({ isPlaying: true, currentTime: at, updatedAt: evt.ts, lastActorId: userId });
-        broadcast(evt);
+        emitLocal("PLAY", at);
       });
 
       player.on("pause", ({ seconds }) => {
         const at = seconds ?? 0;
         setIsPlayingLocal(false);
         if (isApplyingRemoteRef.current) return;
-        const evt: PlayerEvent = {
-          type: "PAUSE",
-          time: at,
-          source: "VIMEO",
-          actorId: userId,
-          ts: Date.now(),
-        };
-        lastAppliedTsRef.current = evt.ts;
-        commitPlayer({ isPlaying: false, currentTime: at, updatedAt: evt.ts, lastActorId: userId });
-        broadcast(evt);
+        emitLocal("PAUSE", at);
       });
 
       player.on("seeked", ({ seconds }) => {
         const at = seconds ?? 0;
         if (isApplyingRemoteRef.current) return;
         const base = playerStorageRef.current;
-        const evt: PlayerEvent = {
-          type: "SEEK",
-          time: at,
-          source: "VIMEO",
-          actorId: userId,
-          ts: Date.now(),
-        };
-        lastAppliedTsRef.current = evt.ts;
-        commitPlayer({
-          isPlaying: base?.isPlaying ?? false,
-          currentTime: at,
-          updatedAt: evt.ts,
-          lastActorId: userId,
-        });
-        broadcast(evt);
+        emitLocal("SEEK", at, base?.isPlaying ?? false);
       });
     })();
 
@@ -438,23 +401,9 @@ export function useVimeoSync({
       // piscava duas vezes).
       applyRemote(() => player.setCurrentTime(seconds));
       setCurrentTime(seconds);
-      const evt: PlayerEvent = {
-        type: "SEEK",
-        time: seconds,
-        source: "VIMEO",
-        actorId: userId,
-        ts: Date.now(),
-      };
-      lastAppliedTsRef.current = evt.ts;
-      commitPlayer({
-        isPlaying: getPlaybackSnapshot().isPlaying,
-        currentTime: seconds,
-        updatedAt: evt.ts,
-        lastActorId: userId,
-      });
-      broadcast(evt);
+      emitLocal("SEEK", seconds, getPlaybackSnapshot().isPlaying);
     },
-    [userId, commitPlayer, broadcast, applyRemote],
+    [emitLocal, applyRemote],
   );
 
   const setVolume = useCallback(
