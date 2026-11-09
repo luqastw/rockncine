@@ -224,18 +224,20 @@ describe("PATCH /rooms/[code]/video", () => {
     expect(mocks.roomUpdate).not.toHaveBeenCalled();
   });
 
-  it("o limite é por origem, não global", async () => {
-    const primeiro = "203.0.113.1";
+  it("o limite é por usuário, não por IP nem global", async () => {
+    members.push({ roomId: ROOM_ID, userId: OTHER_ID });
     for (let i = 0; i < 21; i++) {
-      await callPatch(CODE, { sourceUrl: "https://youtu.be/dQw4w9WgXcQ" }, { ip: primeiro });
+      await callPatch(CODE, { sourceUrl: "https://youtu.be/dQw4w9WgXcQ" }, { ip: "203.0.113.1" });
     }
 
+    mocks.getServerSession.mockResolvedValue({ user: { id: OTHER_ID } });
     const outro = await callPatch(
       CODE,
       { sourceUrl: "https://youtu.be/dQw4w9WgXcQ" },
-      { ip: "203.0.113.2" },
+      { ip: "203.0.113.1" },
     );
 
     expect(outro.status).toBe(200);
   });
+
 });

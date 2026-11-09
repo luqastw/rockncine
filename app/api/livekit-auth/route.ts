@@ -1,7 +1,7 @@
 import { AccessToken } from "livekit-server-sdk";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { findRoomForMember } from "@/lib/room-access";
 import { LIVEKIT_TOKEN_TTL, livekitCredentials } from "@/lib/livekit";
 
 // Credencial de transmissão por sala. Espelha `app/api/liveblocks-auth/route.ts`
@@ -36,16 +36,9 @@ export async function POST(req: Request) {
     return new Response("room inválida.", { status: 400 });
   }
 
-  const room = await prisma.room.findUnique({ where: { code: roomCode } });
-  if (!room) {
-    return new Response("sala não encontrada.", { status: 404 });
-  }
-
-  const membership = await prisma.roomMember.findUnique({
-    where: { roomId_userId: { roomId: room.id, userId: session.user.id } },
-  });
-  if (!membership) {
-    return new Response("não é membro desta sala.", { status: 403 });
+  const access = await findRoomForMember(roomCode, session.user.id);
+  if (!access.ok) {
+    return new Response(access.message, { status: access.status });
   }
 
   // A room do LiveKit é nomeada com o código da sala (FR-020): uma sala do

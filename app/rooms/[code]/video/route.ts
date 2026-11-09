@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveVideoUrl } from "@/lib/video-source";
 import { sameOrigin } from "@/lib/request";
-import { rateLimitRequest } from "@/lib/rate-limit";
+import { rateLimitUser } from "@/lib/rate-limit";
+import { findRoomForMember } from "@/lib/room-access";
 
 export async function PATCH(
   req: Request,
@@ -24,16 +25,7 @@ export async function PATCH(
     return NextResponse.json({ error: "não autenticado." }, { status: 401 });
   }
 
-  // `resolveVideoUrl` faz fetch de saída (o oEmbed do Vimeo) — exatamente o
-  // que o limite de `/api/resolve-embed` cobre. Esta rota chega na mesma
-  // operação por um caminho que estava sem limite: um membro autenticado
-  // batendo aqui em laço virava amplificador de requisições contra o Vimeo,
-  // com o rate limit do outro endpoint não valendo nada.
-  //
-  // O limite é por usuário, não por IP: a operação é autenticada, e o IP
-  // compartilhado de uma casa/escritório não deve esgotar o limite de todo
-  // mundo atrás do mesmo roteador.
-  const limited = rateLimitRequest(req, {
+  const limited = rateLimitUser(session.user.id, {
     scope: "room-video",
     limit: 20,
     windowMs: 60_000,
@@ -47,17 +39,11 @@ export async function PATCH(
     return NextResponse.json({ error: "payload inválido." }, { status: 400 });
   }
 
-  const room = await prisma.room.findUnique({ where: { code } });
-  if (!room) {
-    return NextResponse.json({ error: "sala não encontrada." }, { status: 404 });
+  const access = await findRoomForMember(code, session.user.id);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.message }, { status: access.status });
   }
-
-  const membership = await prisma.roomMember.findUnique({
-    where: { roomId_userId: { roomId: room.id, userId: session.user.id } },
-  });
-  if (!membership) {
-    return NextResponse.json({ error: "não é membro desta sala." }, { status: 403 });
-  }
+  const { room } = access;
 
   // `source`/`embedUrl` nunca são aceitos do client — eram gravados sem
   // nenhuma validação de conteúdo (achado 2, docs/specs/05-code-review-seguranca/spec.md), permitindo

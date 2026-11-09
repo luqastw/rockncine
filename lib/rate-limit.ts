@@ -86,3 +86,11 @@ export function rateLimitRequest(
   const result = checkRateLimit(`${scope}:${clientIpFromHeaders(req.headers)}`, { limit, windowMs });
   return result.allowed ? null : tooManyRequests(result.retryAfterSeconds);
 }
+
+export function rateLimitUser(
+  userId: string,
+  { scope, limit, windowMs }: { scope: string; limit: number; windowMs: number },
+): Response | null {
+  const result = checkRateLimit(`${scope}:user:${userId}`, { limit, windowMs });
+  return result.allowed ? null : tooManyRequests(result.retryAfterSeconds);
+}
