@@ -30,7 +30,7 @@ function motionAllowed(): boolean {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches !== true;
 }
 
-export function useStickyScroll(messages: ChatFeedItem[]) {
+export function useStickyScroll(messages: ChatFeedItem[], typingCount = 0) {
   const [hasNew, setHasNew] = useState(false);
   const [unreadId, setUnreadId] = useState<string | null>(null);
   const [scrolledUp, setScrolledUp] = useState(false);
@@ -89,6 +89,11 @@ export function useStickyScroll(messages: ChatFeedItem[]) {
 
     prevIdsRef.current = nextIds;
   }, [messages, markAsRead]);
+
+  useEffect(() => {
+    const list = listRef.current;
+    if (list && pinnedRef.current) scrollLogToEnd(list, "auto");
+  }, [typingCount]);
 
   const onScroll = useCallback(() => {
     const list = listRef.current;

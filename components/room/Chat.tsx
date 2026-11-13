@@ -36,9 +36,9 @@ export const Chat = memo(function Chat({
   const messages = useChatFeed(roomCode);
   const { sendMessage } = useChat({ userId, userName });
   const status = useStatus();
-  const { listRef, hasNew, unreadId, scrolledUp, goToLatest, onScroll, markSent, resetUnread } =
-    useStickyScroll(messages);
   const { marcarDigitando, pararDeDigitar, typingNames } = useTypingPresence(userId);
+  const { listRef, hasNew, unreadId, scrolledUp, goToLatest, onScroll, markSent, resetUnread } =
+    useStickyScroll(messages, typingNames.length);
 
   // O dia de hoje é lido do relógio no render, mas vira uma STRING que só muda
   // uma vez por dia — e é isso que o `DayDivider` memoizado compara. `Date.now()`
@@ -122,27 +122,7 @@ export const Chat = memo(function Chat({
               }}
             />
           )}
-          {/* Indicador de digitação (FR-030), só enquanto alguém digita.
-              `aria-live="off"` de propósito: o log é região `aria-live` com
-              `aria-relevant="additions"`, e sem esta linha o leitor de tela
-              anuncia "bruno está digitando" a cada tecla que o bruno dá — o log
-              é a conversa, não o status de quem está com o dedo no teclado. Um
-              descendente com `aria-live="off"` é a forma documentada de ficar
-              fora das notificações do leitor de tela. */}
-          {typingNames.length > 0 && (
-            <li
-              aria-live="off"
-              className="mb-1 flex items-center gap-2 text-caption text-[var(--ink-muted)]"
-            >
-              <span aria-hidden className="flex gap-0.5">
-                <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--ink-muted)]" />
-                <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--ink-muted)]" />
-                <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--ink-muted)]" />
-              </span>
-              {typingNames.join(", ")}
-              {typingNames.length === 1 ? " está digitando…" : " estão digitando…"}
-            </li>
-          )}
+          <li aria-hidden className="mt-auto" />
           {messages.length === 0 && (
             <li className="text-body-sm text-[var(--ink-muted)]">nenhuma mensagem ainda.</li>
           )}
@@ -165,6 +145,27 @@ export const Chat = memo(function Chat({
               />
             );
           })}
+          {/* Indicador de digitação (FR-030), só enquanto alguém digita.
+              `aria-live="off"` de propósito: o log é região `aria-live` com
+              `aria-relevant="additions"`, e sem esta linha o leitor de tela
+              anuncia "bruno está digitando" a cada tecla que o bruno dá — o log
+              é a conversa, não o status de quem está com o dedo no teclado. Um
+              descendente com `aria-live="off"` é a forma documentada de ficar
+              fora das notificações do leitor de tela. */}
+          {typingNames.length > 0 && (
+            <li
+              aria-live="off"
+              className="mt-1 flex items-center gap-2 text-caption text-[var(--ink-muted)]"
+            >
+              <span aria-hidden className="flex gap-0.5">
+                <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--ink-muted)]" />
+                <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--ink-muted)]" />
+                <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--ink-muted)]" />
+              </span>
+              {typingNames.join(", ")}
+              {typingNames.length === 1 ? " está digitando…" : " estão digitando…"}
+            </li>
+          )}
         </ul>
         {hasNew && (
           <button

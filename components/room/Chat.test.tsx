@@ -611,4 +611,27 @@ describe("Chat — indicador de digitação", () => {
     renderChat();
     expect(screen.queryByText(/digitando/)).toBeNull();
   });
+
+  it("o indicador de digitação fica depois da última mensagem, junto do campo", () => {
+    mocks.others = [{ presence: { userId: "b", name: "bruno", typing: true } }];
+    renderChat();
+    emitRemote({ text: "oi pessoal" });
+
+    const items = Array.from(log().querySelectorAll(":scope > li"));
+    const indicator = screen.getByText(/bruno está digitando/).closest("li");
+    const message = screen.getByText("oi pessoal").closest("li");
+
+    expect(items.at(-1)).toBe(indicator);
+    expect(items.indexOf(message as HTMLLIElement)).toBeLessThan(items.indexOf(indicator as HTMLLIElement));
+  });
+
+  it("as mensagens ficam encostadas no rodapé do log", () => {
+    renderChat();
+
+    const spacer = log().querySelector(':scope > li[aria-hidden="true"]');
+
+    expect(spacer).toBeTruthy();
+    expect(spacer?.className).toContain("mt-auto");
+    expect(log().firstElementChild).toBe(spacer);
+  });
 });
