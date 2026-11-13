@@ -25,7 +25,7 @@ export async function PATCH(
     return NextResponse.json({ error: "não autenticado." }, { status: 401 });
   }
 
-  const limited = rateLimitUser(session.user.id, {
+  const limited = await rateLimitUser(session.user.id, {
     scope: "room-video",
     limit: 20,
     windowMs: 60_000,

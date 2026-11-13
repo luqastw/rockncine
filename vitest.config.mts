@@ -24,6 +24,7 @@ export default defineConfig({
     // direto, sem passar pelo script do npm.
     env: {
       NODE_ENV: "test",
+      RATE_LIMIT_STORE: "memory",
     },
   },
 });

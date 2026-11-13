@@ -7,7 +7,7 @@ import { rateLimitRequest } from "@/lib/rate-limit";
 export async function POST(req: Request) {
   // registro é o alvo mais barato para script automatizado: insere linha no
   // banco e roda bcrypt. Limita por IP antes de qualquer trabalho caro.
-  const limited = rateLimitRequest(req, { scope: "register", limit: 5, windowMs: 60_000 });
+  const limited = await rateLimitRequest(req, { scope: "register", limit: 5, windowMs: 60_000 });
   if (limited) return limited;
 
   const body = await req.json().catch(() => null);

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { checkRateLimit, clientIpFromHeaders, resetRateLimitBuckets } from "./rate-limit";
 
 describe("checkRateLimit", () => {
@@ -6,20 +6,26 @@ describe("checkRateLimit", () => {
     resetRateLimitBuckets();
   });
 
-  it("permite exatamente `limit` requisições e bloqueia a seguinte", () => {
+  it("permite exatamente `limit` requisições e bloqueia a seguinte", async () => {
     const opts = { limit: 3, windowMs: 1000, now: 0 };
 
-    expect(checkRateLimit("a", opts).allowed).toBe(true);
-    expect(checkRateLimit("a", opts).allowed).toBe(true);
-    expect(checkRateLimit("a", opts).allowed).toBe(true);
-
-    const blocked = checkRateLimit("a", opts);
-    expect(blocked.allowed).toBe(false);
+    expect((await checkRateLimit("a", opts)).allowed).toBe(true);
+    expect((await checkRateLimit("a", opts)).allowed).toBe(true);
+    expect((await checkRateLimit("a", opts)).allowed).toBe(true);
+    expect((await checkRateLimit("a", opts)).allowed).toBe(false);
   });
 
-  it("devolve retryAfterSeconds coerente com a janela restante", () => {
-    checkRateLimit("b", { limit: 1, windowMs: 60_000, now: 0 });
-    const blocked = checkRateLimit("b", { limit: 1, windowMs: 60_000, now: 30_000 });
+  it("informa quantas requisições ainda restam", async () => {
+    const opts = { limit: 3, windowMs: 1000, now: 0 };
+
+    expect(await checkRateLimit("r", opts)).toEqual({ allowed: true, remaining: 2 });
+    expect(await checkRateLimit("r", opts)).toEqual({ allowed: true, remaining: 1 });
+    expect(await checkRateLimit("r", opts)).toEqual({ allowed: true, remaining: 0 });
+  });
+
+  it("devolve retryAfterSeconds coerente com a janela restante", async () => {
+    await checkRateLimit("b", { limit: 1, windowMs: 60_000, now: 0 });
+    const blocked = await checkRateLimit("b", { limit: 1, windowMs: 60_000, now: 30_000 });
 
     expect(blocked.allowed).toBe(false);
     if (!blocked.allowed) {
@@ -27,26 +33,73 @@ describe("checkRateLimit", () => {
     }
   });
 
-  it("libera de novo depois da janela", () => {
-    checkRateLimit("c", { limit: 1, windowMs: 1000, now: 0 });
-    expect(checkRateLimit("c", { limit: 1, windowMs: 1000, now: 500 }).allowed).toBe(false);
-    expect(checkRateLimit("c", { limit: 1, windowMs: 1000, now: 1000 }).allowed).toBe(true);
+  it("libera de novo depois da janela", async () => {
+    await checkRateLimit("c", { limit: 1, windowMs: 1000, now: 0 });
+    expect((await checkRateLimit("c", { limit: 1, windowMs: 1000, now: 500 })).allowed).toBe(false);
+    expect((await checkRateLimit("c", { limit: 1, windowMs: 1000, now: 1000 })).allowed).toBe(true);
   });
 
-  it("isola contadores por chave", () => {
-    checkRateLimit("d", { limit: 1, windowMs: 1000, now: 0 });
-    expect(checkRateLimit("d", { limit: 1, windowMs: 1000, now: 0 }).allowed).toBe(false);
-    expect(checkRateLimit("e", { limit: 1, windowMs: 1000, now: 0 }).allowed).toBe(true);
+  it("isola contadores por chave", async () => {
+    await checkRateLimit("d", { limit: 1, windowMs: 1000, now: 0 });
+    expect((await checkRateLimit("d", { limit: 1, windowMs: 1000, now: 0 })).allowed).toBe(false);
+    expect((await checkRateLimit("e", { limit: 1, windowMs: 1000, now: 0 })).allowed).toBe(true);
   });
 
-  it("nunca devolve retryAfterSeconds menor que 1", () => {
-    checkRateLimit("f", { limit: 1, windowMs: 1000, now: 0 });
-    const blocked = checkRateLimit("f", { limit: 1, windowMs: 1000, now: 999 });
+  it("nunca devolve retryAfterSeconds menor que 1", async () => {
+    await checkRateLimit("f", { limit: 1, windowMs: 1000, now: 0 });
+    const blocked = await checkRateLimit("f", { limit: 1, windowMs: 1000, now: 999 });
 
     expect(blocked.allowed).toBe(false);
     if (!blocked.allowed) {
       expect(blocked.retryAfterSeconds).toBeGreaterThanOrEqual(1);
     }
+  });
+});
+
+describe("checkRateLimit com store Postgres", () => {
+  const queryRaw = vi.fn();
+  const executeRaw = vi.fn();
+
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubEnv("RATE_LIMIT_STORE", "postgres");
+    vi.doMock("@/lib/prisma", () => ({
+      prisma: { $queryRaw: queryRaw, $executeRaw: executeRaw },
+    }));
+    queryRaw.mockReset();
+    executeRaw.mockReset();
+    executeRaw.mockResolvedValue(0);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.doUnmock("@/lib/prisma");
+    vi.restoreAllMocks();
+  });
+
+  it("libera quando a contagem do banco está dentro do limite", async () => {
+    queryRaw.mockResolvedValue([{ count: 2, remainingMs: 40_000 }]);
+    const { checkRateLimit: check } = await import("./rate-limit");
+
+    expect(await check("k", { limit: 3, windowMs: 60_000 })).toEqual({ allowed: true, remaining: 1 });
+  });
+
+  it("bloqueia e calcula retryAfterSeconds a partir do tempo restante do banco", async () => {
+    queryRaw.mockResolvedValue([{ count: 4, remainingMs: 12_300 }]);
+    const { checkRateLimit: check } = await import("./rate-limit");
+
+    expect(await check("k", { limit: 3, windowMs: 60_000 })).toEqual({
+      allowed: false,
+      retryAfterSeconds: 13,
+    });
+  });
+
+  it("libera a requisição quando o banco falha", async () => {
+    queryRaw.mockRejectedValue(new Error("conexão recusada"));
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { checkRateLimit: check } = await import("./rate-limit");
+
+    expect(await check("k", { limit: 3, windowMs: 60_000 })).toEqual({ allowed: true, remaining: 3 });
   });
 });
 

@@ -24,7 +24,7 @@ export const authOptions: AuthOptions = {
         // o IP, e **não** o email — limitar por email permitiria a qualquer um
         // trancar a conta de outra pessoa com tentativas falhas.
         const ip = clientIpFromHeaders(req?.headers ?? {});
-        const attempt = checkRateLimit(`login:ip:${ip}`, { limit: 20, windowMs: 60_000 });
+        const attempt = await checkRateLimit(`login:ip:${ip}`, { limit: 20, windowMs: 60_000 });
         if (!attempt.allowed) return null;
 
         // registro normaliza email pra lowercase+trim (app/api/register/route.ts)

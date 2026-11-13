@@ -58,3 +58,11 @@ model RoomMember {
   // query "suas salas" (filtra por userId e ordena por joinedAt).
   @@index([userId, joinedAt])
 }
+
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
+}

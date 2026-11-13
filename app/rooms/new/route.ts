@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   // (CreateRoomForm) — o limite cobre o que o botão não cobre: reenvio do form
   // pelo browser, duplo clique no redirecionado, script automatizado com a
   // sessão da conta.
-  const limited = rateLimitRequest(req, { scope: "room-create", limit: 10, windowMs: 60_000 });
+  const limited = await rateLimitRequest(req, { scope: "room-create", limit: 10, windowMs: 60_000 });
   if (limited) return limited;
 
   const form = await req.formData().catch(() => null);

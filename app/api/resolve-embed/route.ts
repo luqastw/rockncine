@@ -12,7 +12,7 @@ export async function POST(req: Request) {
 
   // resolveVideoUrl faz fetch de saída (oEmbed do Vimeo) — sem limite, uma
   // sessão autenticada transforma a rota em amplificador de requisições.
-  const limited = rateLimitRequest(req, { scope: "resolve-embed", limit: 30, windowMs: 60_000 });
+  const limited = await rateLimitRequest(req, { scope: "resolve-embed", limit: 30, windowMs: 60_000 });
   if (limited) return limited;
 
   const body = await req.json().catch(() => null);
