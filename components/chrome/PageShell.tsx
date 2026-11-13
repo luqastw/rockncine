@@ -34,7 +34,7 @@ export function PageShell({
       <main
         className={[
           "relative z-10 mx-auto flex min-h-dvh w-full flex-col px-6 sm:px-10",
-          chrome ? "pt-24 pb-12 sm:pt-28" : "py-10 sm:py-14",
+          chrome ? "pt-24 pb-20 sm:pt-28 sm:pb-24" : "py-10 sm:py-14",
           maxWidth,
           className,
         ]
