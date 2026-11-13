@@ -257,10 +257,7 @@ export function RoomExperience({
           // (box-shadow que sangra ~15px pra fora da caixa) era recortado
           // nos três lados em vez de vazar pro gap. A margem negativa
           // cancela o respiro na largura ocupada pelos irmãos flex.
-          // O vídeo começa no topo da coluna para alinhar com o painel do
-          // chat. Em tela cheia, `flex-1` e o teto de altura já dimensionam a
-          // caixa; não há centralização vertical para desalinhar as colunas.
-          className={`relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4 -m-4 ${
+          className={`relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4 -m-4 [justify-content:safe_center] ${
             showAside ? "lg:basis-[78%]" : "w-full"
           } ${isFullscreen ? "flex-1" : "max-lg:shrink-0"}`}
         >
