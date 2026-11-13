@@ -5,9 +5,8 @@ import { useMutation } from "@liveblocks/react";
 import { useLocalParticipant, useMaybeRoomContext } from "@livekit/components-react";
 import { RoomEvent, Track, type LocalTrackPublication } from "livekit-client";
 import type { BroadcastState } from "@/liveblocks.config";
-import { useBroadcastQuality } from "@/hooks/useBroadcastQuality";
 import { BROADCAST_HEARTBEAT_MS } from "@/lib/broadcast";
-import { broadcastPublishOptions, broadcastQuality } from "@/lib/broadcast-quality";
+import { BROADCAST_QUALITY, broadcastPublishOptions } from "@/lib/broadcast-quality";
 import { SCREEN_CAPTURE_OPTIONS, classifyPublishError } from "@/lib/screen-capture";
 
 export function useBroadcastSession({
@@ -25,8 +24,6 @@ export function useBroadcastSession({
 }) {
   const room = useMaybeRoomContext();
   const { localParticipant } = useLocalParticipant();
-  const { level } = useBroadcastQuality();
-  const quality = broadcastQuality(level);
 
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -93,8 +90,8 @@ export function useBroadcastSession({
     try {
       await localParticipant.setScreenShareEnabled(
         true,
-        { ...SCREEN_CAPTURE_OPTIONS, resolution: quality.preset },
-        broadcastPublishOptions(quality),
+        { ...SCREEN_CAPTURE_OPTIONS, resolution: BROADCAST_QUALITY.preset },
+        broadcastPublishOptions(BROADCAST_QUALITY),
       );
       startBroadcast();
     } catch (caught: unknown) {
@@ -110,7 +107,7 @@ export function useBroadcastSession({
       busyRef.current = false;
       setBusy(false);
     }
-  }, [blockedReason, videoSourceUrl, localParticipant, quality, startBroadcast, stopScreenShare]);
+  }, [blockedReason, videoSourceUrl, localParticipant, startBroadcast, stopScreenShare]);
 
   useEffect(() => {
     if (!room || !isBroadcaster) return;

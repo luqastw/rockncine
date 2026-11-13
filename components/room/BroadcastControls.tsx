@@ -4,7 +4,6 @@ import { useConnectionState } from "@livekit/components-react";
 import { ConnectionState } from "livekit-client";
 import type { BroadcastState } from "@/liveblocks.config";
 import { useLiveKitAuth, useLiveKitFailure } from "@/components/room/LiveKitProvider";
-import { BroadcastQualitySelect } from "@/components/room/BroadcastQualitySelect";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useBroadcastSession } from "@/hooks/useBroadcastSession";
@@ -61,7 +60,6 @@ export function BroadcastControls({
           <span className="sm:hidden">parar</span>
           <span className="hidden sm:inline">parar transmissão</span>
         </Button>
-        <BroadcastQualitySelect disabled />
       </div>
     );
   }
@@ -101,7 +99,6 @@ export function BroadcastControls({
           {livekitReason && ` — ${livekitReason}`}
         </span>
       )}
-      <BroadcastQualitySelect disabled={false} />
       {error && (
         <span role="status" aria-live="polite" className="text-caption text-[var(--ink-muted)]">
           {error}

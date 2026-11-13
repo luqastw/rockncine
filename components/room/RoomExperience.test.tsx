@@ -2,12 +2,11 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { useCallback } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  ScreenSharePresets,
   Track,
   type VideoEncoding,
   type VideoPreset,
 } from "livekit-client";
-import { DEFAULT_BROADCAST_QUALITY } from "@/lib/broadcast-quality";
+import { BROADCAST_QUALITY } from "@/lib/broadcast-quality";
 import type { BroadcastState } from "@/liveblocks.config";
 import { appendChatItem, resetChatFeed } from "@/lib/chat-feed";
 
@@ -263,9 +262,6 @@ async function iniciar() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // A qualidade vive em localStorage (preferência do host). Sem limpar, um teste
-  // que escolha "alta" contamina o seguinte pelo store de módulo.
-  localStorage.clear();
   Object.assign(mocks.root, { video: VIDEO, player: PLAYER, broadcast: null });
   mocks.writes.length = 0;
   mocks.useTracksReturn = [];
@@ -713,9 +709,9 @@ describe("constraints de captura (FR-006, FR-015)", () => {
   // Sem `resolution` explícito o Livekit usa `ScreenSharePresets.h1080fps30`:
   // 1920x1080 a 5 Mbps de upstream, que em banda residencial vira frames
   // descartados — exatamente o sintoma que se quer eliminar.
-  it("envia o preset da qualidade escolhida, não o default de 5 Mbps", async () => {
+  it("envia o preset fluido, não o default de 5 Mbps", async () => {
     const options = await iniciar();
-    expect(options.resolution).toBe(ScreenSharePresets.h720fps30);
+    expect(options.resolution).toBe(BROADCAST_QUALITY.preset);
     vi.unstubAllGlobals();
   });
 
@@ -744,9 +740,8 @@ describe("quadros e bytes na track publicada (FR-044 a FR-046)", () => {
   it("FR-044: publica com o encoding do preset, não com os 15 fps do default", async () => {
     const { publicacao } = await iniciarCompleto();
 
-    expect(publicacao.screenShareEncoding).toEqual(ScreenSharePresets.h720fps30.encoding);
-    expect((publicacao.screenShareEncoding as VideoEncoding).maxFramerate).toBe(30);
-    // O valor exato que a track usava antes desta correção.
+    expect(publicacao.screenShareEncoding).toEqual(BROADCAST_QUALITY.preset.encoding);
+    expect((publicacao.screenShareEncoding as VideoEncoding).maxFramerate).toBe(60);
     expect((publicacao.screenShareEncoding as VideoEncoding).maxFramerate).not.toBe(15);
     vi.unstubAllGlobals();
   });
@@ -777,9 +772,7 @@ describe("quadros e bytes na track publicada (FR-044 a FR-046)", () => {
   // `lib/broadcast-quality.ts`. O que este teste trava é o par coerente:
   // 60 quadros pedidos à captura E 60 liberados pelo encoder — pedir 60 e
   // liberar 15 era exatamente a falha original.
-  it("o nível de 60 fps alinha captura e encoder", async () => {
-    localStorage.setItem("rockncine-broadcast-quality", "fluida");
-
+  it("a transmissão de 60 fps alinha captura e encoder", async () => {
     const { captura, publicacao } = await iniciarCompleto();
 
     const encoding = publicacao.screenShareEncoding as VideoEncoding;
@@ -787,64 +780,23 @@ describe("quadros e bytes na track publicada (FR-044 a FR-046)", () => {
     expect(encoding.maxFramerate).toBe(60);
     expect(encoding.maxBitrate).toBe(4_000_000);
     vi.unstubAllGlobals();
-    localStorage.clear();
   });
 });
 
 describe("qualidade da transmissão", () => {
-  it("o padrão é 720p30, 40% da banda do default do Livekit", () => {
-    expect(DEFAULT_BROADCAST_QUALITY).toBe("normal");
-    // `maxBitrate` e `maxFramerate` vivem dentro de `encoding`, não no topo do preset.
-    expect(ScreenSharePresets.h1080fps30.encoding.maxBitrate).toBe(5_000_000);
-    expect(ScreenSharePresets.h720fps30.encoding.maxBitrate).toBe(2_000_000);
-    expect(ScreenSharePresets.h720fps30.encoding.maxFramerate).toBe(30);
+  it("a transmissão é sempre fluida: 720p a 60 fps e 4 Mbps", () => {
+    const encoding = BROADCAST_QUALITY.preset.encoding;
+
+    expect(BROADCAST_QUALITY.preset.width).toBe(1280);
+    expect(BROADCAST_QUALITY.preset.height).toBe(720);
+    expect(encoding.maxFramerate).toBe(60);
+    expect(encoding.maxBitrate).toBe(4_000_000);
   });
 
-  it("escolher qualidade muda o preset da próxima transmissão", async () => {
-    localStorage.setItem("rockncine-broadcast-quality", "alta");
-
-    const options = await iniciar();
-
-    expect(options.resolution).toBe(ScreenSharePresets.h1080fps30);
-    vi.unstubAllGlobals();
-    localStorage.clear();
-  });
-
-  // Valor corrompido no localStorage não pode virar `undefined` em
-  // `BROADCAST_QUALITIES[...]` — um crash na hora de transmitir.
-  it("qualidade corrompida no storage cai no padrão", async () => {
-    localStorage.setItem("rockncine-broadcast-quality", '{"level":"alta"}');
-
-    const options = await iniciar();
-
-    expect(options.resolution).toBe(ScreenSharePresets.h720fps30);
-    vi.unstubAllGlobals();
-    localStorage.clear();
-  });
-
-  it("o seletor mostra os quatro níveis, em ordem crescente de banda", () => {
+  it("não há seletor de qualidade", () => {
     renderRoom();
 
-    const select = screen.getByRole("combobox") as HTMLSelectElement;
-    expect(Array.from(select.options).map((o) => o.value)).toEqual([
-      "baixa",
-      "normal",
-      "fluida",
-      "alta",
-    ]);
-  });
-
-  // A track já foi criada com o preset escolhido; trocar exigiria republicar, o
-  // que derrubaria a transmissão no meio do filme. O motivo fica nomeado.
-  it("transmitindo, o seletor desabilita e diz que vale para a próxima", () => {
-    mocks.root.broadcast = { ...broadcast, broadcasterId: "eu" };
-
-    renderRoom();
-
-    expect((screen.getByRole("combobox") as HTMLSelectElement).disabled).toBe(true);
-    expect(
-      screen.getByRole("combobox", { name: /próxima transmissão/i }),
-    ).toBeTruthy();
+    expect(screen.queryByRole("combobox")).toBeNull();
   });
 });
 
