@@ -22,7 +22,7 @@ describe("wordmark (FR-007)", () => {
 
     const marca = screen.getByText("rockncine");
     expect(marca.closest('[aria-hidden="true"]')).toBeNull();
-    expect(marca.className).toContain("bg-clip-text");
+    expect(marca.className).toContain("text-[var(--ink)]");
 
     const decorativo = container.querySelector('[aria-hidden="true"]');
     expect(decorativo).toBeTruthy();

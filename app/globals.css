@@ -18,49 +18,44 @@
    Todos acima do piso AA de 4,5:1 exigido por AC-012 da spec 15.
    --------------------------------------------------------------------------- */
 :root {
-  --neutral-950: #121212;
-  --neutral-900: #1f1f1f;
-  --neutral-850: #292929;
-  --neutral-800: #333333;
-  --neutral-700: #4d4d4d;
-  --neutral-500: #9a9a9a;
-  --neutral-100: #f2f2f2;
+  --neutral-950: #040d0a;
+  --neutral-900: #08150f;
+  --neutral-850: #0c1d15;
+  --neutral-800: #12281d;
+  --neutral-700: #2c5a43;
+  --neutral-500: #6f9482;
+  --neutral-100: #cfe9da;
   --pure-black: #000000;
-  --pure-white: #ffffff;
+  --accent: #3ddfae;
 
   --bg-void: var(--neutral-950);
   --bg-surface: var(--neutral-900);
   --bg-elevated: var(--neutral-850);
-  --line: rgb(255 255 255 / 0.12);
-  --ink: rgb(255 255 255 / 0.84);
-  --ink-muted: rgb(255 255 255 / 0.56);
-  --fill-1: rgb(255 255 255 / 0.05);
-  --fill-2: rgb(255 255 255 / 0.1);
-  --fill-3: rgb(255 255 255 / 0.18);
-  --hairline: rgb(255 255 255 / 0.12);
+  --line: #16301f;
+  --ink: #cfe9da;
+  --ink-muted: #6f9482;
+  --fill-1: rgb(61 223 174 / 0.05);
+  --fill-2: rgb(61 223 174 / 0.1);
+  --fill-3: rgb(61 223 174 / 0.18);
+  --hairline: #16301f;
 
-  --invert-bg: var(--pure-white);
+  --invert-bg: var(--accent);
   --invert-fg: var(--neutral-950);
-  --outline-strong: var(--pure-white);
+  --outline-strong: var(--accent);
 
   --background: var(--bg-void);
   --foreground: var(--ink);
   --focus-offset: var(--bg-void);
-  --scrim: rgb(0 0 0 / 0.6);
+  --scrim: rgb(0 6 4 / 0.7);
 
-  /* Sombra de popover da Kimi (0 4px 10px), intensificada para o dark. */
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.24);
-  --shadow-pop: 0 4px 10px 0 rgb(0 0 0 / 0.4);
-  --shadow-lg: 0 10px 24px -6px rgb(0 0 0 / 0.45);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-pop: 0 4px 10px 0 rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 10px 24px -6px rgb(0 0 0 / 0.55);
 
-  /* Tokens `--id-1..4`: quatro tons de cinza sem matiz que serviam à identidade
-     por iniciais (spec 13, FR-018), substituída pela spec 16. Não têm mais
-     consumidor no app; ficam porque components/chrome/identity.test.ts exige
-     as chaves `id-1` a `id-4`. */
-  --id-1: #e6e6e6;
-  --id-2: #c2c2c2;
-  --id-3: #9a9a9a;
-  --id-4: #828282;
+  --id-1: #cfe9da;
+  --id-2: #9fd1b5;
+  --id-3: #6f9482;
+  --id-4: #4c7a64;
 }
 
 @theme inline {
@@ -125,8 +120,8 @@ body {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(72rem 36rem at 50% -12%, rgb(255 255 255 / 0.07), transparent 62%),
-    radial-gradient(40rem 26rem at 88% -4%, rgb(255 255 255 / 0.035), transparent 70%);
+    radial-gradient(72rem 36rem at 50% -12%, rgb(61 223 174 / 0.08), transparent 62%),
+    radial-gradient(40rem 26rem at 88% -4%, rgb(61 223 174 / 0.04), transparent 70%);
 }
 
 /* Barra de chrome (FR-005, docs/specs/15-identidade-kimi/spec.md). Único ponto
@@ -134,7 +129,7 @@ body {
    fio de 1px que só aparece depois do primeiro scroll — o mesmo comportamento
    da navegação da Kimi. O fio é separação real, não só desfoque. */
 .chrome-blur {
-  background: rgb(18 18 18 / 0.72);
+  background: rgb(4 13 10 / 0.72);
   backdrop-filter: blur(6px);
   border-bottom: 1px solid transparent;
 }
@@ -146,15 +141,15 @@ body {
 /* Pulso do "ao vivo": estático, sem keyframe — animar border-width força
    reflow a cada frame. Só box-shadow (compositor). */
 .animate-sync-pulse {
-  box-shadow: 0 0 20px 1px rgb(255 255 255 / 0.1);
+  box-shadow: 0 0 20px 1px rgb(61 223 174 / 0.14);
 }
 
 @keyframes sync-flash {
   0% {
-    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.8);
+    box-shadow: 0 0 0 1px rgb(61 223 174 / 0.8);
   }
   100% {
-    box-shadow: 0 0 0 1px rgb(255 255 255 / 0);
+    box-shadow: 0 0 0 1px rgb(61 223 174 / 0);
   }
 }
 

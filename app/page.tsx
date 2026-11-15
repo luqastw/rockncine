@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { AsciiKorok } from "@/components/chrome/AsciiKorok";
 import { PageShell } from "@/components/chrome/PageShell";
 import { Reveal } from "@/components/chrome/Reveal";
 import { ButtonLink } from "@/components/ui/Button";
@@ -27,9 +28,12 @@ export default async function Home() {
             assista junto, em sync
           </span>
 
-          <h1 className="bg-gradient-to-r from-[#b3b3b3] via-white to-[#8f8f8f] bg-clip-text text-4xl font-semibold tracking-tight text-transparent sm:text-6xl">
-            rockncine
-          </h1>
+          <div className="flex items-end gap-4">
+            <AsciiKorok variant="hero" className="mb-1 sm:mb-2" />
+            <h1 className="text-4xl font-semibold tracking-tight text-[var(--ink)] sm:text-6xl">
+              rockncine
+            </h1>
+          </div>
 
           <p className="max-w-lg text-body text-[var(--ink-muted)]">
             cole um link, todo mundo entra na mesma sala e o play, o pause e o seek vão junto.

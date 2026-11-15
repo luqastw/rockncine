@@ -14,6 +14,7 @@ export function PageShell({
   children,
   width = "sm",
   chrome = false,
+  korok = false,
   className,
 }: {
   children: ReactNode;
@@ -21,6 +22,8 @@ export function PageShell({
   width?: "sm" | "md" | "lg";
   /** Renderiza a barra fixa de chrome. Quando ligada, o padding-top reserva a altura dela. */
   chrome?: boolean;
+  /** Korok ASCII animado ao lado da marca na barra de chrome. */
+  korok?: boolean;
   /** Classes da tela (gap, alinhamento). Nunca largura — a largura é do shell. */
   className?: string;
 }) {
@@ -30,7 +33,7 @@ export function PageShell({
   return (
     <>
       <AmbientGlow />
-      {chrome ? <ChromeBar width={width} /> : null}
+      {chrome ? <ChromeBar width={width} korok={korok} /> : null}
       <main
         className={[
           "relative z-10 mx-auto flex min-h-dvh w-full flex-col px-6 sm:px-10",

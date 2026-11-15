@@ -80,8 +80,8 @@ function literaisDeCor(arquivo: string): Cor[] {
   return cores;
 }
 
-describe("identidade neutra (FR-001)", () => {
-  it("AC-001: todo literal de cor do arquivo tem R=G=B", () => {
+describe("identidade verde escura", () => {
+  it("todo literal de cor do arquivo é verde escuro (G >= R e G >= B)", () => {
     const cores = literaisDeCor(css);
 
     // O coletor não pode estar quebrado: sem este piso, a asserção abaixo
@@ -89,13 +89,13 @@ describe("identidade neutra (FR-001)", () => {
     expect(cores.length).toBeGreaterThanOrEqual(10);
 
     const infractores = cores
-      .filter(({ r, g, b }) => !(r === g && g === b))
+      .filter(({ r, g, b }) => !(g >= r && g >= b))
       .map(({ origem, r, g, b }) => `${origem} → rgb(${r},${g},${b})`);
 
     expect(infractores).toEqual([]);
   });
 
-  it("AC-001: nenhum hsl() com saturação, nenhum nome de cor cromático", () => {
+  it("sem hsl() com saturação e sem cor nomeada fora da paleta", () => {
     const hslComCor = [...css.matchAll(/hsla?\(([^)]+)\)/gi)]
       .map((m) => m[1].trim())
       .filter((args) => {

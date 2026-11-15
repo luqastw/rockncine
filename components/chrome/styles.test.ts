@@ -48,11 +48,10 @@ describe("blur isolado no chrome (FR-005)", () => {
     const scrolled = ruleBody('\\.chrome-blur\\[data-scrolled="true"\\]');
     expect(scrolled).toContain("border-bottom-color: var(--hairline)");
 
-    // Fundo translúcido e acromático (R=G=B).
     const fundo = body.match(/rgb\((\d+)\s+(\d+)\s+(\d+)\s*\/\s*0\.\d+\)/);
     expect(fundo, "fundo translúcido").toBeTruthy();
-    expect(fundo?.[1]).toBe(fundo?.[2]);
-    expect(fundo?.[2]).toBe(fundo?.[3]);
+    expect(Number(fundo?.[2])).toBeGreaterThanOrEqual(Number(fundo?.[1]));
+    expect(Number(fundo?.[2])).toBeGreaterThanOrEqual(Number(fundo?.[3]));
   });
 });
 

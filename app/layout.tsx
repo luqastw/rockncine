@@ -56,7 +56,7 @@ export const metadata: Metadata = {
 // app não precisa de `safe-area-inset` para o teclado virtual e a barra de
 // gestos não overlays o composer.
 export const viewport: Viewport = {
-  themeColor: "#121212",
+  themeColor: "#040d0a",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

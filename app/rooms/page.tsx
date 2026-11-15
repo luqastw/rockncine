@@ -101,7 +101,7 @@ export default async function RoomsPage({
   return (
     // O invólucro único (FR-018) é o `PageShell`: largura, padding e glow vivem
     // ali. A marca saiu deste arquivo e vive no `ChromeBar`.
-    <PageShell width="md" chrome className="justify-safe-center gap-10">
+    <PageShell width="md" chrome korok className="justify-safe-center gap-10">
       {/* A marca está no ChromeBar; este h1 preserva a semântica de título da página. */}
       <h1 className="sr-only font-semibold tracking-tight">suas salas</h1>
 
