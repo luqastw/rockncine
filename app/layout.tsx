@@ -1,10 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
+import { Inter, Geist_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 import { SessionProviderWrapper } from "@/components/SessionProviderWrapper";
 
 const inter = Inter({
   variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  weight: ["500", "600"],
   subsets: ["latin"],
   display: "swap",
 });
@@ -51,7 +58,7 @@ export const metadata: Metadata = {
 // app não precisa de `safe-area-inset` para o teclado virtual e a barra de
 // gestos não overlays o composer.
 export const viewport: Viewport = {
-  themeColor: "#040d0a",
+  themeColor: "#0f1a14",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -66,7 +73,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${fraunces.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {/* Marcador do realce progressivo (FR-013/FR-014, docs/specs/14-identidade-fanzine-crt/spec.md).
