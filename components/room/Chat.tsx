@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useMemo, type ReactNode } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { useStatus } from "@liveblocks/react";
 import { useChat } from "@/hooks/useChat";
 import { useChatFeed } from "@/hooks/useChatFeed";
@@ -9,7 +9,6 @@ import { useTypingPresence } from "@/hooks/useTypingPresence";
 import { ChatComposer } from "@/components/room/chat/ChatComposer";
 import { DayDivider, MessageItem, SystemItem, UnreadDivider } from "@/components/room/chat/LogItems";
 import { Badge } from "@/components/ui/Badge";
-import { sectionLabelClass } from "@/components/ui/SectionLabel";
 import { buildLog, keyOf } from "@/lib/chat-log";
 
 // `memo`: as props são primitivas, então um render da sala (presença mudou,
@@ -21,7 +20,6 @@ export const Chat = memo(function Chat({
   userName,
   avatarV,
   roomCode,
-  headerAccessory,
 }: {
   userId: string;
   userName: string;
@@ -29,11 +27,6 @@ export const Chat = memo(function Chat({
   // Só para a store saber de qual sala é o feed (FR-007). Não é usado para mais
   // nada aqui dentro.
   roomCode: string;
-  // Slot memoizado pelo pai (presença): como o elemento é o MESMO objeto entre
-  // renders da sala, o React pula a subárvore quando o log ou o draft mudam —
-  // o isolamento de render da spec 13 continua valendo sem mover o gatilho
-  // para fora do painel do chat.
-  headerAccessory?: ReactNode;
 }) {
   const messages = useChatFeed(roomCode);
   const { sendMessage } = useChat({ userId, userName, avatarV });
@@ -81,16 +74,9 @@ export const Chat = memo(function Chat({
     // rolagem. Em `lg+` o chat recebe a altura cheia da coluna e a rolagem
     // continua sendo só a do log.
     <div className="flex h-full min-h-0 flex-col gap-3 max-lg:overflow-y-auto">
-      {/* O painel inteiro é a superfície do chat: o topo (com o rótulo e a
-          presença) encosta na mesma altura da moldura do vídeo, e a borda não
-          fica deslocada pela linha de cabeçalho. */}
       <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-[var(--line)] bg-[var(--bg-surface)]">
-        <div className="flex items-center gap-2 px-3 pb-2 pt-3">
-          <h2 className={sectionLabelClass}>chat</h2>
-          {/* Contador de não lidas (FR-015). O botão flutuante continua existindo
-              — ele resolve o "quero ir lá", o contador resolve o "quanto me
-              escapou". */}
-          {unreadCount > 0 && (
+        {unreadCount > 0 && (
+          <div className="flex items-center gap-2 px-3 pb-2 pt-3">
             <Badge
               variant="solid"
               className="h-5 min-w-5 justify-center px-1.5 text-micro font-bold"
@@ -98,9 +84,8 @@ export const Chat = memo(function Chat({
             >
               {unreadCount}
             </Badge>
-          )}
-          {headerAccessory && <div className="ml-auto">{headerAccessory}</div>}
-        </div>
+          </div>
+        )}
 
         <div className="relative flex min-h-0 flex-1 flex-col">
           <ul

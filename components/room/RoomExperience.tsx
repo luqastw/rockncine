@@ -15,7 +15,6 @@ import { useRoomShortcuts } from "@/hooks/useRoomShortcuts";
 import { useStageLayout } from "@/hooks/useStageLayout";
 import { useOwnAvatarVersion } from "@/hooks/useOwnAvatarVersion";
 import { SyncRing } from "@/components/room/SyncRing";
-import { usePresenceAccessory } from "@/components/room/PresenceAccessory";
 import { isSafeEmbedUrl } from "@/lib/video-source";
 import { PlayerLoadStatus } from "@/components/room/PlayerLoadStatus";
 import { PlayerShell } from "@/components/room/player/PlayerShell";
@@ -28,7 +27,7 @@ import {
   VideoSurface,
   YT_CONTAINER_ID,
 } from "@/components/room/VideoSurface";
-import { Chat } from "@/components/room/Chat";
+import { SidePanel } from "@/components/room/SidePanel";
 import { useVideoQuality } from "@/hooks/useVideoQuality";
 import { usePlaybackState } from "@/hooks/usePlaybackClock";
 import { EconomySuggestion } from "@/components/room/EconomySuggestion";
@@ -89,7 +88,6 @@ export function RoomExperience({
   // (medido em docs/specs/13-chat-sala/research.md, seção 2). O que fica aqui é
   // só o emissor, dentro do `<Chat>`, e o reset da store no mount.
   useRoomLeaveAnnouncement(userId);
-  const presenceAccessory = usePresenceAccessory(userId, userName, avatarV);
 
   const {
     resolution,
@@ -434,21 +432,13 @@ export function RoomExperience({
               : "p-2 -m-2"
           }`}
         >
-          {/* O chat ocupa a coluna inteira; a presença é um popover do header,
-              então o log começa na mesma altura da moldura do vídeo. */}
-          {/* `min-h-11` (e não `min-h-0`) no bloco do chat: é o piso que
-              garante altura para o próprio composer (44px), que fica preso no
-              rodapé dele. Sem o piso, em viewport muito curta o bloco encolhia
-              a menos que o campo de mensagem e o campo era recortado. */}
-          <section className="flex min-h-11 flex-1 flex-col gap-3">
-            <Chat
-              userId={userId}
-              userName={userName}
-              avatarV={avatarV}
-              roomCode={roomCode}
-              headerAccessory={presenceAccessory}
-            />
-          </section>
+          <SidePanel
+            userId={userId}
+            userName={userName}
+            avatarV={avatarV}
+            roomCode={roomCode}
+            className="flex min-h-11 flex-1 flex-col"
+          />
         </aside>
 
         {/* dentro da árvore do stageRef, não irmão dela — em tela cheia

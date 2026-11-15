@@ -30,6 +30,12 @@ function uniqueOthers(others: readonly OtherPresence[], myUserId: string) {
   return byUser;
 }
 
+export function usePresentCount(myUserId: string) {
+  const others = useOthers();
+  const [myPresence] = useMyPresence();
+  return uniqueOthers(others, myPresence.userId ?? myUserId).size + 1;
+}
+
 /**
  * Estado do recolher da lista.
  *
