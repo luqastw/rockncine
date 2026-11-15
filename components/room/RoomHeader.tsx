@@ -124,6 +124,18 @@ export function RoomHeader({
             videoSourceUrl={videoSourceUrl}
           />
         )}
+        <Link
+          href="/profile"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="perfil (abre em nova aba)"
+          className={iconButtonClass({ variant: "outline", className: "shrink-0" })}
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
+          </svg>
+        </Link>
         <RoomActions
           onLoadVideo={onLoadVideo}
           onToggleTheater={onToggleTheater}

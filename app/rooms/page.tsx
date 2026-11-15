@@ -112,7 +112,12 @@ export default async function RoomsPage({
             {session?.user?.name ?? session?.user?.email}
           </p>
         </div>
-        <SignOutButton />
+        <div className="flex shrink-0 items-center gap-2">
+          <ButtonLink href="/profile" variant="outline" size="sm">
+            perfil
+          </ButtonLink>
+          <SignOutButton />
+        </div>
       </Reveal>
 
       <Reveal as="section" className="grid gap-4 sm:grid-cols-2">
