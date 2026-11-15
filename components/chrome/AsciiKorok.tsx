@@ -37,7 +37,8 @@ export function miniKorokFrame(tick: number): string {
   const berry = tick % 10 < 5 ? "o" : "*";
   const eyes = blinking(tick) ? "-" : "o";
   return [
-    row(`${berry} /`, "^"),
+    row(`${berry}   `, "^"),
+    row(`|  /`, "="),
     row(`|(${eyes} `, "V"),
     row(`  \\_`, "_"),
   ].join("\n");
