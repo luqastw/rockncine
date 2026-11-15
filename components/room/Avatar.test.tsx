@@ -52,11 +52,11 @@ describe("Avatar", () => {
   it("aplica as classes e dimensões de cada tamanho", () => {
     const sm = render(<Avatar userId="user_1" size="sm" />);
     const smImg = getImg(sm.container);
-    expect(smImg.className).toContain("h-5 w-5");
-    expect(smImg.getAttribute("width")).toBe("20");
+    expect(smImg.className).toContain("h-7 w-7");
+    expect(smImg.getAttribute("width")).toBe("28");
     const md = render(<Avatar userId="user_1" size="md" />);
     const mdImg = getImg(md.container);
-    expect(mdImg.className).toContain("h-7 w-7");
-    expect(mdImg.getAttribute("height")).toBe("28");
+    expect(mdImg.className).toContain("h-9 w-9");
+    expect(mdImg.getAttribute("height")).toBe("36");
   });
 });

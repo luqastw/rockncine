@@ -44,7 +44,7 @@ export const MessageItem = memo(function MessageItem({
           <span className="sr-only">{`${item.authorName}, ${time}: `}</span>
         ) : (
           <span className="flex items-center gap-2">
-            <Avatar userId={item.authorId} avatarV={item.avatarV} size="sm" />
+            <Avatar userId={item.authorId} avatarV={item.avatarV} size="md" />
             <span className="min-w-0 truncate text-body-sm font-medium text-[var(--ink)]">
               {item.authorName}
             </span>

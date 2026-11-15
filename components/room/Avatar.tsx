@@ -16,8 +16,8 @@ export const Avatar = memo(function Avatar({
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const computed = avatarSrc(userId, avatarV ?? undefined);
   const src = failedSrc === computed ? DEFAULT_AVATAR_SRC : computed;
-  const dimension = size === "sm" ? 20 : 28;
-  const box = size === "sm" ? "h-5 w-5" : "h-7 w-7";
+  const dimension = size === "sm" ? 28 : 36;
+  const box = size === "sm" ? "h-7 w-7" : "h-9 w-9";
   return (
     <Image
       unoptimized
