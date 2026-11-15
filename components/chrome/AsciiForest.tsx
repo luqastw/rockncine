@@ -117,6 +117,12 @@ export function AsciiForest({ className = "" }: { className?: string }) {
       rows = Math.max(5, Math.floor(rect.height / ch));
       scene = buildScene(cols, rows);
       korokCol = Math.max(2, Math.floor(cols * 0.62));
+      for (let y = rows - 5; y < rows - 1; y++) {
+        for (let x = korokCol - 2; x < korokCol + 12; x++) {
+          if (x < 0 || x >= cols || y < 0) continue;
+          scene[y * cols + x] = null;
+        }
+      }
       const count = Math.max(6, Math.round(cols / 7));
       leaves = Array.from({ length: count }, () => spawnLeaf(true));
       flies = Array.from({ length: 5 }, () => ({
