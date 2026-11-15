@@ -1,12 +1,18 @@
 import { cx } from "@/lib/cx";
 
-// Wordmark no gradiente prateado da hero da Kimi (FR-007,
-// docs/specs/15-identidade-kimi/spec.md). O texto é real e acessível; só o
-// ponto à esquerda é decorativo. Nenhum asset ou logotipo da Kimi é usado.
 export function Wordmark({ className }: { className?: string }) {
   return (
     <span className={cx("inline-flex items-center gap-2", className)}>
-      <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[var(--accent)]" />
+      <svg
+        aria-hidden="true"
+        focusable="false"
+        viewBox="0 0 12 14"
+        className="h-3.5 w-3 shrink-0"
+        fill="var(--torch)"
+      >
+        <ellipse cx="4" cy="10.5" rx="3.4" ry="2.4" transform="rotate(-20 4 10.5)" />
+        <rect x="6.6" y="1" width="1.4" height="9.5" />
+      </svg>
       <span className="font-display text-body-sm font-semibold tracking-tight text-[var(--ink)]">
         rockncine
       </span>

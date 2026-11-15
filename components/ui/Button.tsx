@@ -8,7 +8,6 @@ export type ButtonSize = "md" | "sm";
 type ButtonStyleOptions = {
   variant?: ButtonVariant;
   size?: ButtonSize;
-  /** Troca a cor do halo de foco para o fundo de um painel. */
   surface?: boolean;
   className?: string;
 };
@@ -17,12 +16,12 @@ const BASE =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg text-body-sm font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--outline-strong)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: "bg-[var(--invert-bg)] text-[var(--invert-fg)] shadow-[var(--shadow-xs)] hover:opacity-90",
+  primary:
+    "bg-[var(--leaf)] text-[var(--bg-void)] shadow-[var(--shadow-xs)] hover:bg-[var(--leaf-ink)]",
   outline:
-    "border border-[var(--ink-muted)] text-[var(--ink)] hover:border-[var(--ink)] hover:bg-[var(--fill-1)]",
+    "border border-[var(--line-strong)] text-[var(--ink)] hover:bg-[var(--fill-2)]",
   soft: "bg-[var(--fill-1)] text-[var(--ink)] hover:bg-[var(--fill-2)]",
-  ghost:
-    "text-[var(--ink-muted)] hover:bg-[var(--fill-1)] hover:text-[var(--ink)]",
+  ghost: "text-[var(--ink-muted)] hover:text-[var(--ink)]",
 };
 
 const SIZES: Record<ButtonSize, string> = {

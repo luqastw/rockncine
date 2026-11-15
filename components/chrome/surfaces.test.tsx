@@ -66,13 +66,13 @@ describe("landing (FR-017)", () => {
     render(await Home());
 
     const primario = screen.getByRole("link", { name: "criar conta" });
-    expect(primario.className).toContain("bg-[var(--invert-bg)]");
-    expect(primario.className).toContain("text-[var(--invert-fg)]");
+    expect(primario.className).toContain("bg-[var(--leaf)]");
+    expect(primario.className).toContain("text-[var(--bg-void)]");
     expect(primario.className).toContain("focus-visible:ring-[var(--outline-strong)]");
     expect(primario.className).toContain("ring-offset-[var(--focus-offset)]");
 
     const secundario = screen.getByRole("link", { name: "já tenho conta" });
-    expect(secundario.className).toContain("border-[var(--ink-muted)]");
+    expect(secundario.className).toContain("border-[var(--line-strong)]");
   });
 
   it("AC-014: os alvos de toque da landing têm 44px", async () => {

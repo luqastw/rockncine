@@ -57,12 +57,12 @@ describe("hierarquia de controle nos estados (FR-020)", () => {
   it("AC-013: o CTA primário do erro é o bloco invertido", () => {
     render(<SegmentError error={new Error("boom")} reset={() => {}} />);
     const primario = screen.getByRole("button", { name: "tentar de novo" });
-    expect(primario.className).toContain("bg-[var(--invert-bg)]");
-    expect(primario.className).toContain("text-[var(--invert-fg)]");
+    expect(primario.className).toContain("bg-[var(--leaf)]");
+    expect(primario.className).toContain("text-[var(--bg-void)]");
     expect(primario.className).toContain("focus-visible:ring-[var(--outline-strong)]");
 
     const secundario = screen.getByRole("link", { name: "voltar pro menu" });
-    expect(secundario.className).toContain("border-[var(--ink-muted)]");
+    expect(secundario.className).toContain("border-[var(--line-strong)]");
   });
 
   it("AC-014: os alvos de toque do erro de segmento têm 44px", () => {

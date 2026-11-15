@@ -15,9 +15,9 @@ const BASE =
 
 const VARIANTS: Record<IconButtonVariant, string> = {
   ghost:
-    "text-[var(--ink-muted)] hover:bg-[var(--fill-1)] hover:text-[var(--ink)]",
+    "text-[var(--ink-muted)] hover:text-[var(--ink)]",
   outline:
-    "border border-[var(--ink-muted)] text-[var(--ink)] hover:border-[var(--ink)] hover:bg-[var(--fill-1)]",
+    "border border-[var(--line-strong)] text-[var(--ink)] hover:bg-[var(--fill-2)]",
 };
 
 export function iconButtonClass({
@@ -29,7 +29,7 @@ export function iconButtonClass({
   return cx(
     BASE,
     active
-      ? "border border-[var(--ink)] bg-[var(--fill-2)] text-[var(--ink)]"
+      ? "border border-[var(--leaf)] bg-[var(--fill-2)] text-[var(--ink)]"
       : VARIANTS[variant],
     surface
       ? "focus:ring-offset-[var(--bg-surface)]"
