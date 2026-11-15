@@ -1,5 +1,6 @@
 "use client";
 
+import { AsciiLeaves } from "@/components/chrome/AsciiLeaves";
 import { useCallback, useState } from "react";
 import { useStorage } from "@liveblocks/react";
 import { useYouTubeSync } from "@/hooks/useYouTubeSync";
@@ -221,6 +222,7 @@ export function RoomExperience({
     // mobile deixavam o selo por cima do campo de mensagem (medido a 390px:
     // selo em y 794-832, input em y 784-828 — achado 1 da revisão de design).
     <main className="room-shell mx-auto flex h-dvh w-full max-w-[1800px] flex-col gap-5 overflow-hidden px-4 pt-6 pb-14 sm:px-6 lg:px-8">
+      <AsciiLeaves density="low" />
       <RoomHeader
         roomCode={roomCode}
         roomName={roomName}

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ChromeBar } from "./ChromeBar";
 import { AmbientGlow } from "./AmbientGlow";
+import { AsciiLeaves } from "./AsciiLeaves";
 
 // Invólucro único de página (FR-018 da spec 14, mantido pela FR-008 da spec 15,
 // docs/specs/15-identidade-kimi/spec.md): largura, padding e glow vivem só aqui,
@@ -33,6 +34,7 @@ export function PageShell({
   return (
     <>
       <AmbientGlow />
+      <AsciiLeaves />
       {chrome ? <ChromeBar width={width} korok={korok} /> : null}
       <main
         className={[
