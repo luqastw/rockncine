@@ -6,6 +6,7 @@ import { useStatus } from "@liveblocks/react";
 import type { BroadcastState, PlayerEvent } from "@/liveblocks.config";
 import { InviteCode } from "@/components/room/InviteCode";
 import { LastActionNote } from "@/components/room/LastActionNote";
+import { SyncStatus } from "@/components/room/SyncStatus";
 import { BroadcastControls } from "@/components/room/BroadcastControls";
 import { RoomActions } from "@/components/room/RoomActions";
 import { ProfileAvatarModal } from "@/components/room/ProfileAvatarModal";
@@ -92,26 +93,13 @@ export function RoomHeader({
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:order-4 lg:min-w-0 lg:shrink-0 lg:flex-nowrap">
             <LastActionNote lastEvent={lastEvent} userId={userId} />
-            {connectionLabel ? (
-              <span
-                role="status"
-                aria-live="polite"
-                className="font-mono text-caption text-[var(--ink-muted)]"
-              >
-                {connectionLabel}
-              </span>
-            ) : (
-              !syncLimited &&
-              !isPlayingNow && (
-                <span
-                  role="status"
-                  aria-live="polite"
-                  className="font-mono text-caption text-[var(--ink-muted)]"
-                >
-                  ○ pausado
-                </span>
-              )
-            )}
+            <SyncStatus
+              isPlaying={isPlayingNow}
+              isBroadcasting={isBroadcasting}
+              syncLimited={syncLimited}
+              lastEvent={lastEvent}
+              connectionLabel={connectionLabel}
+            />
           </div>
         </div>
       </div>

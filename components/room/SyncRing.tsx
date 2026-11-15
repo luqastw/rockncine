@@ -45,7 +45,7 @@ export const SyncRing = memo(function SyncRing({
           (syncLimited
             ? "border border-dashed border-[var(--line)]"
             : isPlaying
-              ? "border border-[var(--ink)]"
+              ? "border border-[rgb(191_230_255/0.4)]"
               : "border border-[var(--line)]"),
         showChrome && !syncLimited && isPlaying && !economyMode
           ? "animate-sync-pulse"
