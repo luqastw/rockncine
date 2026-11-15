@@ -96,7 +96,7 @@ export function DividerLine({ label, strong }: { label: string; strong?: boolean
   return (
     <li
       aria-hidden
-      className={`my-1.5 flex items-center gap-2 font-mono text-micro uppercase tracking-wide text-[var(--ink-muted)] ${strong ? "font-medium" : ""}`}
+      className={`my-1.5 flex items-center gap-2 text-micro text-[var(--ink-muted)] ${strong ? "font-medium" : ""}`}
     >
       <span className={`h-px flex-1 ${line}`} aria-hidden />
       <span className="shrink-0">{label}</span>

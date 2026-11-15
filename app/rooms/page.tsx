@@ -107,7 +107,7 @@ export default async function RoomsPage({
       {/* A marca está no ChromeBar; este h1 preserva a semântica de título da página. */}
       <h1 className="sr-only font-semibold tracking-tight">suas salas</h1>
 
-      <AsciiForest className="-mt-4 h-32 sm:h-36" />
+      <AsciiForest className="-mt-4 h-20 sm:h-24" />
 
       <Reveal as="header" className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
@@ -150,19 +150,19 @@ export default async function RoomsPage({
             </div>
           )
         ) : (
-          <ul className={cx("room-list flex flex-col divide-y divide-[var(--line)] overflow-hidden", cardClass)}>
+          <ul className={cx("room-list flex flex-col divide-y divide-[var(--line)]", cardClass)}>
             {visiveis.map(({ room }) => (
               // `items-stretch` (e não `items-center`): o card tem duas linhas e
               // fica com ~58px, o botão de excluir tem 44px — centrado, os dois
               // retângulos ficavam com alturas diferentes e as bordas não
               // alinhavam (parecia quebrado). Esticado, o botão acompanha a
               // altura do card.
-              <li key={room.code} className="flex items-stretch">
+              <li key={room.code} className="flex items-stretch first:rounded-t-[inherit] last:rounded-b-[inherit]">
                 <Link
                   href={`/rooms/${room.code}`}
                   className={cx(
                     "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3 transition-colors duration-150 hover:bg-[var(--fill-1)]",
-                    "focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]",
+                    "rounded-[inherit] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--outline-strong)]",
                   )}
                 >
                   <span className="flex min-w-0 flex-col">

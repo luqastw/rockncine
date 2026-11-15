@@ -1,15 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProviderWrapper } from "@/components/SessionProviderWrapper";
 
-// Geist é o análogo livre mais próximo da MiSans da Kimi Platform, e Geist Mono
-// é a própria mono usada pela plataforma. As duas vêm do `next/font/google` —
-// zero dependência npm. A pilha de `--font-sans` ainda pede SF Pro primeiro,
-// então em macOS/iOS a fonte do sistema continua na frente (FR-003,
-// docs/specs/15-identidade-kimi/spec.md).
-const geist = Geist({
-  variable: "--font-geist",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
 });
@@ -71,7 +66,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      className={`${geist.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {/* Marcador do realce progressivo (FR-013/FR-014, docs/specs/14-identidade-fanzine-crt/spec.md).

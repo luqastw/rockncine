@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-const ACCENT = "61,223,174";
+const ACCENT = "47,191,143";
 const GLYPHS = ["\\", "|", "/", "-"];
 const FONT_PX = 12;
 const BOX = FONT_PX + 6;
@@ -20,11 +20,13 @@ type Leaf = {
   py: number;
 };
 
-type Settings = { areaPerLeaf: number; min: number; max: number; fps: number; alpha: number };
+type Fly = { bx: number; by: number; phase: number; speed: number; px: number; py: number };
+
+type Settings = { areaPerLeaf: number; min: number; max: number; fps: number; alpha: number; flies: number };
 
 const SETTINGS: Record<"normal" | "low", Settings> = {
-  normal: { areaPerLeaf: 90000, min: 8, max: 22, fps: 20, alpha: 0.7 },
-  low: { areaPerLeaf: 200000, min: 4, max: 10, fps: 12, alpha: 0.5 },
+  normal: { areaPerLeaf: 260000, min: 3, max: 8, fps: 20, alpha: 0.6, flies: 5 },
+  low: { areaPerLeaf: 420000, min: 2, max: 4, fps: 12, alpha: 0.45, flies: 3 },
 };
 
 export function AsciiLeaves({ density = "normal" }: { density?: "normal" | "low" }) {
@@ -43,6 +45,7 @@ export function AsciiLeaves({ density = "normal" }: { density?: "normal" | "low"
     let w = 0;
     let h = 0;
     let leaves: Leaf[] = [];
+    let flies: Fly[] = [];
     let raf = 0;
     let last = 0;
 
@@ -74,6 +77,14 @@ export function AsciiLeaves({ density = "normal" }: { density?: "normal" | "low"
       ctx.textBaseline = "top";
       const count = Math.min(cfg.max, Math.max(cfg.min, Math.round((w * h) / cfg.areaPerLeaf)));
       leaves = Array.from({ length: count }, () => spawn(true));
+      flies = Array.from({ length: cfg.flies }, () => ({
+        bx: Math.random() * w,
+        by: h * (0.25 + Math.random() * 0.6),
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.25 + Math.random() * 0.35,
+        px: 0,
+        py: 0,
+      }));
     };
 
     const draw = (now: number) => {
@@ -83,6 +94,7 @@ export function AsciiLeaves({ density = "normal" }: { density?: "normal" | "low"
       last = now;
       const t = now / 1000;
       for (const l of leaves) ctx.clearRect(l.px - 2, l.py - 2, BOX, BOX);
+      for (const f of flies) ctx.clearRect(f.px - 4, f.py - 4, BOX + 4, BOX + 4);
       for (const l of leaves) {
         l.y += l.vy * dt;
         l.x += l.vx * dt;
@@ -94,6 +106,18 @@ export function AsciiLeaves({ density = "normal" }: { density?: "normal" | "low"
         ctx.fillText(g, x, l.y);
         l.px = x;
         l.py = l.y;
+      }
+      for (const f of flies) {
+        const x = f.bx + Math.sin(t * f.speed + f.phase) * 60 + Math.sin(t * f.speed * 2.3) * 14;
+        const y = f.by + Math.cos(t * f.speed * 0.8 + f.phase) * 36;
+        const a = (0.15 + 0.85 * Math.max(0, Math.sin(t * 1.4 + f.phase * 3))) * cfg.alpha;
+        ctx.fillStyle = `rgba(${ACCENT},${a * 0.35})`;
+        ctx.fillText("\u00b7", x - 5, y);
+        ctx.fillText("\u00b7", x + 5, y);
+        ctx.fillStyle = `rgba(${ACCENT},${a})`;
+        ctx.fillText("*", x, y);
+        f.px = x;
+        f.py = y;
       }
     };
 

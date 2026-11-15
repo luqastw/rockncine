@@ -87,7 +87,7 @@ export default async function Home() {
       </div>
 
       <Reveal as="section" className="flex flex-col gap-4">
-        <p className="font-mono text-caption uppercase tracking-wide text-[var(--ink-muted)]">
+        <p className="text-caption font-medium text-[var(--ink-muted)]">
           como funciona
         </p>
         <ol className="grid gap-3 sm:grid-cols-3">

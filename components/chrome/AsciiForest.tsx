@@ -1,72 +1,18 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { clamp, fbm, rng } from "@/lib/ascii-noise";
 import { miniKorokFrame } from "./AsciiKorok";
 
 const FONT_PX = 12;
 const FRAME_MS = 1000 / 24;
-const ACCENT = "61,223,174";
-const TRUNK = "#1f4a33";
-const CANOPY = ["#12281d", "#16301f", "#1c3f2b"];
-const GRASS = "#2c5a43";
-const LEAF_GLYPHS = ["\\", "|", "/", "-"];
-const CANOPY_GLYPHS = ["%", "&", "8", "#", "@"];
-const GRASS_GLYPHS = ["\"", "'", ";", ",", "|"];
+const ACCENT = "47,191,143";
+const KOROK_WIDTH = 10;
+const RIPPLE_LIFE = 2.4;
+const RIPPLE_REACH = 90;
 
-type Cell = { ch: string; color: string; canopy: boolean };
-
-type Leaf = { x: number; y: number; vy: number; phase: number; spin: number; alpha: number };
-type Fly = { x: number; y: number; phase: number; speed: number };
-
-function mulberry(seed: number) {
-  let a = seed;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function buildScene(cols: number, rows: number): (Cell | null)[] {
-  const rand = mulberry(7);
-  const grid: (Cell | null)[] = new Array(cols * rows).fill(null);
-  const set = (x: number, y: number, cell: Cell) => {
-    if (x < 0 || y < 0 || x >= cols || y >= rows) return;
-    grid[y * cols + x] = cell;
-  };
-  const ground = rows - 1;
-  for (let x = 0; x < cols; x++) {
-    set(x, ground, { ch: GRASS_GLYPHS[Math.floor(rand() * GRASS_GLYPHS.length)], color: GRASS, canopy: false });
-    if (rand() < 0.35) {
-      set(x, ground - 1, { ch: GRASS_GLYPHS[Math.floor(rand() * GRASS_GLYPHS.length)], color: GRASS, canopy: false });
-    }
-  }
-  const spacing = 15;
-  for (let cx = 6; cx < cols - 3; cx += spacing + Math.floor(rand() * 6)) {
-    const trunkH = Math.max(3, Math.floor(rows * 0.45) + Math.floor(rand() * 2));
-    const top = ground - trunkH;
-    for (let y = top; y < ground; y++) {
-      set(cx, y, { ch: "|", color: TRUNK, canopy: false });
-      set(cx + 1, y, { ch: "|", color: TRUNK, canopy: false });
-    }
-    const rx = 6 + Math.floor(rand() * 3);
-    const ry = Math.max(2, Math.floor(rows * 0.32));
-    for (let dy = -ry; dy <= ry; dy++) {
-      for (let dx = -rx; dx <= rx; dx++) {
-        const d = (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry);
-        if (d > 1 || rand() < 0.12) continue;
-        set(cx + dx, top + dy, {
-          ch: CANOPY_GLYPHS[Math.floor(rand() * CANOPY_GLYPHS.length)],
-          color: CANOPY[Math.floor(rand() * CANOPY.length)],
-          canopy: true,
-        });
-      }
-    }
-  }
-  return grid;
-}
+type Ripple = { x: number; t0: number };
+type Fly = { bx: number; by: number; phase: number; speed: number };
 
 export function AsciiForest({ className = "" }: { className?: string }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
@@ -76,31 +22,23 @@ export function AsciiForest({ className = "" }: { className?: string }) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+
     let cols = 0;
     let rows = 0;
     let cw = 7;
     let ch = 14;
-    let scene: (Cell | null)[] = [];
-    let leaves: Leaf[] = [];
+    let korokCol = 0;
+    let jit: number[] = [];
     let flies: Fly[] = [];
+    let ripples: Ripple[] = [];
+    let nextDrop = 3;
     let raf = 0;
     let last = 0;
     let visible = true;
-    let pointer: { x: number; y: number } | null = null;
-    const rand = mulberry(11);
-    const korokLines = miniKorokFrame(2).split("\n");
-    let korokCol = 0;
+    const rand = rng(11);
 
-    const spawnLeaf = (anywhere: boolean): Leaf => ({
-      x: rand() * cols,
-      y: anywhere ? rand() * rows : -1 - rand() * 3,
-      vy: 0.9 + rand() * 1.2,
-      phase: rand() * Math.PI * 2,
-      spin: 3 + rand() * 4,
-      alpha: 0.45 + rand() * 0.5,
-    });
+    const gust = (x: number, t: number) => fbm(x * 0.035 - t * 0.55, t * 0.05, 3, 2);
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -114,94 +52,103 @@ export function AsciiForest({ className = "" }: { className?: string }) {
       cw = ctx.measureText("M").width;
       ch = Math.round(FONT_PX * 1.15);
       cols = Math.max(10, Math.floor(rect.width / cw));
-      rows = Math.max(5, Math.floor(rect.height / ch));
-      scene = buildScene(cols, rows);
-      korokCol = Math.max(2, Math.floor(cols * 0.62));
-      for (let y = rows - 7; y < rows - 1; y++) {
-        for (let x = korokCol - 2; x < korokCol + 12; x++) {
-          if (x < 0 || x >= cols || y < 0) continue;
-          scene[y * cols + x] = null;
-        }
-      }
-      const count = Math.max(6, Math.round(cols / 7));
-      leaves = Array.from({ length: count }, () => spawnLeaf(true));
-      flies = Array.from({ length: 5 }, () => ({
-        x: rand() * cols,
-        y: rows * (0.2 + rand() * 0.5),
+      rows = Math.max(6, Math.floor(rect.height / ch));
+      korokCol = Math.max(2, Math.floor((cols - KOROK_WIDTH) / 2));
+      jit = Array.from({ length: cols + 8 }, () => rand());
+      flies = Array.from({ length: 6 }, () => ({
+        bx: rand() * cols,
+        by: rows * (0.1 + rand() * 0.35),
         phase: rand() * 6.28,
-        speed: 0.4 + rand() * 0.5,
+        speed: 0.3 + rand() * 0.4,
       }));
-      draw(performance.now() / 1000, 0);
+      draw(performance.now() / 1000);
     };
 
-    const draw = (t: number, dt: number) => {
+    const drawGrass = (t: number) => {
+      const ground = rows - 1;
+      for (let x = 0; x < cols; x++) {
+        const j = jit[x];
+        if (j < 0.06) continue;
+        const underKorok = x >= korokCol - 1 && x <= korokCol + KOROK_WIDTH;
+        const h = underKorok ? 1 : 2 + j * 3.6;
+        const g = gust(x, t);
+        const bend = (g - 0.35) * 2.6 + Math.sin(t * 2.3 + x * 0.4) * 0.12;
+        for (let k = 1; k <= h; k++) {
+          const u = k / h;
+          const off = bend * u * u * h * 0.9;
+          const slope = bend * 2 * u * 0.9;
+          const glyph =
+            k >= h - 0.5 && j > 0.8 ? "'" : slope > 0.55 ? "/" : slope < -0.45 ? "\\" : slope > 0.25 ? ")" : "|";
+          const lum = clamp(u * 0.5 + (g - 0.4) * 1.1 + 0.15);
+          ctx.fillStyle = `rgba(${ACCENT},${0.18 + lum * 0.6})`;
+          ctx.fillText(glyph, (x + off) * cw, (ground - k + 1) * ch);
+        }
+      }
+    };
+
+    const drawRipples = (t: number) => {
+      const cy = (rows - 1) * ch + ch * 0.5;
+      ripples = ripples.filter((r) => t - r.t0 < RIPPLE_LIFE);
+      for (const r of ripples) {
+        const age = (t - r.t0) / RIPPLE_LIFE;
+        for (const ring of [0, 0.22]) {
+          const p = age - ring;
+          if (p <= 0) continue;
+          const radius = p * RIPPLE_REACH;
+          const alpha = (1 - p) * 0.7;
+          if (alpha <= 0) continue;
+          ctx.fillStyle = `rgba(${ACCENT},${alpha})`;
+          const n = Math.max(10, Math.round(radius / 3));
+          for (let i = 0; i < n; i++) {
+            const a = (i / n) * Math.PI * 2;
+            const px = r.x * cw + Math.cos(a) * radius;
+            const py = cy + Math.sin(a) * radius * 0.28;
+            if (px < 0 || px > cols * cw) continue;
+            ctx.fillText(Math.abs(Math.sin(a)) > 0.6 ? "-" : "~", px, py);
+          }
+        }
+      }
+    };
+
+    const drawFlies = (t: number) => {
+      for (const f of flies) {
+        const x = f.bx + Math.sin(t * f.speed + f.phase) * 5 + Math.sin(t * f.speed * 2.3) * 1.5;
+        const y = f.by + Math.cos(t * f.speed * 0.8 + f.phase) * 1.4;
+        const a = 0.2 + 0.8 * Math.max(0, Math.sin(t * 1.4 + f.phase * 3));
+        ctx.fillStyle = `rgba(${ACCENT},${a * 0.3})`;
+        ctx.fillText("·", (x - 1) * cw, y * ch);
+        ctx.fillText("·", (x + 1) * cw, y * ch);
+        ctx.fillStyle = `rgba(${ACCENT},${a})`;
+        ctx.fillText("*", x * cw, y * ch);
+      }
+    };
+
+    const drawKorok = (t: number) => {
+      const blink = Math.floor(t * 5) % 20 < 2;
+      const lines = (blink ? miniKorokFrame(0) : miniKorokFrame(2)).split("\n");
+      ctx.fillStyle = `rgb(${ACCENT})`;
+      lines.forEach((line, i) => ctx.fillText(line, korokCol * cw, (rows - 1 - lines.length + i) * ch));
+    };
+
+    const draw = (t: number) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.font = `600 ${FONT_PX}px ui-monospace, "Geist Mono", Menlo, monospace`;
       ctx.textBaseline = "top";
-
-      for (let k = -2; k < cols / 12 + 2; k++) {
-        const pulse = 0.05 + 0.05 * Math.sin(t * 0.5 + k);
-        ctx.fillStyle = `rgba(${ACCENT},${pulse})`;
-        for (let y = 0; y < rows - 1; y++) {
-          const x = Math.round(k * 12 + 4 + y * 1.4 + Math.sin(t * 0.2 + k) * 2);
-          if (x < 0 || x >= cols) continue;
-          ctx.fillText("/", x * cw, y * ch);
-        }
+      if (!reduced.matches && t >= nextDrop) {
+        ripples.push({ x: 4 + rand() * (cols - 8), t0: t });
+        nextDrop = t + 5 + rand() * 4;
       }
-
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          const cell = scene[y * cols + x];
-          if (!cell) continue;
-          let glyph = cell.ch;
-          if (cell.canopy) {
-            const n = Math.sin(t * 0.8 + x * 0.35 + y * 0.6);
-            if (n > 0.55) glyph = CANOPY_GLYPHS[(x + y) % CANOPY_GLYPHS.length];
-          }
-          ctx.fillStyle = cell.color;
-          ctx.fillText(glyph, x * cw, y * ch);
-        }
-      }
-
-      const blink = Math.floor(t * 5) % 20 < 2;
-      const korok = blink ? miniKorokFrame(2).replaceAll("o V o", "- V -").split("\n") : korokLines;
-      ctx.fillStyle = `rgb(${ACCENT})`;
-      korok.forEach((line, i) => {
-        ctx.fillText(line, korokCol * cw, (rows - 6 + i) * ch);
-      });
-
-      for (const f of flies) {
-        f.phase += dt * f.speed;
-        const fx = f.x + Math.sin(f.phase * 1.3) * 3;
-        const fy = f.y + Math.cos(f.phase) * 1.2;
-        const a = 0.3 + 0.7 * Math.max(0, Math.sin(f.phase * 2.1));
-        ctx.fillStyle = `rgba(${ACCENT},${a})`;
-        ctx.fillText("*", fx * cw, fy * ch);
-      }
-
-      for (const l of leaves) {
-        l.y += l.vy * dt;
-        l.x += (Math.sin(t * 0.7 + l.phase) * 1.4 + 0.5) * dt;
-        if (pointer) {
-          const dx = l.x * cw - pointer.x;
-          const dy = l.y * ch - pointer.y;
-          const d2 = dx * dx + dy * dy;
-          if (d2 < 4900) l.x += (dx / (Math.sqrt(d2) + 1)) * dt * 14;
-        }
-        if (l.y > rows - 1 || l.x > cols + 2) Object.assign(l, spawnLeaf(false));
-        if (l.x < -2) l.x = cols + 1;
-        const g = LEAF_GLYPHS[Math.floor(t * l.spin + l.phase * 4) % LEAF_GLYPHS.length];
-        ctx.fillStyle = `rgba(${ACCENT},${l.alpha})`;
-        ctx.fillText(g, l.x * cw, l.y * ch);
-      }
+      drawGrass(t);
+      drawKorok(t);
+      drawRipples(t);
+      drawFlies(t);
     };
 
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
       if (now - last < FRAME_MS) return;
-      const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
-      draw(now / 1000, dt);
+      draw(now / 1000);
     };
 
     const schedule = () => {
@@ -211,12 +158,11 @@ export function AsciiForest({ className = "" }: { className?: string }) {
       raf = requestAnimationFrame(frame);
     };
 
-    const onMove = (e: PointerEvent) => {
+    const onPointer = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
-      pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    };
-    const onLeave = () => {
-      pointer = null;
+      ripples.push({ x: (e.clientX - rect.left) / cw, t0: performance.now() / 1000 });
+      if (ripples.length > 6) ripples.shift();
+      if (reduced.matches) draw(performance.now() / 1000);
     };
 
     const ro = new ResizeObserver(resize);
@@ -228,8 +174,7 @@ export function AsciiForest({ className = "" }: { className?: string }) {
     io.observe(canvas);
     document.addEventListener("visibilitychange", schedule);
     reduced.addEventListener("change", schedule);
-    canvas.addEventListener("pointermove", onMove, { passive: true });
-    canvas.addEventListener("pointerleave", onLeave);
+    canvas.addEventListener("pointerdown", onPointer);
     resize();
     schedule();
 
@@ -239,8 +184,7 @@ export function AsciiForest({ className = "" }: { className?: string }) {
       io.disconnect();
       document.removeEventListener("visibilitychange", schedule);
       reduced.removeEventListener("change", schedule);
-      canvas.removeEventListener("pointermove", onMove);
-      canvas.removeEventListener("pointerleave", onLeave);
+      canvas.removeEventListener("pointerdown", onPointer);
     };
   }, []);
 
@@ -248,7 +192,7 @@ export function AsciiForest({ className = "" }: { className?: string }) {
     <canvas
       ref={ref}
       aria-hidden="true"
-      className={`block w-full [mask-image:linear-gradient(to_right,transparent,#000_12%,#000_88%,transparent)] ${className}`}
+      className={`block w-full [mask-image:linear-gradient(to_right,transparent,#000_14%,#000_86%,transparent)] ${className}`}
     />
   );
 }
