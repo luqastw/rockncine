@@ -5,58 +5,76 @@ import { useEffect, useRef } from "react";
 const ACCENT = "61,223,174";
 const GLYPHS = ["\\", "|", "/", "-"];
 const FONT_PX = 12;
+const BOX = FONT_PX + 6;
 
-type Leaf = { x: number; y: number; vy: number; phase: number; spin: number; alpha: number };
+type Leaf = {
+  x: number;
+  y: number;
+  vy: number;
+  vx: number;
+  phase: number;
+  sway: number;
+  spin: number;
+  alpha: number;
+  px: number;
+  py: number;
+};
 
-type Settings = { perSide: number; fps: number };
+type Settings = { areaPerLeaf: number; min: number; max: number; fps: number; alpha: number };
 
 const SETTINGS: Record<"normal" | "low", Settings> = {
-  normal: { perSide: 6, fps: 20 },
-  low: { perSide: 3, fps: 12 },
+  normal: { areaPerLeaf: 90000, min: 8, max: 22, fps: 20, alpha: 0.7 },
+  low: { areaPerLeaf: 200000, min: 4, max: 10, fps: 12, alpha: 0.5 },
 };
 
 export function AsciiLeaves({ density = "normal" }: { density?: "normal" | "low" }) {
-  const left = useRef<HTMLCanvasElement | null>(null);
-  const right = useRef<HTMLCanvasElement | null>(null);
+  const ref = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    const canvases = [left.current, right.current].filter(
-      (c): c is HTMLCanvasElement => c !== null,
-    );
-    if (canvases.length === 0) return;
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (reduced.matches) return;
-    const { perSide, fps } = SETTINGS[density];
-    const frameMs = 1000 / fps;
+    const cfg = SETTINGS[density];
+    const frameMs = 1000 / cfg.fps;
 
-    const sides = canvases.map((canvas) => {
-      const ctx = canvas.getContext("2d");
-      return { canvas, ctx, w: 0, h: 0, leaves: [] as Leaf[] };
-    });
-
-    const spawn = (w: number, h: number, anywhere: boolean): Leaf => ({
-      x: Math.random() * w,
-      y: anywhere ? Math.random() * h : -FONT_PX,
-      vy: 18 + Math.random() * 22,
-      phase: Math.random() * Math.PI * 2,
-      spin: 2 + Math.random() * 3,
-      alpha: 0.3 + Math.random() * 0.4,
-    });
-
-    const resize = () => {
-      for (const side of sides) {
-        const rect = side.canvas.getBoundingClientRect();
-        if (rect.width < 1 || rect.height < 1) continue;
-        side.w = rect.width;
-        side.h = rect.height;
-        side.canvas.width = Math.round(rect.width);
-        side.canvas.height = Math.round(rect.height);
-        side.leaves = Array.from({ length: perSide }, () => spawn(side.w, side.h, true));
-      }
-    };
-
+    let w = 0;
+    let h = 0;
+    let leaves: Leaf[] = [];
     let raf = 0;
     let last = 0;
+
+    const spawn = (anywhere: boolean): Leaf => {
+      const x = Math.random() * w;
+      const y = anywhere ? Math.random() * h : -BOX;
+      return {
+        x,
+        y,
+        vy: 16 + Math.random() * 24,
+        vx: 2 + Math.random() * 8,
+        phase: Math.random() * Math.PI * 2,
+        sway: 8 + Math.random() * 22,
+        spin: 2 + Math.random() * 3,
+        alpha: (0.25 + Math.random() * 0.45) * cfg.alpha,
+        px: x,
+        py: y,
+      };
+    };
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width < 1 || rect.height < 1) return;
+      w = rect.width;
+      h = rect.height;
+      canvas.width = Math.round(w);
+      canvas.height = Math.round(h);
+      ctx.font = `600 ${FONT_PX}px ui-monospace, "Geist Mono", Menlo, monospace`;
+      ctx.textBaseline = "top";
+      const count = Math.min(cfg.max, Math.max(cfg.min, Math.round((w * h) / cfg.areaPerLeaf)));
+      leaves = Array.from({ length: count }, () => spawn(true));
+    };
 
     const draw = (now: number) => {
       raf = requestAnimationFrame(draw);
@@ -64,41 +82,40 @@ export function AsciiLeaves({ density = "normal" }: { density?: "normal" | "low"
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
       const t = now / 1000;
-      for (const side of sides) {
-        const { ctx, w, h, leaves } = side;
-        if (!ctx || w < 1) continue;
-        ctx.clearRect(0, 0, w, h);
-        ctx.font = `600 ${FONT_PX}px ui-monospace, "Geist Mono", Menlo, monospace`;
-        ctx.textBaseline = "top";
-        for (const l of leaves) {
-          l.y += l.vy * dt;
-          if (l.y > h) Object.assign(l, spawn(w, h, false));
-          const x = l.x + Math.sin(t * 0.8 + l.phase) * Math.min(8, w * 0.3);
-          const g = GLYPHS[Math.floor(t * l.spin + l.phase * 4) % GLYPHS.length];
-          ctx.fillStyle = `rgba(${ACCENT},${l.alpha})`;
-          ctx.fillText(g, Math.max(0, Math.min(w - FONT_PX * 0.6, x)), l.y);
-        }
+      for (const l of leaves) ctx.clearRect(l.px - 2, l.py - 2, BOX, BOX);
+      for (const l of leaves) {
+        l.y += l.vy * dt;
+        l.x += l.vx * dt;
+        if (l.y > h) Object.assign(l, spawn(false));
+        if (l.x > w) l.x = -BOX;
+        const x = l.x + Math.sin(t * 0.8 + l.phase) * l.sway;
+        const g = GLYPHS[Math.floor(t * l.spin + l.phase * 4) % GLYPHS.length];
+        ctx.fillStyle = `rgba(${ACCENT},${l.alpha})`;
+        ctx.fillText(g, x, l.y);
+        l.px = x;
+        l.py = l.y;
       }
     };
 
-    const shouldRun = () => !document.hidden && !document.fullscreenElement;
     const sync = () => {
       cancelAnimationFrame(raf);
-      if (!shouldRun()) return;
+      if (document.hidden || document.fullscreenElement) return;
       last = performance.now();
       raf = requestAnimationFrame(draw);
     };
-    const stopForMotion = () => {
+    const onMotion = () => {
       cancelAnimationFrame(raf);
       if (!reduced.matches) sync();
     };
 
     resize();
-    const ro = new ResizeObserver(resize);
-    sides.forEach((s) => ro.observe(s.canvas));
+    const ro = new ResizeObserver(() => {
+      resize();
+    });
+    ro.observe(canvas);
     document.addEventListener("visibilitychange", sync);
     document.addEventListener("fullscreenchange", sync);
-    reduced.addEventListener("change", stopForMotion);
+    reduced.addEventListener("change", onMotion);
     sync();
 
     return () => {
@@ -106,17 +123,15 @@ export function AsciiLeaves({ density = "normal" }: { density?: "normal" | "low"
       ro.disconnect();
       document.removeEventListener("visibilitychange", sync);
       document.removeEventListener("fullscreenchange", sync);
-      reduced.removeEventListener("change", stopForMotion);
+      reduced.removeEventListener("change", onMotion);
     };
   }, [density]);
 
-  const strip =
-    "pointer-events-none fixed top-0 -z-10 h-dvh w-[clamp(16px,3vw,56px)] max-sm:w-6 [mask-image:linear-gradient(to_bottom,transparent,#000_15%,#000_85%,transparent)]";
-
   return (
-    <>
-      <canvas ref={left} aria-hidden="true" className={`${strip} left-0`} />
-      <canvas ref={right} aria-hidden="true" className={`${strip} right-0`} />
-    </>
+    <canvas
+      ref={ref}
+      aria-hidden="true"
+      className="pointer-events-none fixed inset-0 z-20 h-dvh w-full"
+    />
   );
 }
