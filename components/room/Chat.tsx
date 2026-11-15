@@ -145,9 +145,9 @@ export const Chat = memo(function Chat({
               className="mt-1 flex items-center gap-2 text-caption text-[var(--ink-muted)]"
             >
               <span aria-hidden className="flex gap-0.5">
-                <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--ink-muted)]" />
-                <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--ink-muted)]" />
-                <span className="h-1 w-1 animate-pulse rounded-full bg-[var(--ink-muted)]" />
+                <span className="h-1 w-1 rounded-full bg-[var(--ink-muted)]" />
+                <span className="h-1 w-1 rounded-full bg-[var(--ink-muted)]" />
+                <span className="h-1 w-1 rounded-full bg-[var(--ink-muted)]" />
               </span>
               {typingNames.join(", ")}
               {typingNames.length === 1 ? " está digitando…" : " estão digitando…"}
