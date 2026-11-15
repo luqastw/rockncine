@@ -1,21 +1,9 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Identidade Kimi Platform (spec 15, docs/specs/15-identidade-kimi/spec.md).
-
-   Paleta 100% acromática: canvas #121212, superfícies #1f1f1f/#292929, texto
-   por opacidade de branco e separadores de 1px. Nenhum matiz — estado continua
-   sendo sinalizado por contraste, opacidade, peso e inversão (herdado da spec
-   01, seção 8, FR-044). Os nomes legados dos tokens são preservados para não
-   quebrar as specs 01/13 (FR-002 / AC-010).
-
-   Contrastes medidos:
-   - --ink (84% de branco) sobre #121212: ~13,5:1
-   - --ink sobre #1f1f1f: ~12,2:1
-   - --ink-muted (56% de branco) sobre #121212: ~6,4:1
-   - --ink-muted sobre #1f1f1f: ~6,0:1
-   - --ink-muted como contorno de input sobre #1f1f1f: ~6,0:1 (piso 3:1)
-   Todos acima do piso AA de 4,5:1 exigido por AC-012 da spec 15.
+   Paleta verde escura: fundo quase preto esverdeado, superfícies em verde
+   profundo, texto em verde claro, acento menta e separadores de 1px em verde.
+   Estado é sinalizado por contraste, opacidade, peso e inversão.
    --------------------------------------------------------------------------- */
 :root {
   --neutral-950: #040d0a;
@@ -31,13 +19,13 @@
   --bg-void: var(--neutral-950);
   --bg-surface: var(--neutral-900);
   --bg-elevated: var(--neutral-850);
-  --line: #16301f;
+  --line: #1f4a33;
   --ink: #cfe9da;
   --ink-muted: #6f9482;
   --fill-1: rgb(61 223 174 / 0.05);
   --fill-2: rgb(61 223 174 / 0.1);
   --fill-3: rgb(61 223 174 / 0.18);
-  --hairline: #16301f;
+  --hairline: #1f4a33;
 
   --invert-bg: var(--accent);
   --invert-fg: var(--neutral-950);

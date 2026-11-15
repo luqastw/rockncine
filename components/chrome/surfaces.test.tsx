@@ -68,7 +68,7 @@ describe("landing (FR-017)", () => {
     const primario = screen.getByRole("link", { name: "criar conta" });
     expect(primario.className).toContain("bg-[var(--invert-bg)]");
     expect(primario.className).toContain("text-[var(--invert-fg)]");
-    expect(primario.className).toContain("focus:ring-[var(--outline-strong)]");
+    expect(primario.className).toContain("focus-visible:ring-[var(--outline-strong)]");
     expect(primario.className).toContain("ring-offset-[var(--focus-offset)]");
 
     const secundario = screen.getByRole("link", { name: "já tenho conta" });

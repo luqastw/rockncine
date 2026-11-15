@@ -13,6 +13,8 @@ import { ButtonLink } from "@/components/ui/Button";
 // docs/specs/15-identidade-kimi/spec.md): eyebrow em pill, wordmark em
 // gradiente prateado, preview decorativo e três passos em cards. A marca vive
 // no h1 e os três passos continuam sendo exatamente três (AC-011 da spec 14).
+const GLIFOS = ["[+]", ">>", "=="];
+
 export default async function Home() {
   const session = await getServerSession(authOptions);
   // Quem já está dentro vai direto pro menu — a página pública não tem nada
@@ -23,11 +25,6 @@ export default async function Home() {
     <PageShell width="lg" chrome className="justify-safe-center gap-12">
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-center">
         <Reveal as="header" className="flex flex-col items-start gap-6">
-          <span className="inline-flex items-center gap-2 rounded-lg bg-[var(--fill-1)] px-3 py-2 font-mono text-caption text-[var(--ink-muted)]">
-            <span aria-hidden className="size-1.5 rounded-full bg-[var(--ink)]" />
-            assista junto, em sync
-          </span>
-
           <div className="flex items-end gap-4">
             <AsciiKorok variant="hero" className="mb-1 sm:mb-2" />
             <h1 className="text-4xl font-semibold tracking-tight text-[var(--ink)] sm:text-6xl">
@@ -57,23 +54,34 @@ export default async function Home() {
             aria-hidden="true"
             className="relative overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--bg-surface)] shadow-[var(--shadow-lg)]"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.08),transparent_62%)]" />
-            <div className="relative flex aspect-video items-center justify-center">
-              <span className="flex size-16 items-center justify-center rounded-full bg-[var(--invert-bg)] text-[var(--invert-fg)] shadow-[var(--shadow-pop)]">
-                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="ml-1 h-6 w-6">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </span>
+            <div className="relative flex flex-col gap-5 p-5 sm:p-6">
+              <div className="flex flex-col gap-3">
+                {[
+                  { who: "l", text: "pausa aí" },
+                  { who: "m", text: "voltei" },
+                ].map((msg) => (
+                  <div key={msg.text} className="flex items-center gap-3">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-[var(--line)] bg-[var(--fill-2)] font-mono text-caption font-semibold text-[var(--accent)]">
+                      {msg.who}
+                    </span>
+                    <span className="rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)] px-3 py-2 text-body-sm text-[var(--ink)]">
+                      {msg.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col gap-2">
+                <div className="relative h-1.5 rounded-full bg-[var(--fill-2)]">
+                  <span className="absolute inset-y-0 left-0 w-[46%] rounded-full bg-[var(--accent)]/40" />
+                  <span className="absolute top-1/2 left-[46%] size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)]" />
+                  <span className="absolute top-1/2 left-[46%] size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[var(--accent)] bg-[var(--bg-void)] scale-150" />
+                </div>
+                <div className="flex items-center justify-between font-mono text-micro text-[var(--ink-muted)]">
+                  <span>l · m</span>
+                  <span>no mesmo instante</span>
+                </div>
+              </div>
             </div>
-            <span className="absolute left-4 top-4 rounded-full bg-[var(--bg-void)]/80 px-2.5 py-1 font-mono text-micro text-[var(--ink-muted)]">
-              sala · 8F3K2M
-            </span>
-            <span className="absolute bottom-4 left-4 rounded-full bg-[var(--bg-void)]/80 px-2.5 py-1 text-micro text-[var(--ink-muted)]">
-              2 na sala
-            </span>
-            <span className="absolute bottom-4 right-4 max-w-[45%] rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)] px-3 py-2 text-body-sm text-[var(--ink)]">
-              sincronizado
-            </span>
           </div>
         </Reveal>
       </div>
@@ -94,9 +102,9 @@ export default async function Home() {
             >
               <span
                 aria-hidden
-                className="flex size-7 items-center justify-center rounded-full border border-[var(--line)] font-mono text-caption text-[var(--ink-muted)]"
+                className="font-mono text-body font-semibold text-[var(--accent)]"
               >
-                {i + 1}
+                {GLIFOS[i]}
               </span>
               <span className="text-body-sm text-[var(--ink)]">{passo}</span>
             </li>

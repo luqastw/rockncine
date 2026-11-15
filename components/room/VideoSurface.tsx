@@ -78,7 +78,7 @@ export function VideoSurface({
             nenhum vídeo carregado
           </p>
           <p className="text-body-sm text-[var(--ink-muted)]">
-            use &quot;carregar vídeo&quot; pra começar
+            cole um link do youtube, vimeo ou mídia direta
           </p>
         </div>
     )

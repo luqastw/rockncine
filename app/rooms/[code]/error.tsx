@@ -17,6 +17,7 @@
 
 import { useEffect } from "react";
 import { PageShell } from "@/components/chrome/PageShell";
+import { KorokScene } from "@/components/chrome/KorokScene";
 import { Button, ButtonLink } from "@/components/ui/Button";
 
 export default function RoomSegmentError({
@@ -34,12 +35,13 @@ export default function RoomSegmentError({
 
   return (
     <PageShell width="sm" className="items-center justify-center gap-4 text-center">
+      <KorokScene pose="caido" />
+      <span aria-hidden="true" className="h-px w-16 bg-[var(--hairline)]" />
       <h1 className="text-title font-semibold tracking-tight text-[var(--ink)]">
         a sala travou
       </h1>
       <p className="text-body-sm text-[var(--ink-muted)]">
-        algo quebrou enquanto a sala estava aberta. você continua na sala — tente
-        de novo.
+        algo travou aqui. tenta de novo.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-2">
         <Button onClick={() => retry()}>tentar de novo</Button>

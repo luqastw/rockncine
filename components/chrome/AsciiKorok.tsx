@@ -14,7 +14,7 @@ function mirrored(half: string): string {
   return [...half].reverse().map((c) => MIRROR[c] ?? c).join("");
 }
 
-function row(left: string, center: string): string {
+export function row(left: string, center: string): string {
   return left + center + mirrored(left);
 }
 

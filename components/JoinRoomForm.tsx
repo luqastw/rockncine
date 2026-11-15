@@ -14,7 +14,7 @@ export function JoinRoomForm() {
       onSubmit={(e) => {
         e.preventDefault();
         const trimmed = code.trim();
-        if (trimmed) router.push(`/rooms/${trimmed}`);
+        if (trimmed) router.push(`/rooms/${trimmed.toUpperCase()}`);
       }}
       className="flex gap-2"
     >
@@ -26,7 +26,8 @@ export function JoinRoomForm() {
         autoComplete="off"
         autoCapitalize="characters"
         spellCheck={false}
-        className="min-w-0 flex-1 font-mono tracking-wider placeholder:tracking-normal"
+        surface
+        className="min-w-0 flex-1 font-mono uppercase tracking-wider placeholder:tracking-normal"
       />
       <Button type="submit" variant="outline" className="shrink-0">
         entrar

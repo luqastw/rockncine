@@ -26,7 +26,7 @@ export function LoginForm() {
             redirect: false,
           });
           if (res?.error) {
-            setError("email ou senha inválidos.");
+            setError("não bateu. confere o email e a senha.");
             return;
           }
           router.push("/rooms");
@@ -68,6 +68,9 @@ export function LoginForm() {
           role="alert"
           className="rounded-lg border border-[var(--ink)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--ink)]"
         >
+          <span aria-hidden="true" className="mr-2 font-mono text-[var(--accent)]">
+            !
+          </span>
           {error}
         </p>
       )}

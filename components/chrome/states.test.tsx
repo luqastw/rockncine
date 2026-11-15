@@ -61,7 +61,7 @@ describe("hierarquia de controle nos estados (FR-020)", () => {
     const primario = screen.getByRole("button", { name: "tentar de novo" });
     expect(primario.className).toContain("bg-[var(--invert-bg)]");
     expect(primario.className).toContain("text-[var(--invert-fg)]");
-    expect(primario.className).toContain("focus:ring-[var(--outline-strong)]");
+    expect(primario.className).toContain("focus-visible:ring-[var(--outline-strong)]");
 
     const secundario = screen.getByRole("link", { name: "voltar pro menu" });
     expect(secundario.className).toContain("border-[var(--ink-muted)]");

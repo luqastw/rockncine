@@ -14,7 +14,7 @@ type ButtonStyleOptions = {
 };
 
 const BASE =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg text-body-sm font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg text-body-sm font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--outline-strong)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: "bg-[var(--invert-bg)] text-[var(--invert-fg)] shadow-[var(--shadow-xs)] hover:opacity-90",
@@ -41,8 +41,8 @@ export function buttonClass({
     VARIANTS[variant],
     SIZES[size],
     surface
-      ? "focus:ring-offset-[var(--bg-surface)]"
-      : "focus:ring-offset-[var(--focus-offset)]",
+      ? "focus-visible:ring-offset-[var(--bg-surface)]"
+      : "focus-visible:ring-offset-[var(--focus-offset)]",
     className,
   );
 }

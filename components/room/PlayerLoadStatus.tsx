@@ -69,7 +69,7 @@ export function PlayerLoadStatus({
           role="status"
           className="rounded-lg bg-[var(--bg-void)] px-3 py-2 text-[var(--ink-muted)]"
         >
-          carregando player...
+          preparando o player…
         </span>
       )}
     </div>

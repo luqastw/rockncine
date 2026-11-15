@@ -22,13 +22,14 @@ export function CreateRoomForm() {
         nome da sala
       </label>
       <Input
+        surface
         id="room-name"
         type="text"
         name="name"
         maxLength={60}
         placeholder="nome da sala (opcional)"
       />
-      <Button type="submit" disabled={submitting} className="w-full">
+      <Button surface type="submit" disabled={submitting} className="w-full">
         {submitting ? "criando..." : "nova sala"}
       </Button>
     </form>

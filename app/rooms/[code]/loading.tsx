@@ -20,8 +20,8 @@ export default function RoomLoading() {
           <span className="min-h-40 flex-1 rounded-xl bg-[var(--bg-surface)]" aria-hidden />
         </div>
       </div>
-      <p role="status" className="sr-only">
-        carregando a sala
+      <p role="status" className="text-center font-mono text-caption text-[var(--ink-muted)]">
+        abrindo a sala…
       </p>
     </main>
   );

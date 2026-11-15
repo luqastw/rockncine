@@ -1,4 +1,5 @@
 import { PageShell } from "@/components/chrome/PageShell";
+import { KorokScene } from "@/components/chrome/KorokScene";
 import { Wordmark } from "@/components/chrome/Wordmark";
 import { ButtonLink } from "@/components/ui/Button";
 
@@ -8,14 +9,15 @@ import { ButtonLink } from "@/components/ui/Button";
 export default function NotFound() {
   return (
     <PageShell width="sm" className="items-center justify-center gap-4 text-center">
+      <KorokScene pose="perdido" />
       <Wordmark />
       <span aria-hidden="true" className="h-px w-16 bg-[var(--hairline)]" />
       <h1 className="text-title font-semibold tracking-tight text-[var(--ink)]">
         página não encontrada
       </h1>
-      <p className="text-body-sm text-[var(--ink-muted)]">esse link não existe.</p>
+      <p className="text-body-sm text-[var(--ink-muted)]">essa trilha não leva a lugar nenhum.</p>
       <ButtonLink href="/" variant="primary">
-        voltar
+        voltar pro menu
       </ButtonLink>
     </PageShell>
   );

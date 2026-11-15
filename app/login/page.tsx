@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { LoginForm } from "@/components/LoginForm";
 import { PageShell } from "@/components/chrome/PageShell";
 import { Reveal } from "@/components/chrome/Reveal";
 import { Card } from "@/components/ui/Card";
+import { TextLink } from "@/components/ui/TextLink";
 
 export const metadata: Metadata = { title: "entrar · rockncine" };
 
@@ -13,7 +13,7 @@ export default function LoginPage() {
       <Reveal as="header" className="flex flex-col gap-2">
         <h1 className="text-title font-semibold tracking-tight text-[var(--ink)]">entrar</h1>
         <p className="text-body-sm text-[var(--ink-muted)]">
-          assista junto, em sync — link colado, sala compartilhada.
+          bem-vindo de volta. a sala continua do jeito que você deixou.
         </p>
       </Reveal>
 
@@ -24,12 +24,7 @@ export default function LoginPage() {
 
         <p className="text-center text-body-sm text-[var(--ink-muted)]">
           sem conta?{" "}
-          <Link
-            href="/register"
-            className="rounded-sm text-[var(--ink)] underline decoration-[var(--ink-muted)] underline-offset-4 hover:decoration-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
-          >
-            cadastrar
-          </Link>
+          <TextLink href="/register">cadastrar</TextLink>
         </p>
       </Reveal>
     </PageShell>

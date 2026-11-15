@@ -8,10 +8,11 @@ import { CreateRoomForm } from "@/components/CreateRoomForm";
 import { DeleteRoomButton } from "@/components/DeleteRoomButton";
 import { SignOutButton } from "@/components/SignOutButton";
 import { AsciiForest } from "@/components/chrome/AsciiForest";
+import { KorokScene } from "@/components/chrome/KorokScene";
 import { PageShell } from "@/components/chrome/PageShell";
 import { Reveal } from "@/components/chrome/Reveal";
 import { ButtonLink } from "@/components/ui/Button";
-import { Card, cardClass, cardHoverClass } from "@/components/ui/Card";
+import { Card, cardClass } from "@/components/ui/Card";
 import { sectionLabelClass } from "@/components/ui/SectionLabel";
 import { cx } from "@/lib/cx";
 import { SOURCE_LABEL } from "@/lib/video-source";
@@ -124,7 +125,7 @@ export default async function RoomsPage({
       </Reveal>
 
       <Reveal as="section" className="grid gap-4 sm:grid-cols-2">
-        <Card className="flex flex-col gap-3 p-4">
+        <Card tone="primary" className="flex flex-col gap-3 p-4">
           <h2 className={sectionLabelClass}>criar sala</h2>
           <CreateRoomForm />
         </Card>
@@ -138,26 +139,29 @@ export default async function RoomsPage({
       <Reveal as="section" className="flex flex-col gap-3">
         <h2 className={sectionLabelClass}>suas salas</h2>
         {visiveis.length === 0 ? (
-          <p className="text-body-sm text-[var(--ink-muted)]">
-            {pagina > 1
-              ? "não há mais salas nesta página."
-              : "nenhuma sala ainda — crie uma acima ou entre por código."}
-          </p>
+          pagina > 1 ? (
+            <p className="text-body-sm text-[var(--ink-muted)]">não há mais salas nesta página.</p>
+          ) : (
+            <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <KorokScene pose="dormindo" />
+              <p className="text-body-sm text-[var(--ink-muted)]">
+                ninguém por aqui ainda. crie a primeira sala e chame o pessoal.
+              </p>
+            </div>
+          )
         ) : (
-          <ul className="room-list flex flex-col gap-2">
+          <ul className={cx("room-list flex flex-col divide-y divide-[var(--line)] overflow-hidden", cardClass)}>
             {visiveis.map(({ room }) => (
               // `items-stretch` (e não `items-center`): o card tem duas linhas e
               // fica com ~58px, o botão de excluir tem 44px — centrado, os dois
               // retângulos ficavam com alturas diferentes e as bordas não
               // alinhavam (parecia quebrado). Esticado, o botão acompanha a
               // altura do card.
-              <li key={room.code} className="flex items-stretch gap-2">
+              <li key={room.code} className="flex items-stretch">
                 <Link
                   href={`/rooms/${room.code}`}
                   className={cx(
-                    "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3",
-                    cardClass,
-                    cardHoverClass,
+                    "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3 transition-colors duration-150 hover:bg-[var(--fill-1)]",
                     "focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]",
                   )}
                 >

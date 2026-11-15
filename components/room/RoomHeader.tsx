@@ -14,10 +14,10 @@ import { Badge } from "@/components/ui/Badge";
 import { iconButtonClass } from "@/components/ui/IconButton";
 
 const CONNECTION_LABEL: Partial<Record<ReturnType<typeof useStatus>, string>> = {
-  initial: "conectando...",
-  connecting: "conectando...",
-  reconnecting: "reconectando...",
-  disconnected: "desconectado — tentando religar...",
+  initial: "conectando…",
+  connecting: "conectando…",
+  reconnecting: "reconectando…",
+  disconnected: "desconectado — tentando religar…",
 };
 
 export function RoomHeader({

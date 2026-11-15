@@ -126,7 +126,7 @@ export const Chat = memo(function Chat({
           )}
           <li aria-hidden className="mt-auto" />
           {messages.length === 0 && (
-            <li className="text-body-sm text-[var(--ink-muted)]">nenhuma mensagem ainda.</li>
+            <li className="text-body-sm text-[var(--ink-muted)]">silêncio por aqui. diga oi.</li>
           )}
           {entries.map((entry) => {
             if (entry.kind === "day") {
