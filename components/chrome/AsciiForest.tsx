@@ -90,7 +90,7 @@ export function AsciiForest({ className = "" }: { className?: string }) {
     let visible = true;
     let pointer: { x: number; y: number } | null = null;
     const rand = mulberry(11);
-    const korokLines = miniKorokFrame(0).split("\n");
+    const korokLines = miniKorokFrame(2).split("\n");
     let korokCol = 0;
 
     const spawnLeaf = (anywhere: boolean): Leaf => ({
@@ -158,7 +158,7 @@ export function AsciiForest({ className = "" }: { className?: string }) {
       }
 
       const blink = Math.floor(t * 5) % 20 < 2;
-      const korok = blink ? miniKorokFrame(0).replaceAll("o V o", "- V -").split("\n") : korokLines;
+      const korok = blink ? miniKorokFrame(2).replaceAll("o V o", "- V -").split("\n") : korokLines;
       ctx.fillStyle = `rgb(${ACCENT})`;
       korok.forEach((line, i) => {
         ctx.fillText(line, korokCol * cw, (rows - 4 + i) * ch);

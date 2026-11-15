@@ -8,40 +8,38 @@ function blinking(tick: number): boolean {
   return tick % 20 < 2;
 }
 
-const HERO_WIDTH = 19;
+const MIRROR: Record<string, string> = { "/": "\\", "\\": "/", d: "b", b: "d", "(": ")", ")": "(" };
 
-function center(line: string): string {
-  const total = HERO_WIDTH - line.length;
-  const left = Math.max(0, Math.floor(total / 2));
-  return " ".repeat(left) + line + " ".repeat(Math.max(0, total - left));
+function mirrored(half: string): string {
+  return [...half].reverse().map((c) => MIRROR[c] ?? c).join("");
+}
+
+function row(left: string, center: string): string {
+  return left + center + mirrored(left);
 }
 
 export function heroKorokFrame(tick: number): string {
+  const up = tick % 14 < 7;
   const berry = tick % 10 < 5 ? "o" : "*";
-  const armL = tick % 14 < 7 ? "\\" : "|";
-  const armR = tick % 14 < 7 ? "/" : "|";
   const eyes = blinking(tick) ? "-" : "o";
-  const feet = tick % 8 < 4 ? "d b" : "b d";
   return [
-    `${berry}      _/^\\_      ${berry}`,
-    `${armL}    /=====\\    ${armR}`,
-    ` \\  / / | \\ \\  /`,
-    `  \\/ ${eyes}  V  ${eyes} \\/`,
-    `   \\_  \\___/  _/`,
-    `     \\__\\_|_/__/`,
-    `        ${feet}`,
-  ]
-    .map(center)
-    .join("\n");
+    row(up ? `${berry}      _/` : `       _/`, "^"),
+    row(up ? `\\     /==` : `${berry}     /==`, "="),
+    row(` \\   /   `, "|"),
+    row(`  | / ${eyes}  `, " "),
+    row(`  _/     `, "V"),
+    row(`   \\_____`, "_"),
+    row(`       d `, " "),
+  ].join("\n");
 }
 
 export function miniKorokFrame(tick: number): string {
   const berry = tick % 10 < 5 ? "o" : "*";
   const eyes = blinking(tick) ? "-" : "o";
   return [
-    ` ${berry}  /^\\  ${berry} `,
-    ` |\\(${eyes} V ${eyes})/| `,
-    `   \\_\\_/_/   `,
+    row(`${berry} /`, "^"),
+    row(`|(${eyes} `, "V"),
+    row(`  \\_`, "_"),
   ].join("\n");
 }
 
