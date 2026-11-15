@@ -14,8 +14,16 @@ model User {
   name         String?
   createdAt    DateTime @default(now())
 
-  ownedRooms  Room[]       @relation("RoomOwner")
-  memberships RoomMember[]
+  ownedRooms   Room[]        @relation("RoomOwner")
+  memberships  RoomMember[]
+  profileImage ProfileImage?
+}
+
+model ProfileImage {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data      Bytes
+  updatedAt DateTime @updatedAt
 }
 
 enum VideoSource {
