@@ -63,8 +63,8 @@ export function RoomHeader({
   const connectionLabel = CONNECTION_LABEL[status];
 
   return (
-    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--line)] pb-3">
-      <div className="flex min-w-0 items-center gap-3">
+    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--line)] pb-3 lg:flex-nowrap lg:items-center">
+      <div className="flex min-w-0 items-center gap-3 lg:contents">
         <Link
           href="/rooms"
           aria-label="voltar para suas salas"
@@ -72,9 +72,9 @@ export function RoomHeader({
         >
           ←
         </Link>
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <div className="flex min-w-0 items-center gap-2">
-            <h1 className="min-w-0 truncate text-heading font-semibold tracking-tight text-[var(--ink)]">
+        <div className="flex min-w-0 flex-col gap-0.5 lg:contents">
+          <div className="flex min-w-0 items-center gap-2 lg:order-1 lg:shrink">
+            <h1 className="min-w-0 truncate font-display text-heading font-semibold tracking-tight text-[var(--ink)]">
               {roomName || "sala sem nome"}
             </h1>
             {/* `!isBroadcasting`: este selo descreve o player, e no modo
@@ -90,7 +90,7 @@ export function RoomHeader({
                 `RoomActions` (44px, com `aria-pressed`). */}
             {economyMode && <Badge variant="soft">economy</Badge>}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 lg:order-4 lg:min-w-0 lg:shrink-0 lg:flex-nowrap">
             <LastActionNote lastEvent={lastEvent} userId={userId} />
             {connectionLabel ? (
               <span
@@ -119,19 +119,21 @@ export function RoomHeader({
       {/* Ações da sala no mesmo bloco do convite: no mobile o botão de
           transmissão fica ao lado do código, sem uma linha própria abaixo do
           vídeo. O chat começa na mesma altura da moldura do vídeo. */}
-      <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:mr-3 lg:w-auto">
-        <div className="min-w-0 max-sm:flex-1 max-sm:[&>div]:w-full max-sm:[&>div]:justify-between">
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:contents">
+        <div className="min-w-0 max-sm:flex-1 max-sm:[&>div]:w-full max-sm:[&>div]:justify-between lg:order-2 lg:shrink-0">
           <InviteCode code={roomCode} />
         </div>
         {livekitUrl !== null && (
-          <BroadcastControls
-            broadcast={broadcast}
-            userId={userId}
-            userName={userName}
-            videoSourceUrl={videoSourceUrl}
-          />
+          <div className="min-w-0 lg:order-3 lg:shrink-0">
+            <BroadcastControls
+              broadcast={broadcast}
+              userId={userId}
+              userName={userName}
+              videoSourceUrl={videoSourceUrl}
+            />
+          </div>
         )}
-        <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-end">
+        <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-end lg:order-5 lg:ml-auto lg:shrink-0">
           <button
             type="button"
             onClick={() => setProfileOpen(true)}
