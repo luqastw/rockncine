@@ -7,6 +7,7 @@ import { JoinRoomForm } from "@/components/JoinRoomForm";
 import { CreateRoomForm } from "@/components/CreateRoomForm";
 import { DeleteRoomButton } from "@/components/DeleteRoomButton";
 import { SignOutButton } from "@/components/SignOutButton";
+import { AsciiForest } from "@/components/chrome/AsciiForest";
 import { PageShell } from "@/components/chrome/PageShell";
 import { Reveal } from "@/components/chrome/Reveal";
 import { ButtonLink } from "@/components/ui/Button";
@@ -104,6 +105,8 @@ export default async function RoomsPage({
     <PageShell width="md" chrome korok className="justify-safe-center gap-10">
       {/* A marca está no ChromeBar; este h1 preserva a semântica de título da página. */}
       <h1 className="sr-only font-semibold tracking-tight">suas salas</h1>
+
+      <AsciiForest className="-mt-4 h-32 sm:h-36" />
 
       <Reveal as="header" className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">

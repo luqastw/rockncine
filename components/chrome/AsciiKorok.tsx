@@ -2,27 +2,47 @@
 
 import { useEffect, useState } from "react";
 
-const TICK_MS = 180;
-
-const HERO_LEAF = [" _\\|/_ ", " _-|-_ ", " _/|\\_ ", " _-|-_ "];
-const MINI_LEAF = [" \\|/ ", " -|- ", " /|\\ ", " -|- "];
+const TICK_MS = 200;
 
 function blinking(tick: number): boolean {
-  return tick % 22 < 2;
+  return tick % 20 < 2;
 }
 
-function heroFrame(tick: number): string {
-  const leaf = HERO_LEAF[tick % HERO_LEAF.length];
-  const eyes = blinking(tick) ? "( - - )" : "( o o )";
-  const mouth = tick % 12 < 6 ? " \\_o_/ " : " \\_v_/ ";
-  const feet = tick % 8 < 4 ? "  d b  " : "  b d  ";
-  return [leaf, ".-\"\"\"-.", eyes, mouth, feet].join("\n");
+const HERO_WIDTH = 19;
+
+function center(line: string): string {
+  const total = HERO_WIDTH - line.length;
+  const left = Math.max(0, Math.floor(total / 2));
+  return " ".repeat(left) + line + " ".repeat(Math.max(0, total - left));
 }
 
-function miniFrame(tick: number): string {
-  const leaf = MINI_LEAF[tick % MINI_LEAF.length];
-  const face = blinking(tick) ? "(-.-)" : "(o.o)";
-  return [leaf, face, " /_\\ "].join("\n");
+export function heroKorokFrame(tick: number): string {
+  const berry = tick % 10 < 5 ? "o" : "*";
+  const armL = tick % 14 < 7 ? "\\" : "|";
+  const armR = tick % 14 < 7 ? "/" : "|";
+  const eyes = blinking(tick) ? "-" : "o";
+  const feet = tick % 8 < 4 ? "d b" : "b d";
+  return [
+    `${berry}      _/^\\_      ${berry}`,
+    `${armL}    /=====\\    ${armR}`,
+    ` \\  / / | \\ \\  /`,
+    `  \\/ ${eyes}  V  ${eyes} \\/`,
+    `   \\_  \\___/  _/`,
+    `     \\__\\_|_/__/`,
+    `        ${feet}`,
+  ]
+    .map(center)
+    .join("\n");
+}
+
+export function miniKorokFrame(tick: number): string {
+  const berry = tick % 10 < 5 ? "o" : "*";
+  const eyes = blinking(tick) ? "-" : "o";
+  return [
+    ` ${berry}  /^\\  ${berry} `,
+    ` |\\(${eyes} V ${eyes})/| `,
+    `   \\_\\_/_/   `,
+  ].join("\n");
 }
 
 export function AsciiKorok({
@@ -44,11 +64,9 @@ export function AsciiKorok({
     return () => window.clearInterval(id);
   }, []);
 
-  const frame = variant === "hero" ? heroFrame(tick) : miniFrame(tick);
+  const frame = variant === "hero" ? heroKorokFrame(tick) : miniKorokFrame(tick);
   const size =
-    variant === "hero"
-      ? "text-[13px] leading-[15px]"
-      : "text-[8px] leading-[9px]";
+    variant === "hero" ? "text-[11px] leading-[12px]" : "text-[8px] leading-[9px]";
 
   return (
     <pre

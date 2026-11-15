@@ -24,7 +24,7 @@ describe("AsciiKorok", () => {
     const { container } = render(<AsciiKorok variant="mini" />);
     const first = container.querySelector("pre")?.textContent;
     act(() => {
-      vi.advanceTimersByTime(200);
+      vi.advanceTimersByTime(1000);
     });
     expect(container.querySelector("pre")?.textContent).not.toBe(first);
   });
