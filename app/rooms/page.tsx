@@ -9,23 +9,17 @@ import { DeleteRoomButton } from "@/components/DeleteRoomButton";
 import { SignOutButton } from "@/components/SignOutButton";
 import { PageShell } from "@/components/chrome/PageShell";
 import { Reveal } from "@/components/chrome/Reveal";
+import { Stump } from "@/components/chrome/Stump";
 import { ButtonLink } from "@/components/ui/Button";
-import { Card, cardClass } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { sectionLabelClass } from "@/components/ui/SectionLabel";
 import { cx } from "@/lib/cx";
 import { SOURCE_LABEL } from "@/lib/video-source";
 
 export const metadata: Metadata = { title: "suas salas · rockncine" };
 
-// Quantas salas a lista carrega. A consulta ordena por ATIVIDADE e corta no
-// limite — o corte é o que exige a seção de "carregar mais" abaixo, e não um
-// `take` silencioso: com 20 fixas e nenhuma saída, a 21ª sala simplesmente
-// sumia, sem aviso e sem forma de chegar nela.
 const PAGE_SIZE = 20;
 
-// Data relativa para os casos que importam ("hoje", "ontem", "há 3 dias") e
-// data absoluta no resto. `toLocaleDateString` sem o ano em `DD/MM` faz uma
-// sala de janeiro do ano passado ser indistinguível de uma de ontem.
 function formatWhen(date: Date) {
   const now = new Date();
   const days = Math.floor((startOfDay(now).getTime() - startOfDay(date).getTime()) / 86_400_000);
@@ -54,28 +48,13 @@ export default async function RoomsPage({
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
 
-  // Página pedida além da primeira só faz sentido para quem está logado.
   const paginaPedida = Number.parseInt((await searchParams)?.pagina ?? "1", 10);
   const pagina = Number.isFinite(paginaPedida) && paginaPedida > 0 ? paginaPedida : 1;
 
-  // Salas em que o usuário é membro — `RoomMember` já era populado no acesso à
-  // sala, mas nunca era lido: fechou a aba sem anotar o código e a sala estava
-  // perdida, apesar de a spec dizer que ela "permanece indefinidamente"
-  // (achado 7 da auditoria).
-  //
-  // A ORDEM é por `room.updatedAt`, não por `membership.joinedAt`. Ordenar por
-  // "quando você entrou" punia exatamente as salas que importam: alguém que
-  // entrou numa sala há meses e que está rolando agora aparecia no fim da
-  // lista. `updatedAt` muda quando o vídeo da sala é trocado, que é o proxy
-  // mais próximo de "atividade" disponível sem um modelo de eventos.
   const memberships = userId
     ? await prisma.roomMember.findMany({
         where: { userId },
         orderBy: { room: { updatedAt: "desc" } },
-        // PAGE_SIZE + 1, não PAGE_SIZE: o item extra é o sinal de "existe
-        // próxima página" sem precisar de uma segunda consulta de contagem.
-        // `skip` abaixo de 0 faria o Prisma lançar, e a guarda de `pagina` vem
-        // antes disto por isso.
         take: PAGE_SIZE + 1,
         skip: (pagina - 1) * PAGE_SIZE,
         select: {
@@ -93,21 +72,16 @@ export default async function RoomsPage({
       })
     : [];
 
-  // `PAGE_SIZE + 1` para saber se existe a próxima página sem uma segunda
-  // consulta de contagem — o item extra é descartado da renderização.
   const temProxima = memberships.length > PAGE_SIZE;
   const visiveis = temProxima ? memberships.slice(0, PAGE_SIZE) : memberships;
 
   return (
-    // O invólucro único (FR-018) é o `PageShell`: largura e padding vivem
-    // ali. A marca saiu deste arquivo e vive no `ChromeBar`.
-    <PageShell width="md" chrome className="justify-safe-center gap-10">
-      {/* A marca está no ChromeBar; este h1 preserva a semântica de título da página. */}
+    <PageShell width="lg" chrome fog className="justify-safe-center gap-8">
       <h1 className="sr-only font-semibold tracking-tight">suas salas</h1>
 
       <Reveal as="header" className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
-          <span className={sectionLabelClass}>sua conta</span>
+          <span className="text-caption text-[var(--ink-muted)]">sua conta</span>
           <p className="truncate text-body-sm text-[var(--ink)]">
             {session?.user?.name ?? session?.user?.email}
           </p>
@@ -120,107 +94,91 @@ export default async function RoomsPage({
         </div>
       </Reveal>
 
-      <Reveal as="section" className="grid gap-4 sm:grid-cols-2">
-        <Card tone="primary" className="flex flex-col gap-3 p-4">
-          <h2 className={sectionLabelClass}>criar sala</h2>
-          <CreateRoomForm />
-        </Card>
+      <div className="grid gap-8 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
+        <Reveal as="div" className="flex flex-col gap-6">
+          <Card className="flex flex-col gap-3 p-4">
+            <h2 className={sectionLabelClass}>entrar por código</h2>
+            <JoinRoomForm />
+          </Card>
 
-        <Card className="flex flex-col gap-3 p-4">
-          <h2 className={sectionLabelClass}>entrar por código</h2>
-          <JoinRoomForm />
-        </Card>
-      </Reveal>
+          <Card tone="primary" className="flex flex-col gap-3 p-4">
+            <h2 className={sectionLabelClass}>criar sala</h2>
+            <CreateRoomForm />
+          </Card>
+        </Reveal>
 
-      <Reveal as="section" className="flex flex-col gap-3">
-        <h2 className={sectionLabelClass}>suas salas</h2>
-        {visiveis.length === 0 ? (
-          pagina > 1 ? (
-            <p className="text-body-sm text-[var(--ink-muted)]">não há mais salas nesta página.</p>
-          ) : (
-            <div className="flex flex-col items-center gap-3 py-6 text-center">
-              <p className="text-body-sm text-[var(--ink-muted)]">
-                ninguém por aqui ainda. crie a primeira sala e chame o pessoal.
-              </p>
-            </div>
-          )
-        ) : (
-          <ul className={cx("room-list flex flex-col divide-y divide-[var(--line)]", cardClass)}>
-            {visiveis.map(({ room }) => (
-              // `items-stretch` (e não `items-center`): o card tem duas linhas e
-              // fica com ~58px, o botão de excluir tem 44px — centrado, os dois
-              // retângulos ficavam com alturas diferentes e as bordas não
-              // alinhavam (parecia quebrado). Esticado, o botão acompanha a
-              // altura do card.
-              <li key={room.code} className="flex items-stretch first:rounded-t-[inherit] last:rounded-b-[inherit]">
-                <Link
-                  href={`/rooms/${room.code}`}
-                  className={cx(
-                    "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3 transition-colors duration-150 hover:bg-[var(--fill-1)]",
-                    "rounded-[inherit] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--outline-strong)]",
-                  )}
+        <Reveal as="section" className="flex min-w-0 flex-col gap-4">
+          <Card className="flex flex-col gap-3 p-4">
+            <h2 className={sectionLabelClass}>suas salas</h2>
+            {visiveis.length === 0 ? (
+              pagina > 1 ? (
+                <p className="text-body-sm text-[var(--ink-muted)]">não há mais salas nesta página.</p>
+              ) : (
+                <div
+                  data-testid="rooms-empty"
+                  className="flex flex-col items-center gap-3 py-8 text-center"
                 >
-                  <span className="flex min-w-0 flex-col">
-                    <span className="truncate text-body-sm text-[var(--ink)]">
-                      {room.name || "sala sem nome"}
-                    </span>
-                    {/* O que está tocando. A fonte já vinha no select da
-                        consulta anterior e não era usada — a pergunta que a
-                        lista responde é "qual sala eu vou abrir", e o nome não
-                        basta quando todas se chamam "sala". `truncate`
-                        mantém o cartão com a mesma altura dos outros. */}
-                    <span className="truncate font-mono text-caption text-[var(--ink-muted)]">
-                      {room.code}
-                      {room.videoSource ? ` · ${SOURCE_LABEL[room.videoSource]}` : ""}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-caption text-[var(--ink-muted)]">
-                    {room.ownerId === userId ? "sua · " : ""}
-                    {formatWhen(room.updatedAt)}
-                  </span>
-                </Link>
-                {/* Botão irmão do Link, nunca filho — interativo aninhado em
-                    interativo é HTML inválido. Só aparece na sala de quem é
-                    dono (FR-001/FR-002), e o servidor reconfere. */}
-                {room.ownerId === userId && (
-                  <DeleteRoomButton roomCode={room.code} roomName={room.name} />
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
+                  <Stump className="size-20" />
+                  <p className="text-body-sm text-[var(--ink-muted)]">
+                    ninguém por aqui ainda. crie a primeira sala e chame o pessoal.
+                  </p>
+                </div>
+              )
+            ) : (
+              <ul className="room-list flex flex-col divide-y divide-[var(--line)]">
+                {visiveis.map(({ room }) => (
+                  <li key={room.code} className="flex items-stretch">
+                    <Link
+                      href={`/rooms/${room.code}`}
+                      className={cx(
+                        "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-2 py-3 transition-colors duration-150 hover:bg-[var(--bg-elevated)]",
+                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--outline-strong)]",
+                      )}
+                    >
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate text-body-sm text-[var(--ink)]">
+                          {room.name || "sala sem nome"}
+                        </span>
+                        <span className="truncate font-mono text-caption text-[var(--ink-muted)]">
+                          {room.code.toUpperCase()}
+                          {room.videoSource ? ` · ${SOURCE_LABEL[room.videoSource]}` : ""}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-caption text-[var(--ink-muted)]">
+                        {room.ownerId === userId ? "sua · " : ""}
+                        {formatWhen(room.updatedAt)}
+                      </span>
+                    </Link>
+                    {room.ownerId === userId && (
+                      <DeleteRoomButton roomCode={room.code} roomName={room.name} />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
 
-        {/* Navegação de páginas. Antes não existia: com `take: 20` fixo e sem
-            esta seção, a 21ª sala sumia da lista sem aviso e sem caminho de
-            volta. */}
-        {(pagina > 1 || temProxima) && (
-          <nav aria-label="páginas de salas" className="flex items-center justify-between gap-2">
-            {pagina > 1 ? (
-              <ButtonLink
-                href={`/rooms?pagina=${pagina - 1}`}
-                variant="outline"
-                size="sm"
-              >
-                ← anteriores
-              </ButtonLink>
-            ) : (
-              <span />
-            )}
-            <span className="font-mono text-caption text-[var(--ink-muted)]">página {pagina}</span>
-            {temProxima ? (
-              <ButtonLink
-                href={`/rooms?pagina=${pagina + 1}`}
-                variant="outline"
-                size="sm"
-              >
-                mais →
-              </ButtonLink>
-            ) : (
-              <span />
-            )}
-          </nav>
-        )}
-      </Reveal>
+          {(pagina > 1 || temProxima) && (
+            <nav aria-label="páginas de salas" className="flex items-center justify-between gap-2">
+              {pagina > 1 ? (
+                <ButtonLink href={`/rooms?pagina=${pagina - 1}`} variant="outline" size="sm">
+                  ← anteriores
+                </ButtonLink>
+              ) : (
+                <span />
+              )}
+              <span className="font-mono text-caption text-[var(--ink-muted)]">página {pagina}</span>
+              {temProxima ? (
+                <ButtonLink href={`/rooms?pagina=${pagina + 1}`} variant="outline" size="sm">
+                  mais →
+                </ButtonLink>
+              ) : (
+                <span />
+              )}
+            </nav>
+          )}
+        </Reveal>
+      </div>
     </PageShell>
   );
 }

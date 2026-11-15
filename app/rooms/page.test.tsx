@@ -149,6 +149,31 @@ describe("ordem e metadados da lista", () => {
   });
 });
 
+describe("estado vazio e linha da sala (FR-016, FR-017)", () => {
+  it("AC-009: sem salas mostra o texto vazio e o toco aria-hidden", async () => {
+    vi.mocked(getServerSession).mockResolvedValue({ user: { id: "eu", name: "eu" } } as never);
+    findMany.mockResolvedValue([]);
+
+    await renderPage();
+
+    const texto = screen.getByText(/ninguém por aqui ainda/i);
+    expect(texto).toBeTruthy();
+    const bloco = texto.parentElement;
+    expect(bloco?.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it("AC-010: a sala abc123 aparece como ABC123 com link para /rooms/abc123", async () => {
+    vi.mocked(getServerSession).mockResolvedValue({ user: { id: "eu", name: "eu" } } as never);
+    findMany.mockResolvedValue([membership({ code: "abc123", name: "sala x" })]);
+
+    await renderPage();
+
+    const item = screen.getByText(/ABC123/).closest("li");
+    expect(item?.textContent).toContain("ABC123");
+    expect(item?.querySelector('a[href="/rooms/abc123"]')).not.toBeNull();
+  });
+});
+
 describe("paginação", () => {
   // O `take: 20` fixo sem nenhuma saída fazia a 21ª sala sumir sem aviso.
   it("pede uma página a mais para detectar se há próxima", async () => {
