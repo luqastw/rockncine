@@ -1,11 +1,9 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// `next/font/google` só é necessário por causa do `global-error.tsx`, que
-// redeclara as fontes do documento que ele substitui. Fora do build do Next não
-// faz sentido baixar nada, então vira stub.
 vi.mock("next/font/google", () => ({
-  Geist: () => ({ variable: "--font-geist", className: "font-geist" }),
+  Inter: () => ({ variable: "--font-inter", className: "font-inter" }),
+  Fraunces: () => ({ variable: "--font-fraunces", className: "font-fraunces" }),
   Geist_Mono: () => ({ variable: "--font-geist-mono", className: "font-geist-mono" }),
 }));
 
@@ -16,7 +14,6 @@ import GlobalError from "@/app/global-error";
 let errorSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
-  // Os dois boundaries logam no console por design; aqui isso só polui a saída.
   errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
@@ -25,24 +22,26 @@ afterEach(() => {
   cleanup();
 });
 
-/**
- * A linguagem dos estados (FR-007): fio (`--hairline`) e a marca acessível fora de qualquer nó `aria-hidden`.
- */
 function assertLinguagemDoEstado(container: HTMLElement) {
-  expect(container.querySelector('[class*="hairline"]')).toBeTruthy();
+  expect(container.querySelector("[data-staff-line]")).toBeTruthy();
 
   const marca = screen.getByText("rockncine");
   expect(marca.closest('[aria-hidden="true"]')).toBeNull();
 }
 
 describe("estados de erro (FR-007)", () => {
-  it("AC-016: o 404 exibe fio, com a marca acessível", () => {
+  it("AC-016: o 404 exibe a pauta, com a marca acessível", () => {
     const { container } = render(<NotFound />);
     assertLinguagemDoEstado(container);
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("página não encontrada");
   });
 
-  it("AC-016: o erro de segmento exibe fio", () => {
+  it("AC-019: o 404 tem o h1 e o link de volta ao começo", () => {
+    render(<NotFound />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("você voltou ao mesmo lugar");
+    expect(screen.getByRole("link", { name: "voltar ao começo" }).getAttribute("href")).toBe("/");
+  });
+
+  it("AC-016: o erro de segmento exibe a pauta", () => {
     const { container } = render(<SegmentError error={new Error("boom")} reset={() => {}} />);
     assertLinguagemDoEstado(container);
   });
