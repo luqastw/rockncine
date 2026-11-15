@@ -16,7 +16,7 @@ describe("SyncStatus", () => {
   it("tocando mostra ao vivo e o ponto", () => {
     const { container } = render(<SyncStatus {...base} isPlaying />);
     expect(screen.getByText("ao vivo")).toBeTruthy();
-    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByRole("status").textContent).toBe("");
     expect(container.querySelector("[data-sync-dot]")).not.toBeNull();
   });
 
@@ -34,7 +34,7 @@ describe("SyncStatus", () => {
 
   it("preserva o rótulo de conexão", () => {
     render(<SyncStatus {...base} connectionLabel="conectando…" />);
-    expect(screen.getByText("conectando…")).toBeTruthy();
+    expect(screen.getAllByText("conectando…")).toHaveLength(2);
     expect(screen.getByRole("status").textContent).toBe("conectando…");
   });
 

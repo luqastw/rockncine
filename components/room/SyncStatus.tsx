@@ -45,11 +45,13 @@ export function SyncStatus({
         />
       )}
       <span
-        role={connectionLabel ? "status" : undefined}
-        aria-live={connectionLabel ? "polite" : undefined}
+        aria-hidden={connectionLabel ? true : undefined}
         className={showDot ? "text-[var(--ink)]" : undefined}
       >
         {label}
+      </span>
+      <span role="status" aria-live="polite" className="sr-only">
+        {connectionLabel ?? ""}
       </span>
     </span>
   );
