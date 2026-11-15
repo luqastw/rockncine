@@ -129,47 +129,51 @@ export function ProfileAvatarForm({
   const shownSrc = previewUrl ?? avatarSrc(userId, avatarV ?? undefined);
 
   return (
-    <form onSubmit={handleSubmit} aria-busy={busy} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} aria-busy={busy} className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
       <Image
         unoptimized
         src={shownSrc}
         alt="prévia da imagem de perfil"
-        width={96}
-        height={96}
-        className="h-24 w-24 rounded-full object-cover"
+        width={144}
+        height={144}
+        className="h-32 w-32 shrink-0 rounded-full border border-[var(--line)] object-cover sm:h-36 sm:w-36"
       />
-      <div className="flex flex-col gap-2">
-        <label htmlFor="profile-image-file" className="text-body-sm text-[var(--ink)]">
-          escolher imagem (png, jpeg ou webp, até 2 MB)
-        </label>
-        <input
-          ref={inputRef}
-          id="profile-image-file"
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          onChange={handleChange}
-          disabled={busy}
-          className="text-body-sm text-[var(--ink)]"
-        />
+      <div className="flex w-full min-w-0 flex-1 flex-col items-center gap-4 sm:items-start">
+        <div className="flex w-full flex-col gap-2 text-center sm:text-left">
+          <label htmlFor="profile-image-file" className="text-body-sm font-medium text-[var(--ink)]">
+            escolher imagem
+          </label>
+          <input
+            ref={inputRef}
+            id="profile-image-file"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={handleChange}
+            disabled={busy}
+            className="w-full min-w-0 text-body-sm text-[var(--ink-muted)] file:mr-3 file:min-h-10 file:cursor-pointer file:rounded-lg file:border file:border-[var(--line)] file:bg-[var(--bg-elevated)] file:px-4 file:text-body-sm file:font-medium file:text-[var(--ink)]"
+          />
+          <p className="text-caption text-[var(--ink-muted)]">png, jpeg ou webp, até 2 MB</p>
+        </div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Button type="submit" disabled={busy || !file} aria-busy={busy} className="w-full sm:w-auto">
+            {busy ? "enviando..." : "enviar"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleRemove}
+            disabled={busy || avatarV === null}
+            className="w-full sm:w-auto"
+          >
+            remover imagem
+          </Button>
+        </div>
+        {error ? (
+          <p role="alert" className="text-body-sm text-[var(--ink)]">
+            {error}
+          </p>
+        ) : null}
       </div>
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={busy || !file} aria-busy={busy}>
-          {busy ? "enviando..." : "enviar"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleRemove}
-          disabled={busy || avatarV === null}
-        >
-          remover imagem
-        </Button>
-      </div>
-      {error ? (
-        <p role="alert" className="text-body-sm text-[var(--ink)]">
-          {error}
-        </p>
-      ) : null}
     </form>
   );
 }
