@@ -117,7 +117,7 @@ export function AsciiForest({ className = "" }: { className?: string }) {
       rows = Math.max(5, Math.floor(rect.height / ch));
       scene = buildScene(cols, rows);
       korokCol = Math.max(2, Math.floor(cols * 0.62));
-      for (let y = rows - 6; y < rows - 1; y++) {
+      for (let y = rows - 7; y < rows - 1; y++) {
         for (let x = korokCol - 2; x < korokCol + 12; x++) {
           if (x < 0 || x >= cols || y < 0) continue;
           scene[y * cols + x] = null;
@@ -167,7 +167,7 @@ export function AsciiForest({ className = "" }: { className?: string }) {
       const korok = blink ? miniKorokFrame(2).replaceAll("o V o", "- V -").split("\n") : korokLines;
       ctx.fillStyle = `rgb(${ACCENT})`;
       korok.forEach((line, i) => {
-        ctx.fillText(line, korokCol * cw, (rows - 5 + i) * ch);
+        ctx.fillText(line, korokCol * cw, (rows - 6 + i) * ch);
       });
 
       for (const f of flies) {

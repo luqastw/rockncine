@@ -18,31 +18,20 @@ function row(left: string, center: string): string {
   return left + center + mirrored(left);
 }
 
-export function heroKorokFrame(tick: number): string {
-  const up = tick % 14 < 7;
+export function korokFrame(tick: number): string {
   const berry = tick % 10 < 5 ? "o" : "*";
   const eyes = blinking(tick) ? "-" : "o";
+  const foot = tick % 8 < 4 ? "d" : "b";
   return [
-    row(up ? `${berry}      _/` : `       _/`, "^"),
-    row(up ? `\\     /==` : `${berry}     /==`, "="),
-    row(` \\   /   `, "|"),
-    row(`  | / ${eyes}  `, " "),
-    row(`  _/     `, "V"),
-    row(`   \\_____`, "_"),
-    row(`       d `, " "),
+    row("    ", "^"),
+    row(" _ /", "|"),
+    row(`\\_${eyes} `, "V"),
+    row(`${berry}\\_|`, "="),
+    row(`   ${foot}`, " "),
   ].join("\n");
 }
 
-export function miniKorokFrame(tick: number): string {
-  const berry = tick % 10 < 5 ? "o" : "*";
-  const eyes = blinking(tick) ? "-" : "o";
-  return [
-    row(`${berry}   `, "^"),
-    row(`|  /`, "="),
-    row(`|(${eyes} `, "V"),
-    row(`  \\_`, "_"),
-  ].join("\n");
-}
+export const miniKorokFrame = korokFrame;
 
 export function AsciiKorok({
   variant = "hero",
@@ -63,9 +52,9 @@ export function AsciiKorok({
     return () => window.clearInterval(id);
   }, []);
 
-  const frame = variant === "hero" ? heroKorokFrame(tick) : miniKorokFrame(tick);
+  const frame = korokFrame(tick);
   const size =
-    variant === "hero" ? "text-[11px] leading-[12px]" : "text-[8px] leading-[9px]";
+    variant === "hero" ? "text-[14px] leading-[14px] tracking-[0.18em]" : "text-[8px] leading-[9px]";
 
   return (
     <pre
