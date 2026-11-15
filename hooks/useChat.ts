@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useBroadcastEvent, useEventListener, useStatus } from "@liveblocks/react";
 import type { ChatEvent } from "@/liveblocks.config";
 import { appendChatItem } from "@/lib/chat-feed";
+import { parseAvatarVersion } from "@/lib/avatar";
 import { MAX_TEXT_LENGTH, parseChatEvent } from "@/lib/chat-event";
 
 // Reexportado para os consumidores que já importavam daqui (Chat.tsx).
@@ -26,7 +27,15 @@ const MAX_PENDING = 50;
 // `<Chat>` e este hook é só o emissor. É a separação que impede uma mensagem de
 // chat de re-renderizar a sala inteira (FR-001/FR-002,
 // docs/specs/13-chat-sala/spec.md).
-export function useChat({ userId, userName }: { userId: string; userName: string }) {
+export function useChat({
+  userId,
+  userName,
+  avatarV,
+}: {
+  userId: string;
+  userName: string;
+  avatarV?: number | null;
+}) {
   const broadcast = useBroadcastEvent();
   const status = useStatus();
   // Mensagens escritas fora de `connected`, na ordem em que foram escritas.
@@ -79,6 +88,8 @@ export function useChat({ userId, userName }: { userId: string; userName: string
         text: trimmed.slice(0, MAX_TEXT_LENGTH),
         ts: Date.now(),
       };
+      const version = parseAvatarVersion(avatarV);
+      if (version !== undefined) event.avatarV = version;
 
       // Otimista e imediato: o item entra no log local antes de qualquer
       // decisão de transporte, então quem escreve nunca espera a rede para ver a
@@ -95,7 +106,7 @@ export function useChat({ userId, userName }: { userId: string; userName: string
       // sumirem da tela faz tempo; o que fica é a janela recente.
       pendingRef.current = pending.length > MAX_PENDING ? pending.slice(-MAX_PENDING) : pending;
     },
-    [broadcast, status, userId, userName],
+    [avatarV, broadcast, status, userId, userName],
   );
 
   // exposto pra fora do feed de chat próprio — useRoomLeaveAnnouncement

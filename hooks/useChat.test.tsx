@@ -34,8 +34,14 @@ function emit(event: unknown) {
   });
 }
 
-function Probe({ onReady }: { onReady: (api: ReturnType<typeof useChat>) => void }) {
-  const api = useChat({ userId: "me", userName: "eu" });
+function Probe({
+  onReady,
+  avatarV,
+}: {
+  onReady: (api: ReturnType<typeof useChat>) => void;
+  avatarV?: number | null;
+}) {
+  const api = useChat({ userId: "me", userName: "eu", avatarV });
   onReady(api);
   // O log é quem assina o feed agora (`useChatFeed`, dentro de <Chat>) — o
   // emissor não devolve mais `messages`. O Probe é esse log.
@@ -245,5 +251,54 @@ describe("useChat — envio local", () => {
       appendChatItem(item);
     });
     expect(screen.getAllByText("bruno saiu")).toHaveLength(1);
+  });
+});
+describe("useChat — avatarV no evento", () => {
+  let api: ReturnType<typeof useChat>;
+
+  beforeEach(() => {
+    listeners.length = 0;
+    broadcastMock.mockClear();
+    resetChatFeed();
+    statusMock.current = "connected";
+  });
+
+  it("inclui avatarV no broadcast e no item otimista", () => {
+    render(<Probe avatarV={123} onReady={(a) => (api = a)} />);
+    act(() => api.sendMessage("oi"));
+    expect(broadcastMock.mock.calls[0][0]).toMatchObject({ type: "CHAT_MESSAGE", avatarV: 123 });
+    expect(getChatFeed("SALA1234")[0]).toMatchObject({ avatarV: 123 });
+  });
+
+  it("omite a chave avatarV quando ausente, nulo ou inválido", () => {
+    const { rerender } = render(<Probe onReady={(a) => (api = a)} />);
+    act(() => api.sendMessage("a"));
+    rerender(<Probe avatarV={null} onReady={(a) => (api = a)} />);
+    act(() => api.sendMessage("b"));
+    rerender(<Probe avatarV={-1} onReady={(a) => (api = a)} />);
+    act(() => api.sendMessage("c"));
+    expect(broadcastMock).toHaveBeenCalledTimes(3);
+    for (const call of broadcastMock.mock.calls) {
+      expect("avatarV" in (call[0] as ChatEvent)).toBe(false);
+    }
+    for (const item of getChatFeed("SALA1234")) {
+      expect("avatarV" in item).toBe(false);
+    }
+  });
+
+  it("mensagem enfileirada mantém o avatarV da época da escrita", () => {
+    statusMock.current = "reconnecting";
+    const { rerender } = render(<Probe avatarV={111} onReady={(a) => (api = a)} />);
+    act(() => api.sendMessage("durante a queda"));
+    expect(broadcastMock).not.toHaveBeenCalled();
+
+    rerender(<Probe avatarV={222} onReady={(a) => (api = a)} />);
+    statusMock.current = "connected";
+    act(() => {
+      rerender(<Probe avatarV={222} onReady={(a) => (api = a)} />);
+    });
+
+    expect(broadcastMock).toHaveBeenCalledTimes(1);
+    expect(broadcastMock.mock.calls[0][0]).toMatchObject({ text: "durante a queda", avatarV: 111 });
   });
 });

@@ -8,6 +8,7 @@ export type RoomPresence = {
   // anterior, ou uma presence que acabou de entrar, pode não trazer o campo — e
   // ausência é lida como "não está digitando".
   typing?: boolean;
+  avatarV?: number | null;
 };
 
 // Quem está transmitindo a própria tela. Vive no storage — e não no data
@@ -79,6 +80,7 @@ export type ChatEvent = {
   authorName: string;
   text: string;
   ts: number;
+  avatarV?: number;
 };
 
 export type SystemEvent = {

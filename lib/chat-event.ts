@@ -11,6 +11,7 @@
 // absurdo também são negação de serviço, então há teto de tamanho em todo
 // campo que vira string na tela.
 
+import { parseAvatarVersion } from "@/lib/avatar";
 import type { ChatEvent, SystemEvent } from "@/liveblocks.config";
 
 export type ChatFeedItem = ChatEvent | SystemEvent;
@@ -71,6 +72,8 @@ export function parseChatEvent(value: unknown, now: number = Date.now()): ChatFe
   if (!isNonEmptyString(raw.authorId, MAX_AUTHOR_ID_LENGTH)) return null;
   if (typeof raw.authorName !== "string" || raw.authorName.length > MAX_NAME_LENGTH) return null;
 
+  const avatarV = parseAvatarVersion(raw.avatarV);
+
   return {
     type: "CHAT_MESSAGE",
     id: base.id,
@@ -78,6 +81,7 @@ export function parseChatEvent(value: unknown, now: number = Date.now()): ChatFe
     authorName: raw.authorName,
     text: base.text,
     ts: base.ts,
+    ...(avatarV === undefined ? {} : { avatarV }),
   };
 }
 
