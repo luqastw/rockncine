@@ -20,6 +20,7 @@ vi.mock("@/components/CreateRoomForm", () => ({ CreateRoomForm: () => null }));
 vi.mock("@/components/SignOutButton", () => ({ SignOutButton: () => null }));
 
 import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 import Home from "@/app/page";
 import LoginPage from "@/app/login/page";
 import RegisterPage from "@/app/register/page";
@@ -50,22 +51,59 @@ function assertAlvosDeToque() {
   }
 }
 
-describe("landing (FR-017)", () => {
-  it("AC-011: marca no h1, CTA para /register e /login, e o ol com três passos", async () => {
+describe("landing", () => {
+  it("AC-006: um h1, header com entrar e criar conta, ol com três passos e footer", async () => {
     anon();
     render(await Home());
 
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("rockncine");
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
+      "assista junto, no mesmo instante",
+    );
+    expect(screen.getAllByRole("link", { name: "entrar" })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "entrar" }).getAttribute("href")).toBe("/login");
+    expect(screen.getAllByRole("link", { name: "criar conta" })).toHaveLength(1);
     expect(screen.getByRole("link", { name: "criar conta" }).getAttribute("href")).toBe("/register");
+    expect(screen.getByRole("link", { name: "começar agora" }).getAttribute("href")).toBe("/register");
     expect(screen.getByRole("link", { name: "já tenho conta" }).getAttribute("href")).toBe("/login");
-    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(document.querySelectorAll("header")).toHaveLength(1);
+    const ol = document.querySelector("ol");
+    expect(ol?.querySelectorAll(":scope > li")).toHaveLength(3);
+    expect(document.querySelectorAll("footer")).toHaveLength(1);
+  });
+
+  it("AC-007: com sessão redireciona para /rooms", async () => {
+    vi.mocked(redirect).mockClear();
+    vi.mocked(getServerSession).mockResolvedValue({ user: { id: "eu" } } as never);
+    await Home();
+    expect(redirect).toHaveBeenCalledWith("/rooms");
+  });
+
+  it("AC-008: sem controles de player falsos", async () => {
+    anon();
+    const { container } = render(await Home());
+    expect(container.querySelector('[role="slider"]')).toBeNull();
+    expect(container.querySelector('[role="progressbar"]')).toBeNull();
+    expect(container.querySelector('input[type="range"]')).toBeNull();
+  });
+
+  it("AC-021: pauta no hero e névoa são aria-hidden", async () => {
+    anon();
+    const { container } = render(await Home());
+    const hero = screen.getByRole("heading", { level: 1 }).closest("section");
+    const pauta = hero?.querySelector("svg[data-lit]");
+    expect(pauta?.getAttribute("aria-hidden")).toBe("true");
+    expect(pauta?.querySelectorAll("[data-staff-line]").length).toBeGreaterThan(0);
+    const nevoa = container.querySelector("[data-fog]");
+    expect(nevoa?.getAttribute("aria-hidden")).toBe("true");
+    expect(nevoa?.querySelector("svg")).not.toBeNull();
   });
 
   it("AC-013: o CTA primário usa inversão e foco; o secundário usa contorno", async () => {
     anon();
     render(await Home());
 
-    const primario = screen.getByRole("link", { name: "criar conta" });
+    const primario = screen.getByRole("link", { name: "começar agora" });
     expect(primario.className).toContain("bg-[var(--leaf)]");
     expect(primario.className).toContain("text-[var(--bg-void)]");
     expect(primario.className).toContain("focus-visible:ring-[var(--outline-strong)]");
