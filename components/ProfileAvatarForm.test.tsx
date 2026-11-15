@@ -42,6 +42,19 @@ describe("ProfileAvatarForm", () => {
     vi.unstubAllGlobals();
   });
 
+  it("preview circular com contorno fairy e diametro por variante", () => {
+    const { container, rerender } = render(<ProfileAvatarForm userId="u1" initialAvatarV={null} />);
+    const preview = container.querySelector("[data-avatar-preview]");
+    expect(preview?.className).toContain("rounded-full");
+    expect(preview?.className).toContain("outline-[var(--fairy)]");
+    expect(preview?.className).toContain("size-40");
+    rerender(<ProfileAvatarForm userId="u1" initialAvatarV={null} stacked />);
+    const stackedPreview = container.querySelector("[data-avatar-preview]");
+    expect(stackedPreview?.className).toContain("rounded-full");
+    expect(stackedPreview?.className).toContain("outline-[var(--fairy)]");
+    expect(stackedPreview?.className).toContain("size-30");
+  });
+
   it("envio ok atualiza o avatar e posta a versao", async () => {
     fetchMock.mockResolvedValue(jsonResponse(200, { v: 123 }));
     render(<ProfileAvatarForm userId="u1" initialAvatarV={null} />);

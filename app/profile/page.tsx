@@ -11,7 +11,7 @@ import { sectionLabelClass } from "@/components/ui/SectionLabel";
 export const metadata: Metadata = { title: "perfil · rockncine" };
 
 export default async function ProfilePage() {
-  const { userId, userName } = await requireSession();
+  const { userId } = await requireSession();
   const image = await prisma.profileImage.findUnique({
     where: { userId },
     select: { updatedAt: true },
@@ -19,17 +19,14 @@ export default async function ProfilePage() {
   const avatarV = image ? image.updatedAt.getTime() : null;
 
   return (
-    <PageShell width="md" chrome className="justify-safe-center gap-10">
-      <Reveal as="header" className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className={sectionLabelClass}>seu perfil</span>
-          <h1 className="truncate text-heading font-semibold tracking-tight text-[var(--ink)]">
-            {userName}
-          </h1>
-        </div>
-        <ButtonLink href="/rooms" variant="outline" size="sm" className="shrink-0">
+    <PageShell width="sm" chrome fog className="justify-safe-center gap-8">
+      <Reveal as="header" className="flex flex-col items-center gap-4 text-center">
+        <ButtonLink href="/rooms" variant="outline" size="sm" className="self-start">
           voltar para suas salas
         </ButtonLink>
+        <h1 className="font-display text-heading font-semibold tracking-tight text-[var(--ink)]">
+          seu perfil
+        </h1>
       </Reveal>
 
       <Reveal as="section">

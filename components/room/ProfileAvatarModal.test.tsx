@@ -17,4 +17,11 @@ describe("ProfileAvatarModal", () => {
     fireEvent.click(screen.getByRole("button", { name: "fechar" }));
     expect(onClose).toHaveBeenCalledTimes(2);
   });
+
+  it("contém o preview do mesmo formulário de perfil", () => {
+    render(<ProfileAvatarModal userId="u1" avatarV={null} open onClose={() => {}} />);
+    const preview = screen.getByRole("dialog").querySelector("[data-avatar-preview]");
+    expect(preview).toBeTruthy();
+    expect(preview?.className).toContain("size-30");
+  });
 });

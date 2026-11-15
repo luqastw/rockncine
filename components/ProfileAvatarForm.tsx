@@ -131,17 +131,18 @@ export function ProfileAvatarForm({
   const shownSrc = previewUrl ?? avatarSrc(userId, avatarV ?? undefined);
 
   return (
-    <form onSubmit={handleSubmit} aria-busy={busy} className={`flex flex-col items-center gap-6 ${stacked ? "" : "sm:flex-row sm:items-center sm:gap-8"}`}>
+    <form onSubmit={handleSubmit} aria-busy={busy} className="flex flex-col items-center gap-6">
       <Image
+        data-avatar-preview
         unoptimized
         src={shownSrc}
         alt="prévia da imagem de perfil"
-        width={144}
-        height={144}
-        className="h-32 w-32 shrink-0 rounded-full border border-[var(--line)] object-cover sm:h-36 sm:w-36"
+        width={160}
+        height={160}
+        className={`${stacked ? "size-30" : "size-40"} shrink-0 rounded-full object-cover outline-2 outline-offset-4 outline-[var(--fairy)]`}
       />
-      <div className={`flex w-full min-w-0 flex-1 flex-col items-center gap-4 ${stacked ? "" : "sm:items-start"}`}>
-        <div className={`flex w-full flex-col gap-2 text-center ${stacked ? "" : "sm:text-left"}`}>
+      <div className="flex w-full min-w-0 flex-col items-center gap-4">
+        <div className="flex w-full flex-col gap-2 text-center">
           <label htmlFor="profile-image-file" className="text-body-sm font-medium text-[var(--ink)]">
             escolher imagem
           </label>
@@ -152,12 +153,12 @@ export function ProfileAvatarForm({
             accept="image/png,image/jpeg,image/webp"
             onChange={handleChange}
             disabled={busy}
-            className="w-full min-w-0 text-body-sm text-[var(--ink-muted)] file:mr-3 file:min-h-10 file:cursor-pointer file:rounded-lg file:border file:border-[var(--line)] file:bg-[var(--bg-elevated)] file:px-4 file:text-body-sm file:font-medium file:text-[var(--ink)]"
+            className="w-full min-w-0 text-body-sm text-[var(--ink-muted)] file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-lg file:border file:border-[var(--line)] file:bg-[var(--bg-elevated)] file:px-4 file:text-body-sm file:font-medium file:text-[var(--ink)]"
           />
           <p className="text-caption text-[var(--ink-muted)]">png, jpeg ou webp, até 2 MB</p>
         </div>
-        <div className={`flex w-full flex-col gap-2 ${stacked ? "" : "sm:w-auto sm:flex-row"}`}>
-          <Button type="submit" disabled={busy || !file} aria-busy={busy} className={stacked ? "w-full" : "w-full sm:w-auto"}>
+        <div className="flex w-full flex-col gap-2">
+          <Button type="submit" disabled={busy || !file} aria-busy={busy} className="w-full">
             {busy ? "enviando..." : "enviar"}
           </Button>
           <Button
@@ -165,7 +166,7 @@ export function ProfileAvatarForm({
             variant="outline"
             onClick={handleRemove}
             disabled={busy || avatarV === null}
-            className={stacked ? "w-full" : "w-full sm:w-auto"}
+            className="w-full"
           >
             remover imagem
           </Button>
