@@ -7,7 +7,7 @@ type InputStyleOptions = {
 };
 
 const BASE =
-  "min-h-11 w-full rounded-lg border border-[var(--line-strong)] bg-[var(--bg-void)] px-3.5 py-2 text-base text-[var(--ink)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 hover:border-[var(--ink-muted)] focus-visible:border-[var(--fairy)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--outline-strong)] focus-visible:ring-offset-2 sm:text-body-sm";
+  "min-h-11 w-full rounded-md border border-[var(--line-strong)] bg-[var(--bg-void)] px-3.5 py-2 text-body text-[var(--ink)] placeholder:text-[var(--ink-muted)] transition-colors duration-150 hover:border-[var(--ink-muted)] focus-visible:border-[var(--fairy)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--outline-strong)] focus-visible:ring-offset-2";
 
 export function inputClass({ surface = false, className }: InputStyleOptions = {}): string {
   return cx(

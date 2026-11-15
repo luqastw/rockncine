@@ -47,10 +47,10 @@ export const InviteCode = memo(function InviteCode({ code }: { code: string }) {
   };
 
   return (
-    <div className="flex items-center gap-1 rounded-lg bg-[var(--fill-1)] py-1 pl-3 pr-1">
+    <div className="flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] py-0.5 pl-3 pr-0.5">
       <span
         id="invite-code-text"
-        className="select-all font-mono text-body-sm tracking-wider text-[var(--ink-muted)]"
+        className="select-all font-mono text-body tracking-wider text-[var(--ink)]"
       >
         {code}
       </span>

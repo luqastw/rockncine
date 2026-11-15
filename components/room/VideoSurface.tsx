@@ -4,6 +4,7 @@ import type { PlaybackController } from "@/hooks/playerController";
 import type { RoomStorage } from "@/liveblocks.config";
 import { GenericIframe } from "@/components/room/GenericIframe";
 import { NativeVideoPlayer } from "@/components/room/NativeVideoPlayer";
+import { Staff } from "@/components/chrome/Staff";
 import { PlayIcon } from "@/components/room/player/icons";
 
 export const YT_CONTAINER_ID = "yt-player";
@@ -50,10 +51,10 @@ export function VideoSurface({
               // nenhum, num alvo que ocupa a tela inteira do player
               // (achado 17). `ring-inset` porque o botão sangra até
               // a borda da caixa.
-              className="absolute inset-0 z-20 flex items-center justify-center bg-[var(--bg-void)] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[var(--outline-strong)]"
+              className="group absolute inset-0 z-20 flex items-center justify-center bg-black focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[var(--outline-strong)]"
             >
-              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--invert-bg)] text-[var(--invert-fg)]">
-                <PlayIcon className="h-7 w-7" />
+              <span className="flex size-16 items-center justify-center rounded-full border border-[var(--line-strong)] bg-[var(--bg-surface)] text-[var(--ink)] transition-colors duration-150 group-hover:bg-[var(--leaf)] group-hover:text-[var(--bg-void)]">
+                <PlayIcon className="h-6 w-6" />
               </span>
             </button>
           )}
@@ -73,11 +74,12 @@ export function VideoSurface({
           </span>
         </div>
       ) : (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-6 text-center">
-          <p className="text-title font-semibold tracking-tight text-[var(--ink)]">
+        <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-6 text-center">
+          <Staff notes={4} className="mb-2 h-auto w-32" />
+          <p className="font-display text-heading font-semibold tracking-tight text-[var(--ink)]">
             nenhum vídeo carregado
           </p>
-          <p className="text-body-sm text-[var(--ink-muted)]">
+          <p className="text-body text-[var(--ink-muted)]">
             cole um link do youtube, vimeo ou mídia direta
           </p>
         </div>

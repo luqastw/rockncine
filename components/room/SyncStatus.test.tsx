@@ -40,7 +40,7 @@ describe("SyncStatus", () => {
 
   it("acende o pentagrama por 380ms a cada evento", () => {
     const { container, rerender } = render(<SyncStatus {...base} />);
-    const staff = () => container.querySelector("svg")?.getAttribute("data-lit");
+    const staff = () => container.querySelector("[data-lit]")?.getAttribute("data-lit");
     expect(staff()).toBe("false");
     rerender(<SyncStatus {...base} lastEvent={event(1)} />);
     expect(staff()).toBe("true");

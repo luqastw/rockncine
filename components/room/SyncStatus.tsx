@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import type { PlayerEvent } from "@/liveblocks.config";
-import { Staff } from "@/components/chrome/Staff";
 
 const LIT_MS = 380;
 
@@ -34,14 +33,15 @@ export function SyncStatus({
   const showDot = !connectionLabel && !isBroadcasting && isPlaying;
 
   return (
-    <span className="inline-flex items-center gap-2 font-mono text-caption text-[var(--ink-muted)]"
+    <span
+      data-lit={lit ? "true" : "false"}
+      className="group inline-flex items-center gap-2 text-caption text-[var(--ink-muted)]"
     >
-      <Staff notes={3} lit={lit} className="h-4 w-12" />
       {showDot && (
         <span
           aria-hidden
           data-sync-dot=""
-          className="size-2 rounded-full bg-[var(--fairy)]"
+          className="size-2 rounded-full bg-[var(--fairy)] transition-transform duration-[380ms] group-data-[lit=true]:scale-150 motion-reduce:transition-none"
         />
       )}
       <span

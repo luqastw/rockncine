@@ -8,7 +8,7 @@ export default function NotFound() {
     <PageShell width="sm" fog className="items-center justify-center gap-6 text-center">
       <Wordmark />
       <Staff notes={3} className="mx-auto h-auto w-32" />
-      <h1 className="font-display text-3xl font-semibold tracking-tight text-[var(--ink)] sm:text-4xl">
+      <h1 className="font-display text-title font-semibold tracking-tight text-[var(--ink)]">
         você voltou ao mesmo lugar
       </h1>
       <p className="text-body-sm text-[var(--ink-muted)]">

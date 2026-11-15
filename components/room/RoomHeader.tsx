@@ -69,7 +69,7 @@ export function RoomHeader({
         <Link
           href="/rooms"
           aria-label="voltar para suas salas"
-          className={iconButtonClass({ variant: "outline", className: "shrink-0" })}
+          className={iconButtonClass({ variant: "ghost", className: "shrink-0" })}
         >
           ←
         </Link>
@@ -118,7 +118,7 @@ export function RoomHeader({
             onClick={() => setProfileOpen(true)}
             aria-label="imagem de perfil"
             aria-haspopup="dialog"
-            className={iconButtonClass({ variant: "outline", className: "shrink-0" })}
+            className={iconButtonClass({ variant: "ghost", className: "shrink-0" })}
           >
             <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="8" r="4" />

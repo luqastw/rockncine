@@ -30,12 +30,6 @@ function uniqueOthers(others: readonly OtherPresence[], myUserId: string) {
   return byUser;
 }
 
-export function usePresentCount(myUserId: string) {
-  const others = useOthers();
-  const [myPresence] = useMyPresence();
-  return uniqueOthers(others, myPresence.userId ?? myUserId).size + 1;
-}
-
 /**
  * Estado do recolher da lista.
  *
@@ -98,13 +92,11 @@ export function PresenceList({
   myUserId,
   myName,
   myAvatarV,
-  fill = false,
 }: {
   expanded: boolean;
   myUserId: string;
   myName: string;
   myAvatarV?: number | null;
-  fill?: boolean;
 }) {
   const others = useOthers();
   const [myPresence] = useMyPresence();
@@ -119,7 +111,7 @@ export function PresenceList({
     // vence a regra `[hidden]` do browser.
     <ul
       id="presence-list"
-      className={`${fill ? "" : "max-h-[30dvh] "}flex-col gap-2 overflow-y-auto ${expanded ? "flex" : "hidden"}`}
+      className={`max-h-[30dvh] flex-col gap-2 overflow-y-auto ${expanded ? "flex" : "hidden"}`}
     >
       <li className="flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--fill-1)] px-3 py-2 text-body-sm text-[var(--ink)]">
         <Avatar

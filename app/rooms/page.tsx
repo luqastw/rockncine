@@ -75,51 +75,58 @@ export default async function RoomsPage({
   const temProxima = memberships.length > PAGE_SIZE;
   const visiveis = temProxima ? memberships.slice(0, PAGE_SIZE) : memberships;
 
-  return (
-    <PageShell width="lg" chrome fog className="justify-safe-center gap-8">
-      <h1 className="sr-only font-semibold tracking-tight">suas salas</h1>
+  const nome = session?.user?.name ?? session?.user?.email;
 
-      <Reveal as="header" className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className="text-caption text-[var(--ink-muted)]">sua conta</span>
-          <p className="truncate text-body-sm text-[var(--ink)]">
-            {session?.user?.name ?? session?.user?.email}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <ButtonLink href="/profile" variant="outline" size="sm">
+  return (
+    <PageShell
+      width="lg"
+      chrome
+      fog
+      className="gap-10"
+      actions={
+        <>
+          <ButtonLink href="/profile" variant="ghost" size="sm">
             perfil
           </ButtonLink>
           <SignOutButton />
-        </div>
+        </>
+      }
+    >
+      <Reveal as="header" className="flex flex-col gap-1">
+        <h1 className="font-display text-title font-semibold tracking-tight text-[var(--ink)]">
+          olá, {nome}
+        </h1>
+        <p className="text-body text-[var(--ink-muted)]">
+          entre numa sala pelo código ou crie uma nova.
+        </p>
       </Reveal>
 
-      <div className="grid gap-8 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
+      <div className="grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
         <Reveal as="div" className="flex flex-col gap-6">
-          <Card className="flex flex-col gap-3 p-4">
+          <Card className="flex flex-col gap-4 p-5">
             <h2 className={sectionLabelClass}>entrar por código</h2>
             <JoinRoomForm />
           </Card>
 
-          <Card tone="primary" className="flex flex-col gap-3 p-4">
+          <Card className="flex flex-col gap-4 p-5">
             <h2 className={sectionLabelClass}>criar sala</h2>
             <CreateRoomForm />
           </Card>
         </Reveal>
 
         <Reveal as="section" className="flex min-w-0 flex-col gap-4">
-          <Card className="flex flex-col gap-3 p-4">
+          <Card className="flex flex-col gap-4 p-5">
             <h2 className={sectionLabelClass}>suas salas</h2>
             {visiveis.length === 0 ? (
               pagina > 1 ? (
-                <p className="text-body-sm text-[var(--ink-muted)]">não há mais salas nesta página.</p>
+                <p className="text-body text-[var(--ink-muted)]">não há mais salas nesta página.</p>
               ) : (
                 <div
                   data-testid="rooms-empty"
                   className="flex flex-col items-center gap-3 py-8 text-center"
                 >
                   <Stump className="size-20" />
-                  <p className="text-body-sm text-[var(--ink-muted)]">
+                  <p className="text-body text-[var(--ink-muted)]">
                     ninguém por aqui ainda. crie a primeira sala e chame o pessoal.
                   </p>
                 </div>
@@ -127,16 +134,16 @@ export default async function RoomsPage({
             ) : (
               <ul className="room-list flex flex-col divide-y divide-[var(--line)]">
                 {visiveis.map(({ room }) => (
-                  <li key={room.code} className="flex items-stretch">
+                  <li key={room.code} className="flex items-center gap-1">
                     <Link
                       href={`/rooms/${room.code}`}
                       className={cx(
-                        "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-2 py-3 transition-colors duration-150 hover:bg-[var(--bg-elevated)]",
+                        "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-4 rounded-md px-3 py-3 transition-colors duration-150 hover:bg-[var(--bg-elevated)]",
                         "focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--outline-strong)]",
                       )}
                     >
                       <span className="flex min-w-0 flex-col">
-                        <span className="truncate text-body-sm text-[var(--ink)]">
+                        <span className="truncate text-body font-medium text-[var(--ink)]">
                           {room.name || "sala sem nome"}
                         </span>
                         <span className="truncate font-mono text-caption text-[var(--ink-muted)]">
@@ -145,7 +152,6 @@ export default async function RoomsPage({
                         </span>
                       </span>
                       <span className="shrink-0 text-caption text-[var(--ink-muted)]">
-                        {room.ownerId === userId ? "sua · " : ""}
                         {formatWhen(room.updatedAt)}
                       </span>
                     </Link>

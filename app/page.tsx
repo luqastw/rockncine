@@ -54,7 +54,7 @@ export default async function Home() {
       </Reveal>
 
       <Reveal as="section" className="flex flex-col gap-12">
-        <h2 className="text-center font-display text-2xl font-semibold tracking-tight text-[var(--ink)] sm:text-3xl">
+        <h2 className="text-center font-display text-title font-semibold tracking-tight text-[var(--ink)]">
           como funciona
         </h2>
         <div className="relative">
@@ -72,7 +72,7 @@ export default async function Home() {
               <li key={passo.titulo} className="flex flex-1 flex-col gap-3 text-center">
                 <span
                   aria-hidden="true"
-                  className="font-display text-6xl font-semibold text-[var(--torch)]"
+                  className="mx-auto bg-[var(--bg-void)] px-4 font-display text-title font-semibold text-[var(--torch)]"
                 >
                   {i + 1}
                 </span>

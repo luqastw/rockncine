@@ -27,7 +27,8 @@ import {
   VideoSurface,
   YT_CONTAINER_ID,
 } from "@/components/room/VideoSurface";
-import { SidePanel } from "@/components/room/SidePanel";
+import { Chat } from "@/components/room/Chat";
+import { usePresenceAccessory } from "@/components/room/PresenceAccessory";
 import { useVideoQuality } from "@/hooks/useVideoQuality";
 import { usePlaybackState } from "@/hooks/usePlaybackClock";
 import { EconomySuggestion } from "@/components/room/EconomySuggestion";
@@ -200,6 +201,8 @@ export function RoomExperience({
     exitCssFullscreen,
   });
 
+  const presenceAccessory = usePresenceAccessory(userId, userName, avatarV);
+
   const onAcceptEconomySuggestion = useCallback(() => {
     setEconomyMode(true);
     setResolution("480p");
@@ -260,7 +263,9 @@ export function RoomExperience({
           // (box-shadow que sangra ~15px pra fora da caixa) era recortado
           // nos três lados em vez de vazar pro gap. A margem negativa
           // cancela o respiro na largura ocupada pelos irmãos flex.
-          className={`relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4 -m-4 [justify-content:safe_center] ${
+          className={`relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4 -m-4 ${
+            isFullscreen ? "[justify-content:safe_center]" : ""
+          } ${
             showAside ? "lg:basis-[78%]" : "w-full"
           } ${isFullscreen ? "flex-1" : "max-lg:shrink-0"}`}
         >
@@ -384,7 +389,7 @@ export function RoomExperience({
           </div>
 
           {!isBroadcasting && hasGeneric && isSafeEmbedUrl(video!.embedUrl!) && (
-            <p className="text-xs text-[var(--ink-muted)]">
+            <p className="text-caption text-[var(--ink-muted)]">
               se a prévia não aparecer, o site pode não permitir incorporação —{" "}
               <a
                 href={video!.embedUrl!}
@@ -432,13 +437,15 @@ export function RoomExperience({
               : "p-2 -m-2"
           }`}
         >
-          <SidePanel
-            userId={userId}
-            userName={userName}
-            avatarV={avatarV}
-            roomCode={roomCode}
-            className="flex min-h-[6.25rem] flex-1 flex-col"
-          />
+          <section className="flex min-h-11 flex-1 flex-col gap-3">
+            <Chat
+              userId={userId}
+              userName={userName}
+              avatarV={avatarV}
+              roomCode={roomCode}
+              headerAccessory={presenceAccessory}
+            />
+          </section>
         </aside>
 
         {/* dentro da árvore do stageRef, não irmão dela — em tela cheia

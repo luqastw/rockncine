@@ -27,9 +27,9 @@ export function JoinRoomForm() {
         autoCapitalize="characters"
         spellCheck={false}
         surface
-        className="min-w-0 flex-1 font-mono uppercase tracking-wider placeholder:tracking-normal"
+        className="min-w-0 flex-1 font-mono tracking-wider placeholder:font-sans placeholder:tracking-normal [&:not(:placeholder-shown)]:uppercase"
       />
-      <Button type="submit" variant="outline" className="shrink-0">
+      <Button type="submit" variant="primary" className="shrink-0">
         entrar
       </Button>
     </form>

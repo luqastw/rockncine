@@ -40,7 +40,7 @@ function resolutionUnavailableReason(
 // cinco linhas e ficava com 434px de altura sobre um vídeo de 163 (medido).
 // Alvo de toque é físico; quem escala é o rótulo.
 function toggleButtonClass(disabled: boolean): string {
-  return `flex min-h-[44px] shrink-0 items-center justify-center rounded-lg border border-[var(--ink-muted)] px-3 font-mono text-caption text-[var(--ink)] hover:border-[var(--ink)] hover:bg-[var(--fill-1)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]${
+  return `flex min-h-[44px] shrink-0 items-center justify-center rounded-md px-2.5 font-mono text-caption text-[var(--ink-muted)] hover:bg-[var(--fill-2)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]${
     disabled ? " cursor-not-allowed opacity-50" : ""
   }`;
 }
@@ -119,7 +119,7 @@ export function PlayerControls({
     // content-box só aqui — h-1 é a barra visível (4px) e py-5 vira área de
     // toque de 44px em volta, sem o border-box padrão do Tailwind comer a altura.
     boxSizing: "content-box",
-    backgroundImage: `linear-gradient(to right, var(--ink) 0%, var(--ink) ${pct}%, var(--ink-muted) ${pct}%, var(--ink-muted) 100%)`,
+    backgroundImage: `linear-gradient(to right, var(--leaf) 0%, var(--leaf) ${pct}%, var(--line-strong) ${pct}%, var(--line-strong) 100%)`,
     backgroundClip: "content-box",
   });
 
@@ -134,22 +134,22 @@ export function PlayerControls({
     // não couber fica a um swipe (e a um Tab: o browser rola o item focado para
     // dentro da vista) de distância. `min-w-[96px]` no slider para ele não
     // voltar a zero (achado 13 da revisão de design).
-    <div className="flex flex-nowrap items-center gap-2 overflow-x-auto rounded-xl border border-[var(--hairline)] bg-[#121212b8] px-2 py-2 backdrop-blur-md sm:gap-3 sm:px-3">
+    <div className="flex flex-nowrap items-center gap-1 overflow-x-auto rounded-lg border border-[var(--line)] bg-[rgb(15_26_20/0.9)] px-2 py-1 sm:gap-2 sm:px-3">
       <button
         type="button"
         onClick={controller.togglePlay}
         disabled={!controller.isReady}
         aria-label={isPlaying ? "pausar" : "tocar"}
-        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full bg-[var(--invert-bg)] text-[var(--invert-fg)] disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--fill-2)] disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
         {isPlaying ? (
-          <PauseIcon className="h-4 w-4" />
+          <PauseIcon className="h-5 w-5" />
         ) : (
-          <PlayIcon className="h-4 w-4" />
+          <PlayIcon className="h-5 w-5" />
         )}
       </button>
 
-      <span className="shrink-0 font-mono text-caption text-[var(--ink-muted)] tabular-nums">
+      <span className="shrink-0 px-1 font-mono text-caption text-[var(--ink-muted)] tabular-nums">
         {formatTime(displayTime)}
         {/* duração total sai abaixo de sm: a barra tem ~370px de itens de
             largura fixa e estourava a caixa do vídeo em tela de 360px
@@ -188,7 +188,7 @@ export function PlayerControls({
         type="button"
         onClick={controller.toggleMute}
         aria-label={isMuted ? "reativar áudio" : "mutar"}
-        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-lg text-[var(--ink)] hover:bg-[var(--fill-1)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--fill-2)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
         {isMuted ? (
           <VolumeMutedIcon className="h-4 w-4" />
@@ -239,7 +239,7 @@ export function PlayerControls({
           aria-label={`fps: ${fpsLimit ?? "auto"}`}
           className={`hidden sm:flex ${toggleButtonClass(!onToggleFps)}`}
         >
-          {fpsLimit === "auto" ? "Auto" : `${fpsLimit}fps`}
+          {fpsLimit === "auto" ? "auto" : `${fpsLimit}fps`}
         </button>
       )}
 
@@ -255,10 +255,10 @@ export function PlayerControls({
           aria-pressed={captions}
           aria-label={captions ? "desativar legenda" : "ativar legenda"}
           title={captions ? "desativar legenda" : "ativar legenda"}
-          className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-lg border ${
+          className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-md ${
             captions
-              ? "border-[var(--ink)] bg-[var(--fill-2)] text-[var(--ink)]"
-              : "border-[var(--ink-muted)] text-[var(--ink)] hover:border-[var(--ink)] hover:bg-[var(--fill-1)]"
+              ? "bg-[var(--fill-3)] text-[var(--ink)]"
+              : "text-[var(--ink)] hover:bg-[var(--fill-2)]"
           } disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]`}
         >
           <CaptionsIcon className="h-4 w-4" />
@@ -269,7 +269,7 @@ export function PlayerControls({
         type="button"
         onClick={onToggleFullscreen}
         aria-label={isFullscreen ? "sair da tela cheia" : "tela cheia"}
-        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-lg text-[var(--ink)] hover:bg-[var(--fill-1)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--fill-2)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
       >
         {isFullscreen ? (
           <FullscreenExitIcon className="h-4 w-4" />

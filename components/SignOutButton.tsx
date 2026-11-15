@@ -7,12 +7,12 @@ export function SignOutButton() {
   return (
     <Button
       type="button"
-      variant="outline"
+      variant="ghost"
       size="sm"
       onClick={() => signOut({ callbackUrl: "/login" })}
       className="shrink-0"
     >
-      sair da conta
+      sair
     </Button>
   );
 }

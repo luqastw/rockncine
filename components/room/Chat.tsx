@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo, type ReactNode } from "react";
 import { useStatus } from "@liveblocks/react";
 import { useChat } from "@/hooks/useChat";
 import { useChatFeed } from "@/hooks/useChatFeed";
@@ -20,10 +20,12 @@ export const Chat = memo(function Chat({
   userName,
   avatarV,
   roomCode,
+  headerAccessory,
 }: {
   userId: string;
   userName: string;
   avatarV?: number | null;
+  headerAccessory?: ReactNode;
   // Só para a store saber de qual sala é o feed (FR-007). Não é usado para mais
   // nada aqui dentro.
   roomCode: string;
@@ -75,16 +77,20 @@ export const Chat = memo(function Chat({
     // continua sendo só a do log.
     <div className="flex h-full min-h-0 flex-col gap-3 max-lg:overflow-y-auto">
       <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-[var(--line)] bg-[var(--bg-surface)]">
+        <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[var(--line)] px-3">
+          <h2 className="text-body font-medium text-[var(--ink)]">chat</h2>
+          {unreadCount > 0 && (
+            <Badge
+              variant="solid"
+              className="h-5 min-w-5 justify-center px-1.5 font-bold"
+              aria-label={`${unreadCount} mensagens não lidas`}
+            >
+              {unreadCount}
+            </Badge>
+          )}
+          {headerAccessory && <div className="ml-auto">{headerAccessory}</div>}
+        </div>
         <div className="relative flex min-h-0 flex-1 flex-col">
-        {unreadCount > 0 && (
-          <Badge
-            variant="solid"
-            className="absolute right-3 top-2 z-10 h-5 min-w-5 justify-center px-1.5 text-micro font-bold"
-            aria-label={`${unreadCount} mensagens não lidas`}
-          >
-            {unreadCount}
-          </Badge>
-        )}
           <ul
             ref={listRef}
             role="log"

@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { avatarSrc } from "@/lib/avatar";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClass } from "@/components/ui/Button";
 
 const MAX_BYTES = 2_097_152;
 const TOO_LARGE_MESSAGE = "imagem muito grande (máx 2 MB).";
@@ -131,7 +131,7 @@ export function ProfileAvatarForm({
   const shownSrc = previewUrl ?? avatarSrc(userId, avatarV ?? undefined);
 
   return (
-    <form onSubmit={handleSubmit} aria-busy={busy} className="flex flex-col items-center gap-6">
+    <form onSubmit={handleSubmit} aria-busy={busy} className="flex flex-col items-center gap-8">
       <Image
         data-avatar-preview
         unoptimized
@@ -141,11 +141,8 @@ export function ProfileAvatarForm({
         height={160}
         className={`${stacked ? "size-30" : "size-40"} shrink-0 rounded-full object-cover outline-2 outline-offset-4 outline-[var(--fairy)]`}
       />
-      <div className="flex w-full min-w-0 flex-col items-center gap-4">
-        <div className="flex w-full flex-col gap-2 text-center">
-          <label htmlFor="profile-image-file" className="text-body-sm font-medium text-[var(--ink)]">
-            escolher imagem
-          </label>
+      <div className="flex w-full max-w-xs min-w-0 flex-col items-center gap-5">
+        <div className="flex w-full flex-col items-center gap-2 text-center">
           <input
             ref={inputRef}
             id="profile-image-file"
@@ -153,9 +150,17 @@ export function ProfileAvatarForm({
             accept="image/png,image/jpeg,image/webp"
             onChange={handleChange}
             disabled={busy}
-            className="w-full min-w-0 text-body-sm text-[var(--ink-muted)] file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-lg file:border file:border-[var(--line)] file:bg-[var(--bg-elevated)] file:px-4 file:text-body-sm file:font-medium file:text-[var(--ink)]"
+            className="peer sr-only"
           />
-          <p className="text-caption text-[var(--ink-muted)]">png, jpeg ou webp, até 2 MB</p>
+          <label
+            htmlFor="profile-image-file"
+            className={`${buttonClass({ variant: "outline", className: "w-full cursor-pointer" })} peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--outline-strong)] peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[var(--bg-surface)] peer-disabled:pointer-events-none peer-disabled:opacity-50`}
+          >
+            escolher imagem
+          </label>
+          <p className="max-w-full truncate text-caption text-[var(--ink-muted)]">
+            {file ? file.name : "png, jpeg ou webp, até 2 MB"}
+          </p>
         </div>
         <div className="flex w-full flex-col gap-2">
           <Button type="submit" disabled={busy || !file} aria-busy={busy} className="w-full">
@@ -163,7 +168,7 @@ export function ProfileAvatarForm({
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             onClick={handleRemove}
             disabled={busy || avatarV === null}
             className="w-full"
@@ -172,7 +177,7 @@ export function ProfileAvatarForm({
           </Button>
         </div>
         {error ? (
-          <p role="alert" className="text-body-sm text-[var(--ink)]">
+          <p role="alert" className="text-body text-[var(--ink)]">
             {error}
           </p>
         ) : null}

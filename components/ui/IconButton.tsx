@@ -11,13 +11,13 @@ type IconButtonStyleOptions = {
 };
 
 const BASE =
-  "inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
 
 const VARIANTS: Record<IconButtonVariant, string> = {
   ghost:
-    "text-[var(--ink-muted)] hover:text-[var(--ink)]",
+    "text-[var(--ink-muted)] hover:bg-[var(--fill-1)] hover:text-[var(--ink)]",
   outline:
-    "border border-[var(--line-strong)] text-[var(--ink)] hover:bg-[var(--fill-2)]",
+    "border border-[var(--line)] bg-[var(--bg-elevated)] text-[var(--ink)] hover:border-[var(--line-strong)]",
 };
 
 export function iconButtonClass({

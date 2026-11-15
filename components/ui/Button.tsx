@@ -13,20 +13,20 @@ type ButtonStyleOptions = {
 };
 
 const BASE =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg text-body-sm font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--outline-strong)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-md text-body font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--outline-strong)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--leaf)] text-[var(--bg-void)] shadow-[var(--shadow-xs)] hover:bg-[var(--leaf-ink)]",
+    "bg-[var(--leaf)] text-[var(--bg-void)] shadow-[inset_0_-2px_0_rgb(0_0_0/0.22)] hover:bg-[var(--leaf-ink)]",
   outline:
-    "border border-[var(--line-strong)] text-[var(--ink)] hover:bg-[var(--fill-2)]",
+    "border border-[var(--line)] bg-[var(--bg-elevated)] text-[var(--ink)] hover:border-[var(--line-strong)]",
   soft: "bg-[var(--fill-1)] text-[var(--ink)] hover:bg-[var(--fill-2)]",
-  ghost: "text-[var(--ink-muted)] hover:text-[var(--ink)]",
+  ghost: "text-[var(--ink-muted)] hover:bg-[var(--fill-1)] hover:text-[var(--ink)]",
 };
 
 const SIZES: Record<ButtonSize, string> = {
-  md: "px-4 py-2",
-  sm: "px-3 py-1.5 text-body-sm",
+  md: "px-5",
+  sm: "px-3.5",
 };
 
 export function buttonClass({

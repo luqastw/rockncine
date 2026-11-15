@@ -172,12 +172,10 @@ vi.mock("@/components/room/PresenceList", () => ({
     return <div data-testid="presence-trigger" />;
   },
   PresenceList: (props: Record<string, unknown>) => {
-    mocks.presenceRenders.n += 1;
     mocks.presenceProps.push(props);
     return <div data-testid="presence" />;
   },
   usePresenceDisclosure: () => ({ expanded: false, toggle: () => {} }),
-  usePresentCount: () => 1,
 }));
 
 vi.mock("@livekit/components-react", () => ({

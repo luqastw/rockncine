@@ -12,6 +12,7 @@ export function PageShell({
   children,
   width = "sm",
   chrome = false,
+  actions,
   fog = false,
   className,
 }: {
@@ -20,6 +21,7 @@ export function PageShell({
   width?: "sm" | "md" | "lg";
   /** Renderiza a barra fixa de chrome. Quando ligada, o padding-top reserva a altura dela. */
   chrome?: boolean;
+  actions?: ReactNode;
   fog?: boolean;
   /** Classes da tela (gap, alinhamento). Nunca largura — a largura é do shell. */
   className?: string;
@@ -29,7 +31,7 @@ export function PageShell({
 
   return (
     <>
-      {chrome ? <ChromeBar width={width} /> : null}
+      {chrome ? <ChromeBar actions={actions} /> : null}
       <div className="relative flex min-h-dvh w-full flex-col overflow-x-clip">
         <main
           className={[
