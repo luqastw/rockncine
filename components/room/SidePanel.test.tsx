@@ -58,7 +58,9 @@ describe("SidePanel", () => {
     fireEvent.change(campo, { target: { value: "oi" } });
     fireEvent.click(screen.getByRole("tab", { name: "pessoas (1)" }));
     expect(campo.isConnected).toBe(true);
-    expect(campo.closest("[role=tabpanel]")?.hasAttribute("hidden")).toBe(true);
+    const painel = campo.closest("[role=tabpanel]");
+    expect(painel?.hasAttribute("hidden")).toBe(false);
+    expect(painel?.hasAttribute("inert")).toBe(true);
     fireEvent.click(screen.getByRole("tab", { name: "chat" }));
     const depois = screen.getByLabelText("mensagem para o chat da sala") as HTMLTextAreaElement;
     expect(depois).toBe(campo);

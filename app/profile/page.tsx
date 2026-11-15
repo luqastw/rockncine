@@ -11,7 +11,7 @@ import { sectionLabelClass } from "@/components/ui/SectionLabel";
 export const metadata: Metadata = { title: "perfil · rockncine" };
 
 export default async function ProfilePage() {
-  const { userId } = await requireSession();
+  const { userId, userName } = await requireSession();
   const image = await prisma.profileImage.findUnique({
     where: { userId },
     select: { updatedAt: true },
@@ -27,6 +27,7 @@ export default async function ProfilePage() {
         <h1 className="font-display text-heading font-semibold tracking-tight text-[var(--ink)]">
           seu perfil
         </h1>
+        <p className="text-body-sm text-[var(--ink-muted)]">{userName}</p>
       </Reveal>
 
       <Reveal as="section">

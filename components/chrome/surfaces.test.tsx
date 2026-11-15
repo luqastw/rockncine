@@ -99,7 +99,7 @@ describe("landing", () => {
     expect(nevoa?.querySelector("svg")).not.toBeNull();
   });
 
-  it("AC-013: o CTA primário usa inversão e foco; o secundário usa contorno", async () => {
+  it("o CTA primário usa inversão e foco; o secundário usa contorno", async () => {
     anon();
     render(await Home());
 
@@ -113,7 +113,7 @@ describe("landing", () => {
     expect(secundario.className).toContain("border-[var(--line-strong)]");
   });
 
-  it("AC-014: os alvos de toque da landing têm 44px", async () => {
+  it("NFR-2: os alvos de toque da landing têm 44px", async () => {
     anon();
     render(await Home());
     assertAlvosDeToque();
@@ -121,17 +121,17 @@ describe("landing", () => {
 });
 
 describe("superfícies em escopo — alvos de toque (FR-021)", () => {
-  it("AC-014: /login", () => {
+  it("NFR-2: /login", () => {
     render(<LoginPage />);
     assertAlvosDeToque();
   });
 
-  it("AC-014: /register", () => {
+  it("NFR-2: /register", () => {
     render(<RegisterPage />);
     assertAlvosDeToque();
   });
 
-  it("AC-014: /rooms", async () => {
+  it("NFR-2: /rooms", async () => {
     vi.mocked(getServerSession).mockResolvedValue({ user: { id: "eu", name: "eu" } } as never);
     findMany.mockResolvedValue([
       {
@@ -150,7 +150,7 @@ describe("superfícies em escopo — alvos de toque (FR-021)", () => {
     assertAlvosDeToque();
   });
 
-  it("AC-014: /404", () => {
+  it("NFR-2: 404", () => {
     render(<NotFound />);
     assertAlvosDeToque();
   });

@@ -75,19 +75,16 @@ export const Chat = memo(function Chat({
     // continua sendo só a do log.
     <div className="flex h-full min-h-0 flex-col gap-3 max-lg:overflow-y-auto">
       <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-[var(--line)] bg-[var(--bg-surface)]">
-        {unreadCount > 0 && (
-          <div className="flex items-center gap-2 px-3 pb-2 pt-3">
-            <Badge
-              variant="solid"
-              className="h-5 min-w-5 justify-center px-1.5 text-micro font-bold"
-              aria-label={`${unreadCount} mensagens não lidas`}
-            >
-              {unreadCount}
-            </Badge>
-          </div>
-        )}
-
         <div className="relative flex min-h-0 flex-1 flex-col">
+        {unreadCount > 0 && (
+          <Badge
+            variant="solid"
+            className="absolute right-3 top-2 z-10 h-5 min-w-5 justify-center px-1.5 text-micro font-bold"
+            aria-label={`${unreadCount} mensagens não lidas`}
+          >
+            {unreadCount}
+          </Badge>
+        )}
           <ul
             ref={listRef}
             role="log"

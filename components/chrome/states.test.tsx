@@ -30,7 +30,7 @@ function assertLinguagemDoEstado(container: HTMLElement) {
 }
 
 describe("estados de erro (FR-007)", () => {
-  it("AC-016: o 404 exibe a pauta, com a marca acessível", () => {
+  it("AC-019: o 404 exibe a pauta, com a marca acessível", () => {
     const { container } = render(<NotFound />);
     assertLinguagemDoEstado(container);
   });
@@ -41,19 +41,19 @@ describe("estados de erro (FR-007)", () => {
     expect(screen.getByRole("link", { name: "voltar ao começo" }).getAttribute("href")).toBe("/");
   });
 
-  it("AC-016: o erro de segmento exibe a pauta", () => {
+  it("o erro de segmento exibe a pauta", () => {
     const { container } = render(<SegmentError error={new Error("boom")} reset={() => {}} />);
     assertLinguagemDoEstado(container);
   });
 
-  it("AC-016: o erro global (documento inteiro) usa a mesma linguagem", () => {
+  it("o erro global (documento inteiro) usa a mesma linguagem", () => {
     const { container } = render(<GlobalError error={new Error("boom")} retry={() => {}} />);
     assertLinguagemDoEstado(container);
   });
 });
 
 describe("hierarquia de controle nos estados (FR-020)", () => {
-  it("AC-013: o CTA primário do erro é o bloco invertido", () => {
+  it("o CTA primário do erro é o bloco invertido", () => {
     render(<SegmentError error={new Error("boom")} reset={() => {}} />);
     const primario = screen.getByRole("button", { name: "tentar de novo" });
     expect(primario.className).toContain("bg-[var(--leaf)]");
@@ -64,7 +64,7 @@ describe("hierarquia de controle nos estados (FR-020)", () => {
     expect(secundario.className).toContain("border-[var(--line-strong)]");
   });
 
-  it("AC-014: os alvos de toque do erro de segmento têm 44px", () => {
+  it("NFR-2: os alvos de toque do erro de segmento têm 44px", () => {
     render(<SegmentError error={new Error("boom")} reset={() => {}} />);
     for (const botao of screen.getAllByRole("button")) {
       expect(botao.className).toContain("min-h-11");
@@ -74,7 +74,7 @@ describe("hierarquia de controle nos estados (FR-020)", () => {
     }
   });
 
-  it("AC-014: o botão do erro global tem 44px", () => {
+  it("NFR-2: o botão do erro global tem 44px", () => {
     render(<GlobalError error={new Error("boom")} retry={() => {}} />);
     expect(screen.getByRole("button", { name: "tentar de novo" }).className).toContain("min-h-11");
   });

@@ -30,20 +30,22 @@ export function PageShell({
   return (
     <>
       {chrome ? <ChromeBar width={width} /> : null}
-      <main
-        className={[
-          "relative z-10 mx-auto flex min-h-dvh w-full flex-col px-6 sm:px-10",
-          chrome ? "pt-24 sm:pt-28" : "pt-10 sm:pt-14",
-          fog ? "pb-44 sm:pb-48" : chrome ? "pb-20 sm:pb-24" : "pb-10 sm:pb-14",
-          maxWidth,
-          className,
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      >
-        {children}
+      <div className="relative flex min-h-dvh w-full flex-col overflow-x-clip">
+        <main
+          className={[
+            "relative z-10 mx-auto flex w-full flex-1 flex-col px-6 sm:px-10",
+            chrome ? "pt-24 sm:pt-28" : "pt-10 sm:pt-14",
+            fog ? "pb-44 sm:pb-48" : chrome ? "pb-20 sm:pb-24" : "pb-10 sm:pb-14",
+            maxWidth,
+            className,
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          {children}
+        </main>
         {fog ? <Fog /> : null}
-      </main>
+      </div>
     </>
   );
 }

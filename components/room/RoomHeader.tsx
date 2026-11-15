@@ -78,15 +78,6 @@ export function RoomHeader({
             <h1 className="min-w-0 truncate font-display text-heading font-semibold tracking-tight text-[var(--ink)]">
               {roomName || "sala sem nome"}
             </h1>
-            {/* `!isBroadcasting`: este selo descreve o player, e no modo
-                transmissão o player não está na tela. Deixá-lo aceso sobre a
-                transmissão seria um status mentindo sobre o que as pessoas
-                estão vendo. */}
-            {isPlayingNow && !syncLimited && !isBroadcasting && (
-              <Badge variant="solid" className="uppercase tracking-wide">
-                ao vivo
-              </Badge>
-            )}
             {/* Indicador, não controle: quem liga/desliga é o botão de
                 `RoomActions` (44px, com `aria-pressed`). */}
             {economyMode && <Badge variant="soft">economy</Badge>}

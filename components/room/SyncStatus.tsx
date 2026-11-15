@@ -34,10 +34,7 @@ export function SyncStatus({
   const showDot = !connectionLabel && !isBroadcasting && isPlaying;
 
   return (
-    <span
-      role="status"
-      aria-live="polite"
-      className="inline-flex items-center gap-2 font-mono text-caption text-[var(--ink-muted)]"
+    <span className="inline-flex items-center gap-2 font-mono text-caption text-[var(--ink-muted)]"
     >
       <Staff notes={3} lit={lit} className="h-4 w-12" />
       {showDot && (
@@ -47,7 +44,13 @@ export function SyncStatus({
           className="size-2 rounded-full bg-[var(--fairy)]"
         />
       )}
-      <span className={showDot ? "text-[var(--ink)]" : undefined}>{label}</span>
+      <span
+        role={connectionLabel ? "status" : undefined}
+        aria-live={connectionLabel ? "polite" : undefined}
+        className={showDot ? "text-[var(--ink)]" : undefined}
+      >
+        {label}
+      </span>
     </span>
   );
 }

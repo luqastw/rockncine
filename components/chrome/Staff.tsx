@@ -12,7 +12,28 @@ type StaffProps = {
 export function Staff({ notes = 4, lit = false, className = "w-full h-auto" }: StaffProps) {
   const count = Math.min(MAX_NOTES, Math.max(MIN_NOTES, Math.round(notes)));
   const step = 240 / (count + 1);
-  const color = lit ? "var(--fairy)" : "var(--leaf-ink)";
+  const glyphs = (marked: boolean) =>
+    Array.from({ length: count }, (_, i) => {
+    const x = step * (i + 1);
+    const y = NOTE_YS[i];
+    const stemDown = y < 24;
+    const stemX = stemDown ? x - 4.6 : x + 4.6;
+    const stemY1 = stemDown ? y + 1.6 : y - 1.6;
+    const stemY2 = stemDown ? y + 20 : y - 20;
+    return (
+      <g key={i} data-staff-note={marked ? "" : undefined}>
+        <ellipse
+          cx={x}
+          cy={y}
+          rx="5"
+          ry="3.6"
+          transform={`rotate(-20 ${x} ${y})`}
+          stroke="none"
+        />
+        <line x1={stemX} x2={stemX} y1={stemY1} y2={stemY2} strokeWidth="1.2" />
+      </g>
+    );
+  });
 
   return (
     <svg
@@ -34,33 +55,20 @@ export function Staff({ notes = 4, lit = false, className = "w-full h-auto" }: S
           strokeWidth="1"
         />
       ))}
-      {Array.from({ length: count }, (_, i) => {
-        const x = step * (i + 1);
-        const y = NOTE_YS[i];
-        const stemDown = y < 24;
-        const stemX = stemDown ? x - 4.6 : x + 4.6;
-        const stemY1 = stemDown ? y + 1.6 : y - 1.6;
-        const stemY2 = stemDown ? y + 20 : y - 20;
-        return (
-          <g
-            key={i}
-            data-staff-note=""
-            fill={color}
-            stroke={color}
-            className="transition-[opacity,fill,stroke] duration-[380ms] motion-reduce:transition-none"
-          >
-            <ellipse
-              cx={x}
-              cy={y}
-              rx="5"
-              ry="3.6"
-              transform={`rotate(-20 ${x} ${y})`}
-              stroke="none"
-            />
-            <line x1={stemX} x2={stemX} y1={stemY1} y2={stemY2} strokeWidth="1.2" />
-          </g>
-        );
-      })}
+      <g fill="var(--leaf-ink)" stroke="var(--leaf-ink)">
+        {glyphs(true)}
+      </g>
+      <g
+        aria-hidden="true"
+        data-staff-fairy=""
+        fill="var(--fairy)"
+        stroke="var(--fairy)"
+        className={`transition-opacity duration-[380ms] motion-reduce:transition-none ${
+          lit ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        {glyphs(false)}
+      </g>
     </svg>
   );
 }

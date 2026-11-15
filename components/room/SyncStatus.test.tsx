@@ -16,6 +16,7 @@ describe("SyncStatus", () => {
   it("tocando mostra ao vivo e o ponto", () => {
     const { container } = render(<SyncStatus {...base} isPlaying />);
     expect(screen.getByText("ao vivo")).toBeTruthy();
+    expect(screen.queryByRole("status")).toBeNull();
     expect(container.querySelector("[data-sync-dot]")).not.toBeNull();
   });
 
@@ -34,6 +35,7 @@ describe("SyncStatus", () => {
   it("preserva o rótulo de conexão", () => {
     render(<SyncStatus {...base} connectionLabel="conectando…" />);
     expect(screen.getByText("conectando…")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toBe("conectando…");
   });
 
   it("acende o pentagrama por 380ms a cada evento", () => {

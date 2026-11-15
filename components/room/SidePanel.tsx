@@ -143,23 +143,28 @@ export function SidePanel({
           {`pessoas (${presentCount})`}
         </button>
       </div>
-      <div
-        role="tabpanel"
-        id="side-panel-chat"
-        aria-labelledby="side-tab-chat"
-        hidden={active !== "chat"}
-        className={active === "chat" ? "mt-3 flex min-h-0 flex-1 flex-col" : undefined}
-      >
-        <Chat userId={userId} userName={userName} avatarV={avatarV} roomCode={roomCode} />
-      </div>
-      <div
-        role="tabpanel"
-        id="side-panel-people"
-        aria-labelledby="side-tab-people"
-        hidden={active !== "people"}
-        className={active === "people" ? "mt-3 flex min-h-0 flex-1 flex-col" : undefined}
-      >
-        <PresenceList expanded myUserId={userId} myName={userName} myAvatarV={avatarV} />
+      <div className="relative mt-3 flex min-h-0 flex-1 flex-col">
+        <div
+          role="tabpanel"
+          id="side-panel-chat"
+          aria-labelledby="side-tab-chat"
+          inert={active !== "chat"}
+          aria-hidden={active !== "chat" ? "true" : undefined}
+          className={`flex min-h-0 flex-1 flex-col ${
+            active === "chat" ? "" : "invisible pointer-events-none absolute inset-0"
+          }`}
+        >
+          <Chat userId={userId} userName={userName} avatarV={avatarV} roomCode={roomCode} />
+        </div>
+        <div
+          role="tabpanel"
+          id="side-panel-people"
+          aria-labelledby="side-tab-people"
+          hidden={active !== "people"}
+          className={active === "people" ? "flex min-h-0 flex-1 flex-col" : undefined}
+        >
+          <PresenceList expanded fill myUserId={userId} myName={userName} myAvatarV={avatarV} />
+        </div>
       </div>
     </section>
   );

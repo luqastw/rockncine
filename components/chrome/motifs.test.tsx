@@ -28,19 +28,23 @@ describe("motivos (FR-008, FR-009)", () => {
     expect(padrao.container.querySelectorAll("[data-staff-note]")).toHaveLength(4);
   });
 
-  it("AC-021: lit troca data-lit e a cor das notas", () => {
+  it("AC-021: lit troca data-lit e acende o grupo de fada por opacidade", () => {
     const apagada = render(<Staff />);
     expect(apagada.container.querySelector("svg")?.getAttribute("data-lit")).toBe("false");
-    expect(apagada.container.querySelector("[data-staff-note]")?.getAttribute("fill")).toBe(
+    expect(apagada.container.querySelector("[data-staff-note]")?.parentElement?.getAttribute("fill")).toBe(
       "var(--leaf-ink)",
+    );
+    expect(apagada.container.querySelector("[data-staff-fairy]")?.getAttribute("class")).toContain(
+      "opacity-0",
     );
     apagada.unmount();
 
     const acesa = render(<Staff lit />);
     expect(acesa.container.querySelector("svg")?.getAttribute("data-lit")).toBe("true");
-    expect(acesa.container.querySelector("[data-staff-note]")?.getAttribute("fill")).toBe(
-      "var(--fairy)",
-    );
+    const fada = acesa.container.querySelector("[data-staff-fairy]");
+    expect(fada?.getAttribute("fill")).toBe("var(--fairy)");
+    expect(fada?.getAttribute("class")).toContain("opacity-100");
+    expect(fada?.getAttribute("class")).toContain("transition-opacity");
   });
 
   it("AC-021: névoa é decorativa, estática e tem três caminhos", () => {

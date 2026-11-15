@@ -56,6 +56,15 @@ describe("guardas do chrome", () => {
     );
   });
 
+  it("AC-004: nenhum resquício do cenário ASCII antigo", () => {
+    const re = /AsciiKorok|AsciiLeaves|AsciiForest|KorokScene|AmbientGlow/;
+    const files = SOURCES.flatMap((base) => walk(path.join(ROOT, base))).filter(
+      (f) => /\.tsx?$/.test(f) && !f.endsWith("guards.test.ts"),
+    );
+    expect(scan(files, re)).toEqual([]);
+    expect(readFileSync(path.join(ROOT, "app/globals.css"), "utf8")).not.toContain(".ambient");
+  });
+
   it("AC-005: nenhum nome de franquia nos .tsx", () => {
     const re = /\b(zelda|navi|triforce|hyrule|kokiri|saria|korok|nintendo|ocarina)\b/i;
     expect(scan(tsxFiles(SOURCES, false), re)).toEqual([]);

@@ -437,7 +437,7 @@ export function RoomExperience({
             userName={userName}
             avatarV={avatarV}
             roomCode={roomCode}
-            className="flex min-h-11 flex-1 flex-col"
+            className="flex min-h-[6.25rem] flex-1 flex-col"
           />
         </aside>
 
