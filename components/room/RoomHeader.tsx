@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useStatus } from "@liveblocks/react";
 import type { BroadcastState, PlayerEvent } from "@/liveblocks.config";
 import { InviteCode } from "@/components/room/InviteCode";
 import { LastActionNote } from "@/components/room/LastActionNote";
 import { BroadcastControls } from "@/components/room/BroadcastControls";
 import { RoomActions } from "@/components/room/RoomActions";
+import { ProfileAvatarModal } from "@/components/room/ProfileAvatarModal";
 import { Badge } from "@/components/ui/Badge";
 import { iconButtonClass } from "@/components/ui/IconButton";
 
@@ -22,6 +24,7 @@ export function RoomHeader({
   roomName,
   userId,
   userName,
+  avatarV,
   livekitUrl,
   broadcast,
   videoSourceUrl,
@@ -40,6 +43,7 @@ export function RoomHeader({
   roomName: string | null;
   userId: string;
   userName: string;
+  avatarV?: number | null;
   livekitUrl: string | null;
   broadcast: BroadcastState | null;
   videoSourceUrl: string | null;
@@ -55,6 +59,7 @@ export function RoomHeader({
   onToggleEconomy: () => void;
 }) {
   const status = useStatus();
+  const [profileOpen, setProfileOpen] = useState(false);
   const connectionLabel = CONNECTION_LABEL[status];
 
   return (
@@ -114,8 +119,10 @@ export function RoomHeader({
       {/* Ações da sala no mesmo bloco do convite: no mobile o botão de
           transmissão fica ao lado do código, sem uma linha própria abaixo do
           vídeo. O chat começa na mesma altura da moldura do vídeo. */}
-      <div className="flex min-w-0 flex-wrap items-center gap-2 lg:mr-3">
-        <InviteCode code={roomCode} />
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:mr-3 lg:w-auto">
+        <div className="min-w-0 max-sm:flex-1 max-sm:[&>div]:w-full max-sm:[&>div]:justify-between">
+          <InviteCode code={roomCode} />
+        </div>
         {livekitUrl !== null && (
           <BroadcastControls
             broadcast={broadcast}
@@ -124,27 +131,35 @@ export function RoomHeader({
             videoSourceUrl={videoSourceUrl}
           />
         )}
-        <Link
-          href="/profile"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="perfil (abre em nova aba)"
-          className={iconButtonClass({ variant: "outline", className: "shrink-0" })}
-        >
-          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
-          </svg>
-        </Link>
-        <RoomActions
-          onLoadVideo={onLoadVideo}
-          onToggleTheater={onToggleTheater}
-          isTheater={isTheater}
-          showTheaterToggle={isFullscreen}
-          onToggleEconomy={onToggleEconomy}
-          isEconomy={economyMode}
-        />
+        <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-end">
+          <button
+            type="button"
+            onClick={() => setProfileOpen(true)}
+            aria-label="imagem de perfil"
+            aria-haspopup="dialog"
+            className={iconButtonClass({ variant: "outline", className: "shrink-0" })}
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
+            </svg>
+          </button>
+          <RoomActions
+            onLoadVideo={onLoadVideo}
+            onToggleTheater={onToggleTheater}
+            isTheater={isTheater}
+            showTheaterToggle={isFullscreen}
+            onToggleEconomy={onToggleEconomy}
+            isEconomy={economyMode}
+          />
+        </div>
       </div>
+      <ProfileAvatarModal
+        userId={userId}
+        avatarV={avatarV ?? null}
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+      />
     </header>
   );
 }

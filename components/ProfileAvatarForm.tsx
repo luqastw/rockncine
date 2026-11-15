@@ -34,9 +34,11 @@ async function readError(response: Response): Promise<string> {
 export function ProfileAvatarForm({
   userId,
   initialAvatarV,
+  stacked = false,
 }: {
   userId: string;
   initialAvatarV: number | null;
+  stacked?: boolean;
 }) {
   const [avatarV, setAvatarV] = useState<number | null>(initialAvatarV);
   const [file, setFile] = useState<File | null>(null);
@@ -129,7 +131,7 @@ export function ProfileAvatarForm({
   const shownSrc = previewUrl ?? avatarSrc(userId, avatarV ?? undefined);
 
   return (
-    <form onSubmit={handleSubmit} aria-busy={busy} className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
+    <form onSubmit={handleSubmit} aria-busy={busy} className={`flex flex-col items-center gap-6 ${stacked ? "" : "sm:flex-row sm:items-center sm:gap-8"}`}>
       <Image
         unoptimized
         src={shownSrc}
@@ -138,8 +140,8 @@ export function ProfileAvatarForm({
         height={144}
         className="h-32 w-32 shrink-0 rounded-full border border-[var(--line)] object-cover sm:h-36 sm:w-36"
       />
-      <div className="flex w-full min-w-0 flex-1 flex-col items-center gap-4 sm:items-start">
-        <div className="flex w-full flex-col gap-2 text-center sm:text-left">
+      <div className={`flex w-full min-w-0 flex-1 flex-col items-center gap-4 ${stacked ? "" : "sm:items-start"}`}>
+        <div className={`flex w-full flex-col gap-2 text-center ${stacked ? "" : "sm:text-left"}`}>
           <label htmlFor="profile-image-file" className="text-body-sm font-medium text-[var(--ink)]">
             escolher imagem
           </label>
@@ -154,8 +156,8 @@ export function ProfileAvatarForm({
           />
           <p className="text-caption text-[var(--ink-muted)]">png, jpeg ou webp, até 2 MB</p>
         </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-          <Button type="submit" disabled={busy || !file} aria-busy={busy} className="w-full sm:w-auto">
+        <div className={`flex w-full flex-col gap-2 ${stacked ? "" : "sm:w-auto sm:flex-row"}`}>
+          <Button type="submit" disabled={busy || !file} aria-busy={busy} className={stacked ? "w-full" : "w-full sm:w-auto"}>
             {busy ? "enviando..." : "enviar"}
           </Button>
           <Button
@@ -163,7 +165,7 @@ export function ProfileAvatarForm({
             variant="outline"
             onClick={handleRemove}
             disabled={busy || avatarV === null}
-            className="w-full sm:w-auto"
+            className={stacked ? "w-full" : "w-full sm:w-auto"}
           >
             remover imagem
           </Button>

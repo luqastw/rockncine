@@ -226,6 +226,7 @@ export function RoomExperience({
         roomName={roomName}
         userId={userId}
         userName={userName}
+        avatarV={avatarV}
         livekitUrl={livekitUrl}
         broadcast={broadcast}
         videoSourceUrl={video?.sourceUrl ?? null}
