@@ -11,13 +11,7 @@ import { Wordmark } from "./Wordmark";
 //
 // Client component só por causa do listener passivo de scroll que alterna
 // `data-scrolled`. Nenhum estado de negócio, nenhum contexto.
-export function ChromeBar({
-  width = "md",
-  korok = false,
-}: {
-  width?: "sm" | "md" | "lg";
-  korok?: boolean;
-}) {
+export function ChromeBar({ width = "md" }: { width?: "sm" | "md" | "lg" }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -40,7 +34,7 @@ export function ChromeBar({
           href="/"
           className="inline-flex min-h-11 items-center rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
         >
-          <Wordmark korok={korok} />
+          <Wordmark />
         </Link>
       </div>
     </header>

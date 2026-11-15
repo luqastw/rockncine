@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { useStatus } from "@liveblocks/react";
 import type { BroadcastState, PlayerEvent } from "@/liveblocks.config";
-import { AsciiKorok } from "@/components/chrome/AsciiKorok";
 import { InviteCode } from "@/components/room/InviteCode";
 import { LastActionNote } from "@/components/room/LastActionNote";
 import { BroadcastControls } from "@/components/room/BroadcastControls";
@@ -73,7 +72,6 @@ export function RoomHeader({
         >
           ←
         </Link>
-        <AsciiKorok variant="mini" className="max-sm:hidden" />
         <div className="flex min-w-0 flex-col gap-0.5">
           <div className="flex min-w-0 items-center gap-2">
             <h1 className="min-w-0 truncate text-heading font-semibold tracking-tight text-[var(--ink)]">

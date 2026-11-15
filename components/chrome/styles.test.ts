@@ -15,22 +15,12 @@ function ruleBody(selector: string): string {
   return css.match(new RegExp(selector + "\\s*\\{([^}]*)\\}"))?.[1] ?? "";
 }
 
-describe("glow ambiente estático (FR-006)", () => {
-  it("AC-006: .ambient é fixo, não interativo e sem animação", () => {
-    const body = ruleBody("\\.ambient");
-    expect(body).toContain("position: fixed");
-    expect(body).toContain("pointer-events: none");
-    expect(body).not.toMatch(/animation/);
-    expect(body).not.toMatch(/transition/);
-  });
-
-  it("AC-006: reduced-transparency desliga o glow e o desfoque", () => {
+describe("reduced-transparency (FR-006)", () => {
+  it("AC-006: reduced-transparency desliga o desfoque", () => {
     const start = css.indexOf("@media (prefers-reduced-transparency");
     expect(start, "o bloco de reduced-transparency deve existir").toBeGreaterThanOrEqual(0);
 
     const block = css.slice(start);
-    expect(block).toContain(".ambient");
-    expect(block).toContain("display: none");
     expect(block).toContain(".chrome-blur");
     expect(block).toContain("backdrop-filter: none");
   });

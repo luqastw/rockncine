@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { PageShell } from "@/components/chrome/PageShell";
-import { KorokScene } from "@/components/chrome/KorokScene";
 import { Wordmark } from "@/components/chrome/Wordmark";
 import { Button } from "@/components/ui/Button";
 import "./globals.css";
@@ -49,7 +48,6 @@ export default function GlobalError({
       <body className="min-h-full">
         <title>alguma coisa quebrou · rockncine</title>
         <PageShell width="sm" className="items-center justify-center gap-4 text-center">
-          <KorokScene pose="caido" />
           <Wordmark />
           <span aria-hidden="true" className="h-px w-16 bg-[var(--hairline)]" />
           <h1 className="text-title font-semibold tracking-tight text-[var(--ink)]">

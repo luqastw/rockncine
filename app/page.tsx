@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { AsciiKorok } from "@/components/chrome/AsciiKorok";
 import { PageShell } from "@/components/chrome/PageShell";
 import { Reveal } from "@/components/chrome/Reveal";
 import { ButtonLink } from "@/components/ui/Button";
@@ -26,7 +25,6 @@ export default async function Home() {
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-center">
         <Reveal as="header" className="flex flex-col items-start gap-6">
           <div className="flex items-end gap-4">
-            <AsciiKorok variant="hero" className="mb-1 sm:mb-2" />
             <h1 className="text-4xl font-semibold tracking-tight text-[var(--ink)] sm:text-6xl">
               rockncine
             </h1>

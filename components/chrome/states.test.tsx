@@ -26,25 +26,23 @@ afterEach(() => {
 });
 
 /**
- * A linguagem dos estados (FR-007): fio (`--hairline`), glow ambiente
- * decorativo e a marca acessível fora de qualquer nó `aria-hidden`.
+ * A linguagem dos estados (FR-007): fio (`--hairline`) e a marca acessível fora de qualquer nó `aria-hidden`.
  */
 function assertLinguagemDoEstado(container: HTMLElement) {
   expect(container.querySelector('[class*="hairline"]')).toBeTruthy();
-  expect(container.querySelector('[class*="ambient"]')).toBeTruthy();
 
   const marca = screen.getByText("rockncine");
   expect(marca.closest('[aria-hidden="true"]')).toBeNull();
 }
 
 describe("estados de erro (FR-007)", () => {
-  it("AC-016: o 404 exibe fio e glow decorativo, com a marca acessível", () => {
+  it("AC-016: o 404 exibe fio, com a marca acessível", () => {
     const { container } = render(<NotFound />);
     assertLinguagemDoEstado(container);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("página não encontrada");
   });
 
-  it("AC-016: o erro de segmento exibe fio e glow decorativo", () => {
+  it("AC-016: o erro de segmento exibe fio", () => {
     const { container } = render(<SegmentError error={new Error("boom")} reset={() => {}} />);
     assertLinguagemDoEstado(container);
   });

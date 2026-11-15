@@ -7,8 +7,6 @@ import { JoinRoomForm } from "@/components/JoinRoomForm";
 import { CreateRoomForm } from "@/components/CreateRoomForm";
 import { DeleteRoomButton } from "@/components/DeleteRoomButton";
 import { SignOutButton } from "@/components/SignOutButton";
-import { AsciiForest } from "@/components/chrome/AsciiForest";
-import { KorokScene } from "@/components/chrome/KorokScene";
 import { PageShell } from "@/components/chrome/PageShell";
 import { Reveal } from "@/components/chrome/Reveal";
 import { ButtonLink } from "@/components/ui/Button";
@@ -101,13 +99,11 @@ export default async function RoomsPage({
   const visiveis = temProxima ? memberships.slice(0, PAGE_SIZE) : memberships;
 
   return (
-    // O invólucro único (FR-018) é o `PageShell`: largura, padding e glow vivem
+    // O invólucro único (FR-018) é o `PageShell`: largura e padding vivem
     // ali. A marca saiu deste arquivo e vive no `ChromeBar`.
-    <PageShell width="md" chrome korok className="justify-safe-center gap-10">
+    <PageShell width="md" chrome className="justify-safe-center gap-10">
       {/* A marca está no ChromeBar; este h1 preserva a semântica de título da página. */}
       <h1 className="sr-only font-semibold tracking-tight">suas salas</h1>
-
-      <AsciiForest className="-mt-4 h-20 sm:h-24" />
 
       <Reveal as="header" className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
@@ -143,7 +139,6 @@ export default async function RoomsPage({
             <p className="text-body-sm text-[var(--ink-muted)]">não há mais salas nesta página.</p>
           ) : (
             <div className="flex flex-col items-center gap-3 py-6 text-center">
-              <KorokScene pose="dormindo" />
               <p className="text-body-sm text-[var(--ink-muted)]">
                 ninguém por aqui ainda. crie a primeira sala e chame o pessoal.
               </p>

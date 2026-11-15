@@ -83,22 +83,6 @@ body {
   font-family: var(--font-sans);
 }
 
-/* ---------------------------------------------------------------------------
-   Glow ambiente (FR-006, docs/specs/15-identidade-kimi/spec.md). Substitui o
-   grão da identidade anterior: uma camada
-   fixa, decorativa e estática, que dá profundidade ao canvas sem textura.
-   É acromática por construção (branco em opacidade baixa) e não anima.
-   --------------------------------------------------------------------------- */
-.ambient {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(72rem 36rem at 50% -12%, rgb(95 158 79 / 0.08), transparent 62%),
-    radial-gradient(40rem 26rem at 88% -4%, rgb(95 158 79 / 0.04), transparent 70%);
-}
-
 /* Barra de chrome (FR-005, docs/specs/15-identidade-kimi/spec.md). Único ponto
    de blur do chrome: 6px, fundo 72% e
    fio de 1px que só aparece depois do primeiro scroll — o mesmo comportamento
@@ -366,12 +350,9 @@ a[href]:active {
   transform: none;
 }
 
-/* FR-006: quando o usuário pede menos transparência, o glow e o desfoque saem
-   de cena; a barra volta a ser opaca para o conteúdo não vazar por trás. */
+/* FR-006: quando o usuário pede menos transparência, o desfoque sai de cena; a
+   barra volta a ser opaca para o conteúdo não vazar por trás. */
 @media (prefers-reduced-transparency: reduce) {
-  .ambient {
-    display: none;
-  }
   .chrome-blur {
     backdrop-filter: none;
     background: var(--bg-void);
