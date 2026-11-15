@@ -12,18 +12,20 @@ import { Badge } from "@/components/ui/Badge";
 import { sectionLabelClass } from "@/components/ui/SectionLabel";
 import { buildLog, keyOf } from "@/lib/chat-log";
 
-// `memo`: as três props são strings, então um render da sala (presença mudou,
+// `memo`: as props são primitivas, então um render da sala (presença mudou,
 // play/pause, fullscreen) não precisa redesenhar o log. O que acorda o `<Chat>`
 // é a store do feed, a própria digitação e a presence — que é exatamente o que
 // muda dentro dele (FR-002, FR-010).
 export const Chat = memo(function Chat({
   userId,
   userName,
+  avatarV,
   roomCode,
   headerAccessory,
 }: {
   userId: string;
   userName: string;
+  avatarV?: number | null;
   // Só para a store saber de qual sala é o feed (FR-007). Não é usado para mais
   // nada aqui dentro.
   roomCode: string;
@@ -34,7 +36,7 @@ export const Chat = memo(function Chat({
   headerAccessory?: ReactNode;
 }) {
   const messages = useChatFeed(roomCode);
-  const { sendMessage } = useChat({ userId, userName });
+  const { sendMessage } = useChat({ userId, userName, avatarV });
   const status = useStatus();
   const { marcarDigitando, pararDeDigitar, typingNames } = useTypingPresence(userId);
   const { listRef, hasNew, unreadId, scrolledUp, goToLatest, onScroll, markSent, resetUnread } =

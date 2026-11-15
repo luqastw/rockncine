@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { PresenceList, PresenceTrigger, usePresenceDisclosure } from "@/components/room/PresenceList";
 
-export function usePresenceAccessory(userId: string, userName: string) {
+export function usePresenceAccessory(userId: string, userName: string, avatarV?: number | null) {
   const presence = usePresenceDisclosure();
 
   // Elemento estável passado ao `<Chat>`: como o objeto é o mesmo entre renders
@@ -18,16 +18,17 @@ export function usePresenceAccessory(userId: string, userName: string) {
           onToggle={presence.toggle}
           myUserId={userId}
           myName={userName}
+          myAvatarV={avatarV}
         />
         <div
           className={`absolute right-0 top-full z-40 mt-2 w-64 rounded-xl border border-[var(--line)] bg-[var(--bg-surface)] p-2 shadow-[var(--shadow-pop)] ${
             presence.expanded ? "block" : "hidden"
           }`}
         >
-          <PresenceList expanded={presence.expanded} myUserId={userId} myName={userName} />
+          <PresenceList expanded={presence.expanded} myUserId={userId} myName={userName} myAvatarV={avatarV} />
         </div>
       </div>
     ),
-    [presence.expanded, presence.toggle, userId, userName],
+    [presence.expanded, presence.toggle, userId, userName, avatarV],
   );
 }

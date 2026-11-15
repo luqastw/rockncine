@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { IdentityChip } from "@/components/room/IdentityChip";
+import { Avatar } from "@/components/room/Avatar";
 import { dayLabel, timeLabel } from "@/lib/chat-log";
 import type { ChatEvent, SystemEvent } from "@/liveblocks.config";
 
@@ -44,7 +44,7 @@ export const MessageItem = memo(function MessageItem({
           <span className="sr-only">{`${item.authorName}, ${time}: `}</span>
         ) : (
           <span className="flex items-center gap-2">
-            <IdentityChip name={item.authorName} userId={item.authorId} size="sm" />
+            <Avatar userId={item.authorId} avatarV={item.avatarV} size="sm" />
             <span className="min-w-0 truncate text-body-sm font-medium text-[var(--ink)]">
               {item.authorName}
             </span>

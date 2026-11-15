@@ -9,12 +9,14 @@ export function RoomLiveblocksProvider({
   roomCode,
   userId,
   userName,
+  avatarV,
   initialVideo,
   children,
 }: {
   roomCode: string;
   userId: string;
   userName: string;
+  avatarV?: number | null;
   initialVideo: {
     source: VideoSourceKind | null;
     embedUrl: string | null;
@@ -32,7 +34,11 @@ export function RoomLiveblocksProvider({
     >
       <RoomProvider
         id={roomCode}
-        initialPresence={{ userId, name: userName }}
+        initialPresence={
+          avatarV === undefined
+            ? { userId, name: userName }
+            : { userId, name: userName, avatarV }
+        }
         initialStorage={{
           video: { ...initialVideo, loadedAt: initialVideo.embedUrl ? mountedAt : null },
           player: {

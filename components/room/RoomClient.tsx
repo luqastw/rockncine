@@ -11,6 +11,7 @@ export function RoomClient({
   roomName,
   userId,
   userName,
+  avatarV,
   initialVideo,
   livekitUrl,
 }: {
@@ -18,6 +19,7 @@ export function RoomClient({
   roomName: string | null;
   userId: string;
   userName: string;
+  avatarV?: number | null;
   initialVideo: {
     source: VideoSourceKind | null;
     embedUrl: string | null;
@@ -40,6 +42,7 @@ export function RoomClient({
         roomCode={roomCode}
         userId={userId}
         userName={userName}
+        avatarV={avatarV}
         initialVideo={initialVideo}
       >
         <RoomExperience
@@ -47,6 +50,7 @@ export function RoomClient({
           roomName={roomName}
           userId={userId}
           userName={userName}
+          avatarV={avatarV}
           videoQuality={quality}
           livekitUrl={livekitUrl}
         />

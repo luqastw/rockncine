@@ -49,6 +49,9 @@ const mocks = vi.hoisted(() => {
     useTracksReturn: [] as unknown[],
     // contador de renders da presença (ver o mock de `PresenceList` abaixo)
     presenceRenders: { n: 0 },
+    presenceProps: [] as Record<string, unknown>[],
+    broadcastEvent: vi.fn(),
+    updateMyPresence: vi.fn(),
     livekitRoom,
     emitirLiveKitRoom: (evento: string, payload: unknown) => {
       for (const call of livekitRoom.on.mock.calls) {
@@ -123,13 +126,24 @@ vi.mock("@liveblocks/react", () => ({
   useMutation: (callback: (ctx: unknown, ...args: unknown[]) => unknown, deps: unknown[]) =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useCallback((...args: unknown[]) => callback({ storage: mocks.storage }, ...args), deps),
-  useBroadcastEvent: () => vi.fn(),
+  useBroadcastEvent: () => mocks.broadcastEvent,
   useEventListener: () => {},
   // Tupla: presença E atualizador. O `Chat` real chama o segundo para marcar
   // digitação, e um mock com um elemento só quebra em tempo de digitação, não
   // no render.
   useMyPresence: () => [{ userId: "eu", name: "ana" }, vi.fn()],
+  useUpdateMyPresence: () => mocks.updateMyPresence,
 }));
+
+class CanalAvatarFalso {
+  static instancias: CanalAvatarFalso[] = [];
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  close = vi.fn();
+
+  constructor(public name: string) {
+    CanalAvatarFalso.instancias.push(this);
+  }
+}
 
 // Os três hooks de sync devolvem um `controller` sempre presente (é o contrato
 // de `PlaybackController`), então o mock entrega um controller pronto. É ele que
@@ -152,11 +166,15 @@ vi.mock("@/hooks/useRoomLeaveAnnouncement", () => ({ useRoomLeaveAnnouncement: (
 // Já a presença é substituída por um CONTADOR de renders: ela é o componente
 // "fora do log" que a mensagem de chat não pode acordar.
 vi.mock("@/components/room/PresenceList", () => ({
-  PresenceTrigger: () => {
+  PresenceTrigger: (props: Record<string, unknown>) => {
     mocks.presenceRenders.n += 1;
+    mocks.presenceProps.push(props);
     return <div data-testid="presence-trigger" />;
   },
-  PresenceList: () => <div data-testid="presence" />,
+  PresenceList: (props: Record<string, unknown>) => {
+    mocks.presenceProps.push(props);
+    return <div data-testid="presence" />;
+  },
   usePresenceDisclosure: () => ({ expanded: false, toggle: () => {} }),
 }));
 
@@ -220,13 +238,17 @@ const quality: VideoQuality = {
 // O tipo explícito importa: com o default inferido, passar `livekitUrl: null`
 // seria um erro de tipo, e é exatamente o caso de degradação que este arquivo
 // precisa exercitar.
-function renderRoom({ livekitUrl = "wss://teste.livekit.cloud" }: { livekitUrl?: string | null } = {}) {
+function renderRoom({
+  livekitUrl = "wss://teste.livekit.cloud",
+  avatarV,
+}: { livekitUrl?: string | null; avatarV?: number | null } = {}) {
   return render(
     <RoomExperience
       roomCode="SALA1234"
       roomName="sala"
       userId="eu"
       userName="ana"
+      avatarV={avatarV}
       videoQuality={quality}
       livekitUrl={livekitUrl ?? null}
     />,
@@ -266,6 +288,7 @@ beforeEach(() => {
   mocks.writes.length = 0;
   mocks.useTracksReturn = [];
   mocks.presenceRenders.n = 0;
+  mocks.presenceProps.length = 0;
   mocks.auth = { status: "ready" };
   mocks.connection = "connected";
   mocks.failure = null;
@@ -1187,5 +1210,58 @@ describe("isolamento do estado do chat", () => {
 
     expect(mocks.presenceRenders.n).toBe(antes);
     expect((campo as HTMLTextAreaElement).value).toBe("da");
+  });
+});
+
+describe("versão do ícone próprio (FR-013, FR-018)", () => {
+  beforeEach(() => {
+    resetChatFeed();
+  });
+
+  function enviar(texto: string) {
+    const campo = screen.getByLabelText("mensagem para o chat da sala");
+    fireEvent.change(campo, { target: { value: texto } });
+    fireEvent.keyDown(campo, { key: "Enter" });
+  }
+
+  it("a mensagem enviada leva avatarV no broadcast", () => {
+    renderRoom({ avatarV: 1700000000000 });
+    enviar("oi");
+    expect(mocks.broadcastEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "CHAT_MESSAGE", text: "oi", avatarV: 1700000000000 }),
+    );
+  });
+
+  it("sem avatarV a mensagem segue sem o campo", () => {
+    renderRoom();
+    enviar("oi");
+    const evento = mocks.broadcastEvent.mock.calls[0][0] as Record<string, unknown>;
+    expect("avatarV" in evento).toBe(false);
+  });
+
+  it("o gatilho da presença recebe o avatarV próprio", () => {
+    renderRoom({ avatarV: 42 });
+    expect(mocks.presenceProps.some((props) => props.myAvatarV === 42)).toBe(true);
+  });
+
+  it("mensagem no canal do perfil muda o avatarV das mensagens seguintes (AC-020)", () => {
+    CanalAvatarFalso.instancias = [];
+    vi.stubGlobal("BroadcastChannel", CanalAvatarFalso);
+    renderRoom({ avatarV: 1 });
+    act(() => {
+      CanalAvatarFalso.instancias[0].onmessage?.({ data: { v: 777 } } as MessageEvent);
+    });
+    enviar("depois");
+    expect(mocks.broadcastEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "depois", avatarV: 777 }),
+    );
+    expect(mocks.updateMyPresence).toHaveBeenCalledWith({ avatarV: 777 });
+    vi.unstubAllGlobals();
+  });
+
+  it("sem prop o gatilho recebe myAvatarV indefinido", () => {
+    renderRoom();
+    expect(mocks.presenceProps.length).toBeGreaterThan(0);
+    expect(mocks.presenceProps.every((props) => props.myAvatarV === undefined)).toBe(true);
   });
 });

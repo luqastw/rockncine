@@ -4,6 +4,7 @@ import { RoomClient } from "@/components/room/RoomClient";
 import { getRoomByCode } from "@/lib/rooms";
 import { livekitServerUrl } from "@/lib/livekit";
 import { requireSession } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
 
 // Título com o nome da sala: era o mesmo "rockncine" do layout raiz para toda
 // rota, então abas e histórico do navegador ficavam indistinguíveis entre
@@ -30,8 +31,12 @@ export default async function RoomPage({
   // Router — a page não pode assumir que o layout já redirecionou. Antes daqui
   // saía `session!.user!.id`, que estourava em runtime em vez de redirecionar.
   const { userId, userName } = await requireSession();
-  const room = await getRoomByCode(code);
+  const [room, image] = await Promise.all([
+    getRoomByCode(code),
+    prisma.profileImage.findUnique({ where: { userId }, select: { updatedAt: true } }),
+  ]);
   if (!room) notFound();
+  const avatarV = image ? image.updatedAt.getTime() : null;
 
   return (
     <RoomClient
@@ -39,6 +44,7 @@ export default async function RoomPage({
       roomName={room.name}
       userId={userId}
       userName={userName}
+      avatarV={avatarV}
       initialVideo={{
         source: room.videoSource,
         embedUrl: room.embedUrl,

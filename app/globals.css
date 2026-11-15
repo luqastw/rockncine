@@ -53,10 +53,10 @@
   --shadow-pop: 0 4px 10px 0 rgb(0 0 0 / 0.4);
   --shadow-lg: 0 10px 24px -6px rgb(0 0 0 / 0.45);
 
-  /* Identidade do participante (FR-018, docs/specs/13-chat-sala/spec.md).
-     Quatro tons de cinza derivados do `userId` (lib/identity.ts). A
-     diferenciação entre pessoas é por forma (iniciais) e peso (tom), nunca por
-     matiz. Texto preto sobre cada tom fica entre 5,4:1 e 17:1. */
+  /* Tokens `--id-1..4`: quatro tons de cinza sem matiz que serviam à identidade
+     por iniciais (spec 13, FR-018), substituída pela spec 16. Não têm mais
+     consumidor no app; ficam porque components/chrome/identity.test.ts exige
+     as chaves `id-1` a `id-4`. */
   --id-1: #e6e6e6;
   --id-2: #c2c2c2;
   --id-3: #9a9a9a;

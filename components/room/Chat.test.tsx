@@ -220,12 +220,37 @@ describe("Chat — agrupamento por autor", () => {
     expect(own.innerHTML).not.toContain("invert-fg");
   });
 
-  it("dá identidade de iniciais e tom ao autor (AC-014)", () => {
+  function avatarImgs() {
+    return Array.from(log().querySelectorAll("img")).map((img) => {
+      const url = new URL(img.getAttribute("src") ?? "", "http://localhost");
+      return url.pathname + url.search;
+    });
+  }
+
+  it("mostra o avatar versionado e o nome ao lado (FR-014)", () => {
+    renderChat();
+    emitRemote({ text: "oi", authorId: "u-bruno", authorName: "bruno silva", avatarV: 7, ts: NOW });
+    expect(avatarImgs()).toEqual(["/api/avatar/u-bruno?v=7"]);
+    expect(screen.getByText("bruno silva")).toBeTruthy();
+  });
+
+  it("mostra o avatar padrão sem avatarV (AC-019)", () => {
     renderChat();
     emitRemote({ text: "oi", authorId: "u-bruno", authorName: "bruno silva", ts: NOW });
-    const chip = document.querySelector("[data-initials]");
-    expect(chip?.getAttribute("data-initials")).toBe("BS");
-    expect(Number(chip?.getAttribute("data-tone"))).toBeGreaterThanOrEqual(0);
+    expect(avatarImgs()).toEqual(["/avatar-default.webp"]);
+  });
+
+  it("não deixa avatarV inválido chegar ao DOM como src (AC-015)", () => {
+    renderChat();
+    emitRemote({
+      text: "oi",
+      authorId: "u-bruno",
+      authorName: "bruno silva",
+      avatarV: "javascript:alert(1)" as unknown as number,
+      ts: NOW,
+    });
+    expect(avatarImgs()).toEqual(["/avatar-default.webp"]);
+    expect(log().innerHTML).not.toContain("javascript:");
   });
 
   it("insere divisória de dia quando o dia muda (AC-010)", () => {

@@ -13,6 +13,7 @@ import { useBroadcastGate } from "@/hooks/useBroadcastGate";
 import { useReleaseOnLeave } from "@/hooks/useReleaseOnLeave";
 import { useRoomShortcuts } from "@/hooks/useRoomShortcuts";
 import { useStageLayout } from "@/hooks/useStageLayout";
+import { useOwnAvatarVersion } from "@/hooks/useOwnAvatarVersion";
 import { SyncRing } from "@/components/room/SyncRing";
 import { usePresenceAccessory } from "@/components/room/PresenceAccessory";
 import { isSafeEmbedUrl } from "@/lib/video-source";
@@ -55,6 +56,7 @@ export function RoomExperience({
   roomName,
   userId,
   userName,
+  avatarV: initialAvatarV,
   videoQuality,
   livekitUrl,
 }: {
@@ -62,6 +64,7 @@ export function RoomExperience({
   roomName: string | null;
   userId: string;
   userName: string;
+  avatarV?: number | null;
   videoQuality: VideoQuality;
   // `null` quando o Livekit não está configurado no deploy. O botão de
   // transmissão não renderiza nesse caso: sem SFU não há para onde publicar, e
@@ -72,6 +75,7 @@ export function RoomExperience({
   const video = useStorage((root) => root.video);
   const player = useStorage((root) => root.player);
   const { broadcast, isBroadcasting, showScreenShare, giveUpOnBroadcast } = useBroadcastGate(livekitUrl);
+  const avatarV = useOwnAvatarVersion(initialAvatarV);
   const lastEvent = useLastRoomEvent();
   const [loadModalOpen, setLoadModalOpen] = useState(false);
   // fica aqui (nível de sala, sempre montado) e não dentro de <Chat> — o
@@ -85,7 +89,7 @@ export function RoomExperience({
   // (medido em docs/specs/13-chat-sala/research.md, seção 2). O que fica aqui é
   // só o emissor, dentro do `<Chat>`, e o reset da store no mount.
   useRoomLeaveAnnouncement(userId);
-  const presenceAccessory = usePresenceAccessory(userId, userName);
+  const presenceAccessory = usePresenceAccessory(userId, userName, avatarV);
 
   const {
     resolution,
@@ -439,6 +443,7 @@ export function RoomExperience({
             <Chat
               userId={userId}
               userName={userName}
+              avatarV={avatarV}
               roomCode={roomCode}
               headerAccessory={presenceAccessory}
             />
