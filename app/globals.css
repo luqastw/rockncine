@@ -182,7 +182,7 @@ html::-webkit-scrollbar {
   display: none;
 }
 
-/* A casca da sala (FR-028, docs/specs/17-lost-woods-oot/spec.md) tem altura fixa enquanto o conteúdo cabe. Quando NÃO cabe —
+/* A casca da sala (altura da sala) tem altura fixa enquanto o conteúdo cabe. Quando NÃO cabe —
    janela de 256px de altura ou texto a 200% — espremer é pior que rolar. A
    unidade `em` acompanha a preferência do usuário (FR-049 da spec 01). */
 @media (max-height: 32em) {
@@ -272,7 +272,7 @@ button,
 }
 
 /* ---------------------------------------------------------------------------
-   Movimento (FR-030, docs/specs/17-lost-woods-oot/spec.md): entradas curtas, uma cascata discreta e resposta imediata ao
+   Movimento (FR-020, docs/specs/13-chat-sala/spec.md): entradas curtas, uma cascata discreta e resposta imediata ao
    toque. Nada coreografado; tudo morre em reduced-motion.
    --------------------------------------------------------------------------- */
 
@@ -341,7 +341,7 @@ a[href]:active {
 }
 
 /* ---------------------------------------------------------------------------
-   Realce progressivo (FR-030, docs/specs/17-lost-woods-oot/spec.md).
+   Realce progressivo (FR-020, docs/specs/13-chat-sala/spec.md).
    Só `opacity`/`transform` e
    nunca portão: sem JavaScript, `.reveal` não casa seletor e o conteúdo nasce
    visível; o marcador `[data-reveal]` é a rede de segurança.
