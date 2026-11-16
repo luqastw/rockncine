@@ -28,12 +28,12 @@ const TIME_POLL_MS = 400; // YT API não emite timeupdate — só leitura pra UI
 function youtubeErrorMessage(code: YT.PlayerError): string {
   switch (code) {
     case 100:
-      return "vídeo não encontrado ou privado.";
+      return "Vídeo não encontrado ou privado.";
     case 101:
     case 150:
-      return "o dono deste vídeo não permite reprodução embutida (comum em vídeos com restrição de idade).";
+      return "O dono deste vídeo não permite reprodução embutida (comum em vídeos com restrição de idade).";
     default:
-      return "não foi possível reproduzir este vídeo.";
+      return "Não foi possível reproduzir este vídeo.";
   }
 }
 
@@ -227,8 +227,8 @@ export function useYouTubeSync({
       if (cancelled) return;
       setError(
         err instanceof Error
-          ? `${err.message} tente carregar o vídeo de novo.`
-          : "falha ao carregar o player do YouTube. tente carregar o vídeo de novo.",
+          ? `${err.message} Tente carregar o vídeo de novo.`
+          : "Falha ao carregar o player do YouTube. Tente carregar o vídeo de novo.",
       );
     });
 

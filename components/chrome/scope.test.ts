@@ -55,7 +55,7 @@ describe("blur isolado no chrome (FR-005)", () => {
   });
 });
 
-// Superfícies em escopo (FR-008, docs/specs/15-identidade-kimi/spec.md).
+// Superfícies em escopo.
 const SUPERFICIES = [
   "app/page.tsx",
   "app/login/page.tsx",
@@ -74,7 +74,7 @@ describe("invólucro único (FR-018)", () => {
         /components\/chrome\/PageShell/,
       );
       // A largura da coluna morava no <main> de cada arquivo; agora é do shell.
-      expect(src, `${rel} não pode renderizar <main>`).not.toMatch(/<main\b/);
+      expect(src, `${rel} não pode renderizar <main>`).not.toMatch(/<main\b/i);
     }
   });
 

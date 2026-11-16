@@ -719,11 +719,11 @@ describe("useYouTubeSync: controller", () => {
 
 describe("useYouTubeSync: erros", () => {
   it.each([
-    [100, "vídeo não encontrado ou privado."],
-    [101, "o dono deste vídeo não permite reprodução embutida (comum em vídeos com restrição de idade)."],
-    [150, "o dono deste vídeo não permite reprodução embutida (comum em vídeos com restrição de idade)."],
-    [2, "não foi possível reproduzir este vídeo."],
-    [5, "não foi possível reproduzir este vídeo."],
+    [100, "Vídeo não encontrado ou privado."],
+    [101, "O dono deste vídeo não permite reprodução embutida (comum em vídeos com restrição de idade)."],
+    [150, "O dono deste vídeo não permite reprodução embutida (comum em vídeos com restrição de idade)."],
+    [2, "Não foi possível reproduzir este vídeo."],
+    [5, "Não foi possível reproduzir este vídeo."],
   ])("onError %i mapeia a mensagem", async (code, message) => {
     const { result } = await mountReady();
     act(() => player().opts.events.onError({ data: code }));
@@ -733,10 +733,10 @@ describe("useYouTubeSync: erros", () => {
   });
 
   it("falha da API com Error anexa a dica de retentativa", async () => {
-    api.load.mockRejectedValue(new Error("timeout carregando a API do YouTube."));
+    api.load.mockRejectedValue(new Error("Timeout carregando a API do YouTube."));
     const { result } = await mount();
 
-    expect(result.current.error).toBe("timeout carregando a API do YouTube. tente carregar o vídeo de novo.");
+    expect(result.current.error).toBe("Timeout carregando a API do YouTube. Tente carregar o vídeo de novo.");
     expect(FakePlayer.instances).toHaveLength(0);
   });
 
@@ -744,7 +744,7 @@ describe("useYouTubeSync: erros", () => {
     api.load.mockRejectedValue("boom");
     const { result } = await mount();
 
-    expect(result.current.error).toBe("falha ao carregar o player do YouTube. tente carregar o vídeo de novo.");
+    expect(result.current.error).toBe("Falha ao carregar o player do YouTube. Tente carregar o vídeo de novo.");
   });
 
   it("novo load bem sucedido limpa o erro anterior", async () => {

@@ -27,7 +27,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const triggerButton = () => screen.getByRole("button", { name: "excluir sala festa de aniversário" });
+const triggerButton = () => screen.getByRole("button", { name: "Excluir sala festa de aniversário" });
 
 const openDialog = async () => {
   fireEvent.click(triggerButton());
@@ -44,7 +44,7 @@ describe("DeleteRoomButton — abertura do modal", () => {
     expect(dialog.textContent).toContain("festa de aniversário");
     expect(dialog.textContent).toContain("ABCD1234");
     expect(within(dialog).getByRole("button", { name: "cancelar" })).toBeTruthy();
-    expect(within(dialog).getByRole("button", { name: "excluir sala" })).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Excluir sala" })).toBeTruthy();
 
     // Regressão: o diálogo é portal para o `body`. Dentro do `<li>` da lista,
     // que anima com `transform`, o `position: fixed` ficava preso ao item e o
@@ -64,6 +64,22 @@ describe("DeleteRoomButton — abertura do modal", () => {
     await waitFor(() => {
       expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "cancelar" }));
     });
+  });
+});
+
+describe("DeleteRoomButton — variant danger", () => {
+  it("gatilho e confirmação usam variant danger", () => {
+    render(<DeleteRoomButton roomCode="ABCD1234" roomName="festa de aniversário" />);
+    const gatilho = screen.getByRole("button", { name: /excluir sala/i });
+    expect(gatilho.className).toContain("border-[var(--heart)]");
+    expect(gatilho.className).not.toContain("text-[var(--ink");
+    fireEvent.click(gatilho);
+    const confirmar = screen
+      .getAllByRole("button", { name: "Excluir sala" })
+      .find((el) => el.closest('[role="dialog"]'));
+    expect(confirmar?.className).toContain("border-[var(--heart)]");
+    expect(confirmar?.className).not.toContain("border-[var(--line");
+    expect(confirmar?.className).not.toContain("text-[var(--ink");
   });
 });
 
@@ -99,7 +115,7 @@ describe("DeleteRoomButton — fechamento", () => {
 
     const dialog = await openDialog();
     const cancel = within(dialog).getByRole("button", { name: "cancelar" });
-    const confirm = within(dialog).getByRole("button", { name: "excluir sala" });
+    const confirm = within(dialog).getByRole("button", { name: "Excluir sala" });
 
     // Tab no último focável volta para o primeiro…
     confirm.focus();
@@ -119,25 +135,25 @@ describe("DeleteRoomButton — resposta do servidor", () => {
     render(<DeleteRoomButton roomCode="ABCD1234" roomName="festa de aniversário" />);
 
     const dialog = await openDialog();
-    fireEvent.click(within(dialog).getByRole("button", { name: "excluir sala" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Excluir sala" }));
 
     await waitFor(() => {
       const cancel = within(dialog).getByRole("button", { name: "cancelar" }) as HTMLButtonElement;
-      const confirm = within(dialog).getByRole("button", { name: "excluindo..." }) as HTMLButtonElement;
+      const confirm = within(dialog).getByRole("button", { name: "Excluindo..." }) as HTMLButtonElement;
       expect(cancel.disabled).toBe(true);
       expect(confirm.disabled).toBe(true);
     });
   });
 
   it("AC-011: 403 mantém o modal aberto e mostra a mensagem em role=alert", async () => {
-    fetchMock.mockResolvedValue(jsonResponse(403, { error: "só o dono pode excluir esta sala." }));
+    fetchMock.mockResolvedValue(jsonResponse(403, { error: "Só o dono pode excluir esta sala." }));
     render(<DeleteRoomButton roomCode="ABCD1234" roomName="festa de aniversário" />);
 
     const dialog = await openDialog();
-    fireEvent.click(within(dialog).getByRole("button", { name: "excluir sala" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Excluir sala" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert").textContent).toBe("só o dono pode excluir esta sala.");
+      expect(screen.getByRole("alert").textContent).toBe("Só o dono pode excluir esta sala.");
     });
     expect(screen.getByRole("dialog")).toBeTruthy();
     expect(triggerButton()).toBeTruthy();
@@ -149,7 +165,7 @@ describe("DeleteRoomButton — resposta do servidor", () => {
     render(<DeleteRoomButton roomCode="ABCD1234" roomName="festa de aniversário" />);
 
     const dialog = await openDialog();
-    fireEvent.click(within(dialog).getByRole("button", { name: "excluir sala" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Excluir sala" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();
@@ -159,11 +175,11 @@ describe("DeleteRoomButton — resposta do servidor", () => {
   });
 
   it("AC-013: 404 fecha o modal, sem alerta de erro, e atualiza a lista", async () => {
-    fetchMock.mockResolvedValue(jsonResponse(404, { error: "sala não encontrada." }));
+    fetchMock.mockResolvedValue(jsonResponse(404, { error: "Sala não encontrada." }));
     render(<DeleteRoomButton roomCode="ABCD1234" roomName="festa de aniversário" />);
 
     const dialog = await openDialog();
-    fireEvent.click(within(dialog).getByRole("button", { name: "excluir sala" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Excluir sala" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();
@@ -177,10 +193,10 @@ describe("DeleteRoomButton — resposta do servidor", () => {
     render(<DeleteRoomButton roomCode="ABCD1234" roomName="festa de aniversário" />);
 
     const dialog = await openDialog();
-    fireEvent.click(within(dialog).getByRole("button", { name: "excluir sala" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Excluir sala" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert").textContent).toContain("verifique sua conexão");
+      expect(screen.getByRole("alert").textContent).toContain("Verifique sua conexão");
     });
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
@@ -189,7 +205,7 @@ describe("DeleteRoomButton — resposta do servidor", () => {
     fetchMock.mockReturnValue(new Promise(() => {}));
     render(<DeleteRoomButton roomCode="ABCD1234" roomName={null} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "excluir sala ABCD1234" }));
+    fireEvent.click(screen.getByRole("button", { name: "Excluir sala ABCD1234" }));
     const dialog = await screen.findByRole("dialog");
 
     expect(dialog.textContent).toContain("ABCD1234");

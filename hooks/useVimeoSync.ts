@@ -39,12 +39,12 @@ const RESOLUTION_MAX_HEIGHT: Record<Resolution, number> = {
 // tinha mapa equivalente (youtubeErrorMessage); o Vimeo não tinha nenhum.
 function vimeoErrorMessage(raw: unknown): string {
   const message = typeof raw === "string" ? raw : "";
-  if (/password/i.test(message)) return "este vídeo é privado e exige senha.";
-  if (/does not exist|not found|404/i.test(message)) return "vídeo não encontrado ou privado.";
+  if (/password/i.test(message)) return "Este vídeo é privado e exige senha.";
+  if (/does not exist|not found|404/i.test(message)) return "Vídeo não encontrado ou privado.";
   if (/privacy|embed|permission|domain/i.test(message)) {
-    return "o dono deste vídeo não permite reprodução embutida.";
+    return "O dono deste vídeo não permite reprodução embutida.";
   }
-  return "não foi possível reproduzir este vídeo.";
+  return "Não foi possível reproduzir este vídeo.";
 }
 
 // Reforço best-effort do teto de resolução além da opção de embed do construtor
@@ -197,7 +197,7 @@ export function useVimeoSync({
         Player = await VIMEO_MODULE();
       } catch {
         if (cancelled || token !== buildTokenRef.current) return;
-        setError("falha ao carregar o player do Vimeo. tente carregar o vídeo de novo.");
+        setError("Falha ao carregar o player do Vimeo. Tente carregar o vídeo de novo.");
         return;
       }
 

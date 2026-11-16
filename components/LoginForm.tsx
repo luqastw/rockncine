@@ -26,7 +26,7 @@ export function LoginForm() {
             redirect: false,
           });
           if (res?.error) {
-            setError("não bateu. confere o email e a senha.");
+            setError("Não bateu. Confere o email e a senha.");
             return;
           }
           router.push("/rooms");
@@ -36,7 +36,7 @@ export function LoginForm() {
           // pulava o `setLoading(false)` e deixava o botão desabilitado em
           // "entrando..." para sempre, sem nenhuma mensagem — a promise
           // rejeitada também virava unhandled rejection.
-          setError("não foi possível entrar. verifique sua conexão e tente de novo.");
+          setError("Não foi possível entrar. Verifique sua conexão e tente de novo.");
         } finally {
           setLoading(false);
         }
@@ -44,7 +44,7 @@ export function LoginForm() {
       className="flex flex-col gap-4"
     >
       <label className="flex flex-col gap-1.5 text-body-sm text-[var(--ink-muted)]">
-        email
+        Email
         <Input
           type="email"
           required
@@ -54,7 +54,7 @@ export function LoginForm() {
         />
       </label>
       <label className="flex flex-col gap-1.5 text-body-sm text-[var(--ink-muted)]">
-        senha
+        Senha
         <Input
           type="password"
           required
@@ -66,16 +66,16 @@ export function LoginForm() {
       {error && (
         <p
           role="alert"
-          className="rounded-lg border border-[var(--ink)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--ink)]"
+          className="rounded-lg border border-[var(--heart)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--heart)]"
         >
-          <span aria-hidden="true" className="mr-2 font-mono text-[var(--accent)]">
+          <span aria-hidden="true" className="mr-2 font-mono text-[var(--heart)]">
             !
           </span>
           {error}
         </p>
       )}
       <Button type="submit" disabled={loading} className="w-full">
-        {loading ? "entrando..." : "entrar"}
+        {loading ? "Entrando..." : "Entrar"}
       </Button>
     </form>
   );

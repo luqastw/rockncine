@@ -60,3 +60,46 @@ describe("realce progressivo ancorado em marcador de JS (FR-013, FR-014)", () =>
     }
   });
 });
+
+function blockAfter(marker: string): string {
+  const start = css.indexOf(marker);
+  if (start < 0) return "";
+  const open = css.indexOf("{", start);
+  let depth = 0;
+  for (let i = open; i < css.length; i++) {
+    if (css[i] === "{") depth++;
+    if (css[i] === "}") depth--;
+    if (depth === 0) return css.slice(open, i);
+  }
+  return "";
+}
+
+describe("movimento por tokens (FR-012, FR-019, FR-021)", () => {
+  it("AC-010: movimento usa tokens", () => {
+    const dur = css.match(/--motion-dur:\s*(\d+(?:\.\d+)?)ms/);
+    expect(dur, "--motion-dur em ms").toBeTruthy();
+    expect(Number(dur?.[1])).toBeLessThanOrEqual(200);
+
+    for (const m of css.matchAll(/calc\(var\(--motion-dur\)\s*\*(?:\s*var\(--motion-factor\)\s*\*)?\s*(\d*\.?\d+)\)/g)) {
+      expect(Number(m[1])).toBeLessThanOrEqual(1.9);
+    }
+    expect(css).toMatch(/calc\(var\(--motion-dur\)\s*\*\s*var\(--motion-factor\)/i);
+
+    const permitidos = new Set(["sync-flash"]);
+    const nomes = [...css.matchAll(/@keyframes\s+([\w-]+)/g)].map((m) => m[1]);
+    expect(nomes.length).toBeGreaterThan(0);
+    for (const nome of nomes) {
+      if (permitidos.has(nome)) continue;
+      const corpo = blockAfter(`@keyframes ${nome}`);
+      const props = [...corpo.matchAll(/([a-z-]+)\s*:[^;{}]+;/g)].map((m) => m[1]);
+      for (const prop of props) {
+        expect(["opacity", "transform"], `@keyframes ${nome} anima ${prop}`).toContain(prop);
+      }
+    }
+
+    expect(ruleBody("\\.reduce-motion,[^{]*\\.reduce-motion \\*::after")).toMatch(
+      /--motion-factor:\s*0\b/,
+    );
+    expect(blockAfter("@media (prefers-reduced-motion: reduce)")).toMatch(/--motion-factor:\s*0\b/i);
+  });
+});

@@ -52,7 +52,7 @@ export function clientIpFromHeaders(
 
 export function tooManyRequests(retryAfterSeconds: number): Response {
   return Response.json(
-    { error: "muitas tentativas. tente de novo em instantes." },
+    { error: "Muitas tentativas. Tente de novo em instantes." },
     { status: 429, headers: { "retry-after": String(retryAfterSeconds) } },
   );
 }

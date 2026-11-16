@@ -33,19 +33,19 @@ export function PlayerLoadStatus({
   // estado de `loading`.
   if (!loading && !error) return null;
 
-  const message = error ?? (timedOut ? "não foi possível carregar o player." : null);
+  const message = error ?? (timedOut ? "Não foi possível carregar o player." : null);
 
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-[var(--scrim)] px-4 text-center text-body-sm text-[var(--ink-muted)]">
       {message ? (
         <div
           role="alert"
-          className="flex flex-col items-center gap-2 rounded-xl border border-[var(--ink)] bg-[var(--bg-void)] px-4 py-3"
+          className="flex flex-col items-center gap-2 rounded-xl border border-[var(--heart)] bg-[var(--bg-void)] px-4 py-3"
         >
-          <span className="font-semibold text-[var(--ink)]">{message}</span>
+          <span className="font-semibold text-[var(--heart)]">{message}</span>
           {!error && (
             <span className="text-caption text-[var(--ink-muted)]">
-              se você usa bloqueador de anúncios/rastreamento, tente liberar este site.
+              Se você usa bloqueador de anúncios/rastreamento, tente liberar este site.
             </span>
           )}
           {sourceUrl && isSafeEmbedUrl(sourceUrl) && (
@@ -53,9 +53,9 @@ export function PlayerLoadStatus({
               href={sourceUrl}
               target="_blank"
               rel="noreferrer noopener"
-              className="rounded-sm text-[var(--ink)] underline focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+              className="rounded-sm text-[var(--ink)] underline reticle"
             >
-              abrir o link original
+              Abrir o link original
             </a>
           )}
         </div>
@@ -69,7 +69,7 @@ export function PlayerLoadStatus({
           role="status"
           className="rounded-lg bg-[var(--bg-void)] px-3 py-2 text-[var(--ink-muted)]"
         >
-          preparando o player…
+          Preparando o player…
         </span>
       )}
     </div>

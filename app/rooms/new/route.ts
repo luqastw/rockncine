@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   // consegue mandar o browser pra cá com um form POST cross-origin. Sem esta
   // checagem, um link malicioso criava salas na conta de quem clicasse.
   if (!sameOrigin(req)) {
-    return NextResponse.json({ error: "origem não permitida." }, { status: 403 });
+    return NextResponse.json({ error: "Origem não permitida." }, { status: 403 });
   }
 
   const session = await getServerSession(authOptions);

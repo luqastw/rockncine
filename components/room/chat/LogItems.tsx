@@ -72,8 +72,9 @@ export const SystemItem = memo(function SystemItem({ item }: { item: SystemEvent
     <li className="my-1.5 flex items-center gap-2 text-caption italic text-[var(--ink-muted)]">
       <span className="h-px flex-1 bg-[var(--line)]" aria-hidden />
       <span className="min-w-0 text-center">
-        <span className="sr-only">aviso da sala: </span>
+        <span className="sr-only">Aviso da sala: </span>
         {item.text}
+        <span aria-hidden="true" className="ml-1 text-[var(--ink-muted)]">▼</span>
       </span>
       <span className="h-px flex-1 bg-[var(--line)]" aria-hidden />
     </li>
@@ -116,5 +117,5 @@ export const DayDivider = memo(function DayDivider({ ts, todayKey }: { ts: numbe
 });
 
 export const UnreadDivider = memo(function UnreadDivider() {
-  return <DividerLine label="novas mensagens" strong />;
+  return <DividerLine label="Novas mensagens" strong />;
 });

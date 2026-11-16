@@ -4,15 +4,15 @@ import { sfuFailureHint, type SfuFailure } from "@/lib/sfu-connect";
 
 export function sfuBlockedReason(auth: LiveKitAuth, connection: ConnectionState): string | null {
   if (auth.status === "unavailable") {
-    if (auth.httpStatus === 503) return "transmissão não configurada neste deploy";
-    if (auth.httpStatus === 403) return "você não pode transmitir nesta sala";
-    if (auth.httpStatus === 401) return "sessão expirada — recarregue a sala";
-    return "servidor de transmissão indisponível";
+    if (auth.httpStatus === 503) return "Transmissão não configurada neste deploy";
+    if (auth.httpStatus === 403) return "Você não pode transmitir nesta sala";
+    if (auth.httpStatus === 401) return "Sessão expirada — recarregue a sala";
+    return "Servidor de transmissão indisponível";
   }
-  if (auth.status !== "ready") return "conectando ao servidor de transmissão";
-  if (connection === ConnectionState.Connecting) return "conectando ao servidor de transmissão";
-  if (connection === ConnectionState.Reconnecting) return "reconectando ao servidor de transmissão";
-  if (connection !== ConnectionState.Connected) return "sem conexão com o servidor de transmissão";
+  if (auth.status !== "ready") return "Conectando ao servidor de transmissão";
+  if (connection === ConnectionState.Connecting) return "Conectando ao servidor de transmissão";
+  if (connection === ConnectionState.Reconnecting) return "Reconectando ao servidor de transmissão";
+  if (connection !== ConnectionState.Connected) return "Sem conexão com o servidor de transmissão";
   return null;
 }
 

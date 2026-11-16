@@ -26,6 +26,10 @@ import LoginPage from "@/app/login/page";
 import RegisterPage from "@/app/register/page";
 import NotFound from "@/app/not-found";
 import RoomsPage from "@/app/rooms/page";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { IconButton } from "@/components/ui/IconButton";
+import { modalPanelClass } from "@/components/ui/Modal";
 
 beforeEach(() => {
   findMany.mockReset();
@@ -58,14 +62,14 @@ describe("landing", () => {
 
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
-      "assista junto, no mesmo instante",
+      "Assista junto, no mesmo instante",
     );
-    expect(screen.getAllByRole("link", { name: "entrar" })).toHaveLength(1);
-    expect(screen.getByRole("link", { name: "entrar" }).getAttribute("href")).toBe("/login");
-    expect(screen.getAllByRole("link", { name: "criar conta" })).toHaveLength(1);
-    expect(screen.getByRole("link", { name: "criar conta" }).getAttribute("href")).toBe("/register");
-    expect(screen.getByRole("link", { name: "começar agora" }).getAttribute("href")).toBe("/register");
-    expect(screen.getByRole("link", { name: "já tenho conta" }).getAttribute("href")).toBe("/login");
+    expect(screen.getAllByRole("link", { name: "Entrar" })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Entrar" }).getAttribute("href")).toBe("/login");
+    expect(screen.getAllByRole("link", { name: "Criar conta" })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Criar conta" }).getAttribute("href")).toBe("/register");
+    expect(screen.getByRole("link", { name: "Começar agora" }).getAttribute("href")).toBe("/register");
+    expect(screen.getByRole("link", { name: "Já tenho conta" }).getAttribute("href")).toBe("/login");
     expect(document.querySelectorAll("header")).toHaveLength(1);
     const ol = document.querySelector("ol");
     expect(ol?.querySelectorAll(":scope > li")).toHaveLength(3);
@@ -103,13 +107,12 @@ describe("landing", () => {
     anon();
     render(await Home());
 
-    const primario = screen.getByRole("link", { name: "começar agora" });
+    const primario = screen.getByRole("link", { name: "Começar agora" });
     expect(primario.className).toContain("bg-[var(--leaf)]");
     expect(primario.className).toContain("text-[var(--bg-void)]");
-    expect(primario.className).toContain("focus-visible:ring-[var(--outline-strong)]");
-    expect(primario.className).toContain("ring-offset-[var(--focus-offset)]");
+    expect(primario.className).toContain("reticle");
 
-    const secundario = screen.getByRole("link", { name: "já tenho conta" });
+    const secundario = screen.getByRole("link", { name: "Já tenho conta" });
     expect(secundario.className).toContain("border-[var(--line-strong)]");
   });
 
@@ -153,5 +156,54 @@ describe("superfícies em escopo — alvos de toque (FR-021)", () => {
   it("NFR-2: 404", () => {
     render(<NotFound />);
     assertAlvosDeToque();
+  });
+});
+
+describe("primitivos de identidade", () => {
+  it("AC-004: Card e Modal usam a moldura chanfrada", () => {
+    render(<Card data-testid="card">x</Card>);
+    render(<Card data-testid="card-primary" tone="primary">x</Card>);
+    expect(screen.getByTestId("card").className.split(" ")).toContain("frame");
+    expect(screen.getByTestId("card-primary").className.split(" ")).toContain("frame");
+    expect(modalPanelClass.split(" ")).toContain("frame");
+  });
+
+  it("Modal: overlay rola e o painel não tem overflow nem altura máxima", async () => {
+    const { modalOverlayClass } = await import("@/components/ui/Modal");
+    expect(modalOverlayClass).toContain("overflow-y-auto");
+    expect(modalOverlayClass).toContain("[align-items:safe_center]");
+    expect(modalOverlayClass).not.toContain("items-center ");
+    expect(modalPanelClass).not.toContain("overflow-y-auto");
+    expect(modalPanelClass).not.toContain("max-h-");
+  });
+
+  it("variant danger não carrega classes de cor concorrentes", () => {
+    render(<Button variant="danger">apagar</Button>);
+    const botao = screen.getByRole("button", { name: "apagar" });
+    expect(botao.className).toContain("text-[var(--heart)]");
+    expect(botao.className).not.toContain("text-[var(--ink");
+    expect(botao.className).not.toContain("border-[var(--line");
+    expect(botao.getAttribute("data-variant")).toBeNull();
+    expect(botao.className.split(" ")).not.toContain("frame-btn");
+  });
+
+  it("botão primário usa reticle-on-leaf", () => {
+    render(<Button>ir</Button>);
+    expect(screen.getByRole("button", { name: "ir" }).className.split(" ")).toContain("reticle-on-leaf");
+  });
+
+  it("AC-004: botão primário usa frame-btn e data-variant", () => {
+    render(<Button>ir</Button>);
+    const botao = screen.getByRole("button", { name: "ir" });
+    expect(botao.className.split(" ")).toContain("frame-btn");
+    expect(botao.getAttribute("data-variant")).toBe("primary");
+  });
+
+  it("AC-007: IconButton é circular e tem 44px", () => {
+    render(<IconButton aria-label="x" />);
+    const classes = screen.getByRole("button", { name: "x" }).className.split(" ");
+    expect(classes).toContain("btn-round");
+    expect(classes).toContain("min-h-11");
+    expect(classes).toContain("min-w-11");
   });
 });

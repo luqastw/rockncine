@@ -268,7 +268,7 @@ async function iniciarCompleto() {
   vi.stubGlobal("open", vi.fn());
   mocks.setScreenShareEnabled.mockResolvedValue({});
   renderRoom();
-  fireEvent.click(screen.getByRole("button", { name: "transmitir tela" }));
+  fireEvent.click(screen.getByRole("button", { name: "Transmitir tela" }));
   await waitFor(() => expect(mocks.setScreenShareEnabled).toHaveBeenCalled());
   const [ligado, captura, publicacao] = mocks.setScreenShareEnabled.mock.calls[0];
   return {
@@ -328,17 +328,17 @@ describe("área de vídeo — modo player (FR-005, AC-001)", () => {
 
     // O botão de play/pause do `PlayerControls` é o marcador mais preciso de
     // que a barra de controles está montada.
-    expect(screen.getByRole("button", { name: /pausar|tocar/ })).toBeTruthy();
-    expect(screen.queryByText("conectando à transmissão")).toBeNull();
-    expect(screen.queryByText("transmitindo")).toBeNull();
+    expect(screen.getByRole("button", { name: /pausar|tocar/i })).toBeTruthy();
+    expect(screen.queryByText("Conectando à transmissão")).toBeNull();
+    expect(screen.queryByText("Transmitindo")).toBeNull();
   });
 
-  it("sala sem vídeo mostra o estado de nenhum vídeo carregado", () => {
+  it("Sala sem vídeo mostra o estado de nenhum vídeo carregado", () => {
     mocks.root.video = { source: null, embedUrl: null, sourceUrl: null, loadedAt: null };
 
     renderRoom();
 
-    expect(screen.getByText("nenhum vídeo carregado")).toBeTruthy();
+    expect(screen.getByText("Nenhum vídeo carregado")).toBeTruthy();
   });
 });
 
@@ -349,9 +349,9 @@ describe("área de vídeo — modo transmissão (FR-004, AC-002)", () => {
     renderRoom();
 
     // O botão de play/pause é exatamente o que AC-002 nomeia.
-    expect(screen.queryByRole("button", { name: /pausar|tocar/ })).toBeNull();
-    expect(screen.queryByRole("slider", { name: "progresso do vídeo" })).toBeNull();
-    expect(screen.getByText("conectando à transmissão")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /pausar|tocar/i })).toBeNull();
+    expect(screen.queryByRole("slider", { name: "Progresso do vídeo" })).toBeNull();
+    expect(screen.getByText("Conectando à transmissão")).toBeTruthy();
     expect(screen.getByText("bruno")).toBeTruthy();
   });
 
@@ -362,8 +362,8 @@ describe("área de vídeo — modo transmissão (FR-004, AC-002)", () => {
 
     renderRoom();
 
-    expect(screen.getByRole("button", { name: /pausar|tocar/ })).toBeTruthy();
-    expect(screen.queryByText("conectando à transmissão")).toBeNull();
+    expect(screen.getByRole("button", { name: /pausar|tocar/i })).toBeTruthy();
+    expect(screen.queryByText("Conectando à transmissão")).toBeNull();
   });
 
   // O heartbeat parado é o que expira — não o `startedAt`. Um host que transmite
@@ -379,8 +379,8 @@ describe("área de vídeo — modo transmissão (FR-004, AC-002)", () => {
 
     renderRoom();
 
-    expect(screen.getByText("conectando à transmissão")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /pausar|tocar/ })).toBeNull();
+    expect(screen.getByText("Conectando à transmissão")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /pausar|tocar/i })).toBeNull();
   });
 
   it("broadcast com heartbeat parado (transmissor que sumiu) devolve ao player normal", () => {
@@ -388,7 +388,7 @@ describe("área de vídeo — modo transmissão (FR-004, AC-002)", () => {
 
     renderRoom();
 
-    expect(screen.getByRole("button", { name: /pausar|tocar/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /pausar|tocar/i })).toBeTruthy();
   });
 
   it("o único <video> da tela é o da transmissão, com playsInline, autoPlay e muted", () => {
@@ -414,7 +414,7 @@ describe("botão de transmissão (FR-009, FR-010, AC-004, AC-005)", () => {
 
     renderRoom();
 
-    expect(screen.queryByRole("button", { name: /transmissão de tela/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /transmissão de tela/i })).toBeNull();
   });
 
   it("AC-004: com outra pessoa transmitindo, o botão existe desabilitado e diz quem", () => {
@@ -422,7 +422,7 @@ describe("botão de transmissão (FR-009, FR-010, AC-004, AC-005)", () => {
 
     renderRoom();
 
-    const button = screen.getByRole("button", { name: "já há alguém transmitindo" });
+    const button = screen.getByRole("button", { name: "Já há alguém transmitindo" });
     expect((button as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText("bruno está transmitindo")).toBeTruthy();
   });
@@ -430,7 +430,7 @@ describe("botão de transmissão (FR-009, FR-010, AC-004, AC-005)", () => {
   it("sem transmissão, o botão está habilitado e é o de iniciar", () => {
     renderRoom();
 
-    const button = screen.getByRole("button", { name: "transmitir tela" });
+    const button = screen.getByRole("button", { name: "Transmitir tela" });
     expect((button as HTMLButtonElement).disabled).toBe(false);
   });
 
@@ -439,8 +439,8 @@ describe("botão de transmissão (FR-009, FR-010, AC-004, AC-005)", () => {
 
     renderRoom();
 
-    expect(screen.getByRole("button", { name: "parar transmissão" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "transmitir tela" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Parar transmissão" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Transmitir tela" })).toBeNull();
   });
 });
 
@@ -457,7 +457,7 @@ describe("iniciar transmissão (FR-006, FR-007, FR-008)", () => {
     });
 
     renderRoom();
-    fireEvent.click(screen.getByRole("button", { name: "transmitir tela" }));
+    fireEvent.click(screen.getByRole("button", { name: "Transmitir tela" }));
     await waitFor(() => expect(ordem).toHaveLength(2));
 
     expect(open).toHaveBeenCalledWith("https://youtu.be/dQw4w9WgXcQ", "_blank", "noopener");
@@ -471,7 +471,7 @@ describe("iniciar transmissão (FR-006, FR-007, FR-008)", () => {
     mocks.setScreenShareEnabled.mockResolvedValue({});
 
     renderRoom();
-    fireEvent.click(screen.getByRole("button", { name: "transmitir tela" }));
+    fireEvent.click(screen.getByRole("button", { name: "Transmitir tela" }));
 
     await waitFor(() => {
       const write = mocks.writes.find(([key]) => key === "broadcast");
@@ -493,14 +493,14 @@ describe("iniciar transmissão (FR-006, FR-007, FR-008)", () => {
     mocks.setScreenShareEnabled.mockRejectedValue(negado());
 
     renderRoom();
-    fireEvent.click(screen.getByRole("button", { name: "transmitir tela" }));
+    fireEvent.click(screen.getByRole("button", { name: "Transmitir tela" }));
 
     expect(
-      await screen.findByText("a captura de tela foi cancelada ou negada."),
+      await screen.findByText("A captura de tela foi cancelada ou negada."),
     ).toBeTruthy();
     expect(mocks.writes.some(([key]) => key === "broadcast")).toBe(false);
     // O player continua no lugar: a sala não mudou de modo.
-    expect(screen.getByRole("button", { name: /pausar|tocar/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /pausar|tocar/i })).toBeTruthy();
     vi.unstubAllGlobals();
   });
 });
@@ -539,7 +539,7 @@ describe("áudio da transmissão (FR-013, FR-016, AC-006, AC-010)", () => {
 
     renderRoom();
 
-    expect(screen.getByText("conectando à transmissão")).toBeTruthy();
+    expect(screen.getByText("Conectando à transmissão")).toBeTruthy();
     expect(screen.queryByText(/sem áudio/i)).toBeNull();
   });
 });
@@ -618,7 +618,7 @@ describe("encerramento (FR-017, FR-018, FR-019)", () => {
     mocks.setScreenShareEnabled.mockResolvedValue(undefined);
 
     renderRoom();
-    fireEvent.click(screen.getByRole("button", { name: "parar transmissão" }));
+    fireEvent.click(screen.getByRole("button", { name: "Parar transmissão" }));
 
     expect(mocks.setScreenShareEnabled).toHaveBeenCalledWith(false);
     expect(mocks.writes).toContainEqual(["broadcast", null]);
@@ -663,9 +663,9 @@ describe("degradação sem SFU configurado", () => {
   it("sem LIVEKIT_URL o botão de transmissão não renderiza", () => {
     renderRoom({ livekitUrl: null });
 
-    expect(screen.queryByRole("button", { name: /transmissão/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /transmissão/i })).toBeNull();
     // O modo player segue inteiro — a sala não depende do Livekit.
-    expect(screen.getByRole("button", { name: /pausar|tocar/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /pausar|tocar/i })).toBeTruthy();
   });
 
   // O storage sobrevive à queda do Livekit — é ele que sobrevive. Um cliente
@@ -677,8 +677,8 @@ describe("degradação sem SFU configurado", () => {
 
     renderRoom({ livekitUrl: null });
 
-    expect(screen.getByRole("button", { name: /pausar|tocar/ })).toBeTruthy();
-    expect(screen.queryByText("conectando à transmissão")).toBeNull();
+    expect(screen.getByRole("button", { name: /pausar|tocar/i })).toBeTruthy();
+    expect(screen.queryByText("Conectando à transmissão")).toBeNull();
   });
 });
 
@@ -837,8 +837,8 @@ describe("escotilha quando os quadros não chegam", () => {
     renderRoom();
     act(() => vi.advanceTimersByTime(11_000));
 
-    expect(screen.getByText("conectando à transmissão")).toBeTruthy();
-    expect(screen.queryByText("a transmissão não chegou")).toBeNull();
+    expect(screen.getByText("Conectando à transmissão")).toBeTruthy();
+    expect(screen.queryByText("A transmissão não chegou")).toBeNull();
   });
 
   it('passado o prazo, diz que NÃO chegou e oferece voltar ao player', () => {
@@ -847,23 +847,23 @@ describe("escotilha quando os quadros não chegam", () => {
     renderRoom();
     act(() => vi.advanceTimersByTime(12_000));
 
-    expect(screen.queryByText("conectando à transmissão")).toBeNull();
-    expect(screen.getByText("a transmissão não chegou")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "voltar ao player" })).toBeTruthy();
+    expect(screen.queryByText("Conectando à transmissão")).toBeNull();
+    expect(screen.getByText("A transmissão não chegou")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Voltar ao player" })).toBeTruthy();
   });
 
   // A queda é manual e LOCAL: quem assiste deixa de esperar, sem cancelar a
   // transmissão de outra pessoa. Mexer no storage aqui seria tomar uma decisão
   // que não é dele — e o storage continua dizendo que há transmissão, então se
   // os quadros voltarem, a sala volta sozinha.
-  it("voltar ao player é local: não encerra a transmissão de quem transmite", () => {
+  it("Voltar ao player é local: não encerra a transmissão de quem transmite", () => {
     mocks.root.broadcast = broadcast;
 
     renderRoom();
     act(() => vi.advanceTimersByTime(12_000));
-    fireEvent.click(screen.getByRole("button", { name: "voltar ao player" }));
+    fireEvent.click(screen.getByRole("button", { name: "Voltar ao player" }));
 
-    expect(screen.getByRole("button", { name: /pausar|tocar/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /pausar|tocar/i })).toBeTruthy();
     expect(mocks.writes).toHaveLength(0);
   });
 
@@ -874,9 +874,9 @@ describe("escotilha quando os quadros não chegam", () => {
 
     const { rerender } = renderRoom();
     act(() => vi.advanceTimersByTime(12_000));
-    expect(screen.getByText("a transmissão não chegou")).toBeTruthy();
+    expect(screen.getByText("A transmissão não chegou")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "voltar ao player" }));
+    fireEvent.click(screen.getByRole("button", { name: "Voltar ao player" }));
     mocks.root.broadcast = { ...broadcast, startedAt: broadcast.startedAt + 1 };
     rerender(
       <RoomExperience
@@ -889,7 +889,7 @@ describe("escotilha quando os quadros não chegam", () => {
       />,
     );
 
-    expect(screen.getByText("conectando à transmissão")).toBeTruthy();
+    expect(screen.getByText("Conectando à transmissão")).toBeTruthy();
   });
 
   // Se os quadros chegarem, a espera termina e o player de transmissão assume.
@@ -905,8 +905,8 @@ describe("escotilha quando os quadros não chegam", () => {
     renderRoom();
     act(() => vi.advanceTimersByTime(12_000));
 
-    expect(screen.queryByText("conectando à transmissão")).toBeNull();
-    expect(screen.queryByText("a transmissão não chegou")).toBeNull();
+    expect(screen.queryByText("Conectando à transmissão")).toBeNull();
+    expect(screen.queryByText("A transmissão não chegou")).toBeNull();
   });
 });
 
@@ -918,31 +918,31 @@ describe("escotilha quando os quadros não chegam", () => {
 // Estes testes fixam as quatro propriedades que corrigem isso.
 describe("saúde do SFU antes de pedir captura", () => {
   it("sem credencial (503), o botão desabilita e diz que é configuração do deploy", () => {
-    mocks.auth = { status: "unavailable", httpStatus: 503, detail: "transmissão não configurada." };
+    mocks.auth = { status: "unavailable", httpStatus: 503, detail: "Transmissão não configurada." };
 
     renderRoom();
 
-    const button = screen.getByRole("button", { name: /transmissão não configurada/ });
+    const button = screen.getByRole("button", { name: /transmissão não configurada/i });
     expect((button as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText("transmissão não configurada neste deploy")).toBeTruthy();
+    expect(screen.getByText("Transmissão não configurada neste deploy")).toBeTruthy();
   });
 
   it("sem permissão na sala (403), o motivo não é o mesmo do 503", () => {
-    mocks.auth = { status: "unavailable", httpStatus: 403, detail: "não é membro desta sala." };
+    mocks.auth = { status: "unavailable", httpStatus: 403, detail: "Não é membro desta sala." };
 
     renderRoom();
 
     expect(
-      (screen.getByRole("button", { name: /não pode transmitir/ }) as HTMLButtonElement).disabled,
+      (screen.getByRole("button", { name: /não pode transmitir/i }) as HTMLButtonElement).disabled,
     ).toBe(true);
   });
 
   it("sessão expirada (401) tem motivo próprio", () => {
-    mocks.auth = { status: "unavailable", httpStatus: 401, detail: "não autenticado." };
+    mocks.auth = { status: "unavailable", httpStatus: 401, detail: "Não autenticado." };
 
     renderRoom();
 
-    expect(screen.getByText("sessão expirada — recarregue a sala")).toBeTruthy();
+    expect(screen.getByText("Sessão expirada — recarregue a sala")).toBeTruthy();
   });
 
   it("token em voo: desabilitado, mas sem chamar isso de erro", () => {
@@ -951,7 +951,7 @@ describe("saúde do SFU antes de pedir captura", () => {
     renderRoom();
 
     expect(
-      (screen.getByRole("button", { name: /conectando ao servidor/ }) as HTMLButtonElement).disabled,
+      (screen.getByRole("button", { name: /conectando ao servidor/i }) as HTMLButtonElement).disabled,
     ).toBe(true);
   });
 
@@ -962,7 +962,7 @@ describe("saúde do SFU antes de pedir captura", () => {
     renderRoom();
 
     expect(
-      (screen.getByRole("button", { name: /sem conexão com o servidor/ }) as HTMLButtonElement)
+      (screen.getByRole("button", { name: /sem conexão com o servidor/i }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
   });
@@ -975,8 +975,8 @@ describe("saúde do SFU antes de pedir captura", () => {
 
     renderRoom();
 
-    expect(screen.getByText("conectando ao servidor de transmissão")).toBeTruthy();
-    expect(screen.queryByText("sem conexão com o servidor de transmissão")).toBeNull();
+    expect(screen.getByText("Conectando ao servidor de transmissão")).toBeTruthy();
+    expect(screen.queryByText("Sem conexão com o servidor de transmissão")).toBeNull();
   });
 
   it("reconectando tem motivo distinto de sem conexão", () => {
@@ -986,7 +986,7 @@ describe("saúde do SFU antes de pedir captura", () => {
     renderRoom();
 
     expect(
-      (screen.getByRole("button", { name: /reconectando ao servidor/ }) as HTMLButtonElement)
+      (screen.getByRole("button", { name: /reconectando ao servidor/i }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
   });
@@ -995,10 +995,10 @@ describe("saúde do SFU antes de pedir captura", () => {
   // usuário compartilhada com ninguém recebendo. O clique tem de ser um no-op
   // ANTES do `getDisplayMedia`, não uma tentativa que falha depois.
   it("com o SFU indisponível, clicar não pede captura nenhuma", async () => {
-    mocks.auth = { status: "unavailable", httpStatus: 503, detail: "transmissão não configurada." };
+    mocks.auth = { status: "unavailable", httpStatus: 503, detail: "Transmissão não configurada." };
 
     renderRoom();
-    fireEvent.click(screen.getByRole("button", { name: /transmissão não configurada/ }));
+    fireEvent.click(screen.getByRole("button", { name: /transmissão não configurada/i }));
 
     expect(mocks.setScreenShareEnabled).not.toHaveBeenCalled();
     expect(mocks.writes).toHaveLength(0);
@@ -1013,11 +1013,11 @@ describe("falha depois da captura concedida", () => {
     mocks.setScreenShareEnabled.mockRejectedValueOnce(falha);
 
     renderRoom();
-    fireEvent.click(screen.getByRole("button", { name: "transmitir tela" }));
+    fireEvent.click(screen.getByRole("button", { name: "Transmitir tela" }));
 
     expect(await screen.findByText(/não conseguiu publicar/i)).toBeTruthy();
     // A distinction que faltava: cancelamento é do usuário, esta falha é nossa.
-    expect(screen.queryByText(/cancelada ou negada/)).toBeNull();
+    expect(screen.queryByText(/cancelada ou negada/i)).toBeNull();
     expect(mocks.writes).toHaveLength(0);
     vi.unstubAllGlobals();
   });
@@ -1031,7 +1031,7 @@ describe("falha depois da captura concedida", () => {
     mocks.setScreenShareEnabled.mockRejectedValueOnce(falha);
 
     renderRoom();
-    fireEvent.click(screen.getByRole("button", { name: "transmitir tela" }));
+    fireEvent.click(screen.getByRole("button", { name: "Transmitir tela" }));
 
     await waitFor(() => {
       expect(mocks.setScreenShareEnabled).toHaveBeenCalledWith(false);
@@ -1046,9 +1046,9 @@ describe("falha depois da captura concedida", () => {
     mocks.setScreenShareEnabled.mockRejectedValueOnce(negado());
 
     renderRoom();
-    fireEvent.click(screen.getByRole("button", { name: "transmitir tela" }));
+    fireEvent.click(screen.getByRole("button", { name: "Transmitir tela" }));
 
-    expect(await screen.findByText("a captura de tela foi cancelada ou negada.")).toBeTruthy();
+    expect(await screen.findByText("A captura de tela foi cancelada ou negada.")).toBeTruthy();
     expect(mocks.setScreenShareEnabled).not.toHaveBeenCalledWith(false);
     vi.unstubAllGlobals();
   });
@@ -1067,7 +1067,7 @@ describe("motivo da falha de conexão na tela", () => {
 
     expect(screen.getByText(/mesmo projeto/i)).toBeTruthy();
     // O status é fato e a dica é hipótese: os dois aparecem, mas separados.
-    expect(screen.getByText(/status 401/)).toBeTruthy();
+    expect(screen.getByText(/status 401/i)).toBeTruthy();
   });
 
   it("servidor inalcançável aponta o LIVEKIT_URL", () => {
@@ -1093,7 +1093,7 @@ describe("motivo da falha de conexão na tela", () => {
 
     renderRoom();
 
-    expect(screen.getByText(/token does not match this project/)).toBeTruthy();
+    expect(screen.getByText(/token does not match this project/i)).toBeTruthy();
   });
 
   // Uma falha antiga na tela com a transmissão funcionando é pior que a
@@ -1106,7 +1106,7 @@ describe("motivo da falha de conexão na tela", () => {
     renderRoom();
 
     expect(screen.queryByText(/mesmo projeto/i)).toBeNull();
-    expect(screen.queryByText(/connection closed/)).toBeNull();
+    expect(screen.queryByText(/connection closed/i)).toBeNull();
   });
 });
 
@@ -1202,7 +1202,7 @@ describe("isolamento do estado do chat", () => {
     renderRoom();
     const antes = mocks.presenceRenders.n;
 
-    const campo = screen.getByLabelText("mensagem para o chat da sala");
+    const campo = screen.getByLabelText("Mensagem para o chat da sala");
     act(() => {
       fireEvent.change(campo, { target: { value: "d" } });
       fireEvent.change(campo, { target: { value: "da" } });
@@ -1219,7 +1219,7 @@ describe("versão do ícone próprio (FR-013, FR-018)", () => {
   });
 
   function enviar(texto: string) {
-    const campo = screen.getByLabelText("mensagem para o chat da sala");
+    const campo = screen.getByLabelText("Mensagem para o chat da sala");
     fireEvent.change(campo, { target: { value: texto } });
     fireEvent.keyDown(campo, { key: "Enter" });
   }
@@ -1263,5 +1263,11 @@ describe("versão do ícone próprio (FR-013, FR-018)", () => {
     renderRoom();
     expect(mocks.presenceProps.length).toBeGreaterThan(0);
     expect(mocks.presenceProps.every((props) => props.myAvatarV === undefined)).toBe(true);
+  });
+
+  it("FR-006: a sala inteira não usa pergaminho", () => {
+    const { container } = renderRoom();
+    expect(container.querySelectorAll(".parchment").length).toBe(0);
+    expect(container.querySelectorAll('[data-surface="parchment"]').length).toBe(0);
   });
 });

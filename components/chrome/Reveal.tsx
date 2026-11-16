@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 /** Elementos aceitos pelo invólucro — todos host, para o `ref` continuar seguro. */
 type RevealTag = "div" | "section" | "header" | "footer";
 
-// Realce progressivo (FR-013/FR-014, docs/specs/14-identidade-fanzine-crt/spec.md).
+// Realce progressivo.
 // É o ÚNICO client component de components/chrome/**.
 //
 // O efeito existe só para setar `data-visible`; quem esconde e revela é o CSS, e

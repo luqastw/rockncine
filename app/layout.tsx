@@ -23,7 +23,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "rockncine",
+  title: "Rockncine",
   description: "Assista junto, em sync — link colado, sala compartilhada.",
   // O preview de link de convite é o funil do produto: o `InviteCode` copia a
   // URL da sala para mandar em conversa, e sem isto o preview vinha vazio. Só
@@ -33,13 +33,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    siteName: "rockncine",
-    title: "rockncine",
+    siteName: "Rockncine",
+    title: "Rockncine",
     description: "Assista junto, em sync — cole um link e todo mundo entra na mesma sala.",
   },
   twitter: {
     card: "summary",
-    title: "rockncine",
+    title: "Rockncine",
     description: "Assista junto, em sync — cole um link e todo mundo entra na mesma sala.",
   },
   robots: { index: false, follow: false },
@@ -76,7 +76,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${fraunces.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {/* Marcador do realce progressivo (FR-013/FR-014, docs/specs/14-identidade-fanzine-crt/spec.md).
+        {/* Marcador do realce progressivo.
             Roda antes do conteúdo do body pintar e só então o CSS esconde `.reveal`. Sem JS o
             atributo não existe, `.reveal` não casa nenhum seletor e o conteúdo nasce visível
             (AC-001). O `setTimeout` é a rede de segurança de FR-014: se o bundle não hidratar

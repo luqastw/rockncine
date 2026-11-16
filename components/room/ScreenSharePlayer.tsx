@@ -119,7 +119,7 @@ export function ScreenSharePlayer({
       <audio ref={audioElRef} autoPlay />
       <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-center gap-2 p-2">
         <Badge role="status" variant="solid" className="uppercase tracking-wide">
-          transmitindo
+          Transmitindo
         </Badge>
         <Badge variant="soft">{broadcasterLabel(broadcast)}</Badge>
       </div>
@@ -130,7 +130,7 @@ export function ScreenSharePlayer({
       {/* FR-013/FR-016: `getDisplayMedia` com áudio é Chrome/Edge; no Firefox
           a captura vem só em vídeo. O aviso é explícito e não é tratado como
           erro — o vídeo continua tocando normalmente. Só aparece depois que a
-          track de vídeo existe: enquanto ela não chegou, "sem áudio" seria uma
+          track de vídeo existe: enquanto ela não chegou, "Sem áudio" seria uma
           afirmação que ninguém pode verificar.
 
           E nunca para o host: a track existe e está sendo transmitida, só não
@@ -142,7 +142,7 @@ export function ScreenSharePlayer({
           aria-live="polite"
           className="absolute inset-x-0 bottom-0 bg-[var(--scrim)] px-3 py-2 text-center text-caption text-[var(--ink)]"
         >
-          esta transmissão está sem áudio — o navegador não capturou o som da aba
+          Esta transmissão está sem áudio — o navegador não capturou o som da aba
         </p>
       )}
     </div>
@@ -172,9 +172,9 @@ function TrackWait({ broadcast, onGiveUp }: { broadcast: BroadcastState; onGiveU
     return (
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-6 text-center">
         <p className="text-title font-semibold tracking-tight text-[var(--ink)]">
-          conectando à transmissão
+          Conectando à transmissão
         </p>
-        <p className="text-body-sm text-[var(--ink-muted)]">os quadros chegam em instantes</p>
+        <p className="text-body-sm text-[var(--ink-muted)]">Os quadros chegam em instantes</p>
       </div>
     );
   }
@@ -188,17 +188,17 @@ function TrackWait({ broadcast, onGiveUp }: { broadcast: BroadcastState; onGiveU
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
       <p className="text-title font-semibold tracking-tight text-[var(--ink)]">
-        a transmissão não chegou
+        A transmissão não chegou
       </p>
       <p className="text-body-sm text-[var(--ink-muted)]">
         {broadcasterLabel(broadcast)} marcou que está transmitindo, mas os quadros não chegaram. a aba
         compartilhada pode ter sido fechada.
       </p>
       <Button type="button" variant="outline" onClick={onGiveUp}>
-        voltar ao player
+        Voltar ao player
       </Button>
       <p className="text-caption text-[var(--ink-muted)]">
-        se {broadcasterLabel(broadcast)} ainda estiver transmitindo, os quadros voltam sozinhos.
+        Se {broadcasterLabel(broadcast)} ainda estiver transmitindo, os quadros voltam sozinhos.
       </p>
     </div>
   );

@@ -54,8 +54,8 @@ export function EmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        aria-label="emoji"
-        className="flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--ink-muted)] text-base text-[var(--ink)] hover:border-[var(--ink)] hover:bg-[var(--fill-1)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        aria-label="Emoji"
+        className="flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--ink-muted)] text-base text-[var(--ink)] hover:border-[var(--ink)] hover:bg-[var(--fill-1)] reticle"
       >
         <EmojiIcon />
       </button>
@@ -64,7 +64,7 @@ export function EmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
           ref={panelRef}
           id={panelId}
           role="group"
-          aria-label="emojis"
+          aria-label="Emojis"
           // `bottom-full` acima do botão: o popover abre para dentro da área do
           // log, que é onde o olho já está, e nunca empurra o composer para
           // baixo.
@@ -79,7 +79,7 @@ export function EmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
                 triggerRef.current?.focus();
               }}
               aria-label={`inserir ${emoji} na mensagem`}
-              className="flex h-11 w-11 items-center justify-center rounded-lg text-base hover:bg-[var(--fill-1)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-base hover:bg-[var(--fill-1)] reticle"
             >
               {emoji}
             </button>

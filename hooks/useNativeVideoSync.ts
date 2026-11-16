@@ -179,7 +179,7 @@ export function useNativeVideoSync({
         if (cancelled) return;
         const fatal = (data as { fatal?: boolean } | null)?.fatal;
         if (fatal) {
-          setError("falha ao carregar o stream (manifest/rede). tente carregar de novo.");
+          setError("Falha ao carregar o stream (manifest/rede). Tente carregar de novo.");
         }
       });
       // teto de resolução (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.4) — autoLevelCapping mantém o ABR
@@ -264,7 +264,7 @@ export function useNativeVideoSync({
 
     const onTimeUpdate = () => setCurrentTime(videoEl.currentTime);
     const onDurationChange = () => setDuration(videoEl.duration || 0);
-    const onError = () => setError("não foi possível reproduzir este vídeo.");
+    const onError = () => setError("Não foi possível reproduzir este vídeo.");
     const onVolumeChange = () => {
       setVolumeLocal(videoEl.volume);
       setIsMutedLocal(videoEl.muted);
@@ -382,7 +382,7 @@ export function useNativeVideoSync({
   // regressão da correção que fez o overlay parar de sumir sozinho).
   const reportPlayFailure = useCallback((err: unknown) => {
     if (err instanceof DOMException && err.name === "AbortError") return;
-    setError("não foi possível iniciar a reprodução. tente de novo.");
+    setError("Não foi possível iniciar a reprodução. Tente de novo.");
   }, []);
 
   // play() pode ser rejeitado (política de autoplay do browser, mídia ainda

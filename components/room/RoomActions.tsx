@@ -54,7 +54,7 @@ export const RoomActions = memo(function RoomActions({
       <button
         type="button"
         onClick={onLoadVideo}
-        aria-label="carregar vídeo"
+        aria-label="Carregar vídeo"
         className={buttonClass({
           variant: "primary",
           size: "sm",
@@ -62,14 +62,14 @@ export const RoomActions = memo(function RoomActions({
         })}
       >
         <PlusIcon className="h-3 w-3" />
-        <span className="hidden sm:inline">carregar vídeo</span>
+        <span className="hidden sm:inline">Carregar vídeo</span>
       </button>
       <button
         type="button"
         onClick={onToggleEconomy}
-        aria-label={isEconomy ? "desativar modo economy" : "ativar modo economy"}
+        aria-label={isEconomy ? "Desativar modo economy" : "Ativar modo economy"}
         aria-pressed={isEconomy}
-        title={isEconomy ? "desativar modo economy" : "ativar modo economy"}
+        title={isEconomy ? "Desativar modo economy" : "Ativar modo economy"}
         // Só ícone (44x44): com o rótulo "economy" a fileira precisava de 225px
         // e a coluna da presença oferece ~190 (h2 + os dois botões somam 280 num
         // espaço de 256–272) — era isso que espremia "carregar vídeo" em duas
@@ -88,7 +88,7 @@ export const RoomActions = memo(function RoomActions({
         <button
           type="button"
           onClick={onToggleTheater}
-          aria-label={isTheater ? "expandir vídeo" : "abrir chat ao lado"}
+          aria-label={isTheater ? "Expandir vídeo" : "Abrir chat ao lado"}
           aria-pressed={isTheater}
           // escondido abaixo de lg: teatro pressupõe as duas colunas lado a
           // lado (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.1 / docs/specs/03-auditoria-ui-ux/spec.md, seção 10) — empilhado, o cálculo de altura do

@@ -40,6 +40,7 @@ export function Staff({ notes = 4, lit = false, className = "w-full h-auto" }: S
       viewBox="0 0 240 48"
       aria-hidden="true"
       focusable="false"
+      data-motif="staff"
       data-lit={lit ? "true" : "false"}
       className={className}
     >

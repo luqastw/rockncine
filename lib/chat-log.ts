@@ -36,14 +36,15 @@ function previousDayKey(key: string): string {
 
 function longDayLabel(ts: number): string {
   const date = new Date(ts);
-  return `${weekdayFormatter.format(date)}, ${dayFormatter.format(date)}`;
+  const texto = `${weekdayFormatter.format(date)}, ${dayFormatter.format(date)}`;
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
 /** "hoje" / "ontem" / data por extenso, a partir da chave do dia de hoje. */
 export function dayLabel(ts: number, todayKey: string): string {
   const key = dayKey(ts);
-  if (key === todayKey) return "hoje";
-  if (key === previousDayKey(todayKey)) return "ontem";
+  if (key === todayKey) return "Hoje";
+  if (key === previousDayKey(todayKey)) return "Ontem";
   return longDayLabel(ts);
 }
 

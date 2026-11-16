@@ -100,13 +100,13 @@ export function LoadVideoModal({
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 id="load-video-modal-title" className={sectionLabelClass}>
-            carregar vídeo
+            Carregar vídeo
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="fechar"
-            className={iconButtonClass({ variant: "ghost", surface: true })}
+            aria-label="Fechar"
+            className={iconButtonClass({ variant: "ghost" })}
           >
             <CloseIcon className="h-4 w-4" />
           </button>
@@ -122,7 +122,7 @@ export function LoadVideoModal({
               setUrl("");
               onClose();
             } catch (err) {
-              setError(err instanceof Error ? err.message : "erro ao carregar link.");
+              setError(err instanceof Error ? err.message : "Erro ao carregar link.");
             } finally {
               setLoading(false);
             }
@@ -133,8 +133,8 @@ export function LoadVideoModal({
             ref={inputRef}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="cole um link (YouTube, Vimeo, mídia direta, outro)"
-            aria-label="link do vídeo"
+            placeholder="Cole um link (YouTube, Vimeo, mídia direta, outro)"
+            aria-label="Link do vídeo"
             type="text"
             inputMode="url"
             autoComplete="off"
@@ -142,13 +142,13 @@ export function LoadVideoModal({
             spellCheck={false}
             className={inputClass({ surface: true, className: "min-w-0" })}
           />
-          <Button type="submit" surface disabled={loading} className="shrink-0">
+          <Button type="submit" disabled={loading} className="shrink-0">
             {loading ? "carregando..." : "carregar"}
           </Button>
           {error && (
             <p
               role="alert"
-              className="rounded-lg border border-[var(--ink)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--ink)]"
+              className="rounded-lg border border-[var(--heart)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--heart)]"
             >
               {error}
             </p>

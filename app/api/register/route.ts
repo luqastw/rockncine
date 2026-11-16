@@ -16,32 +16,32 @@ export async function POST(req: Request) {
   const name = typeof body?.name === "string" && body.name.trim() ? body.name.trim() : null;
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json({ error: "email inválido." }, { status: 400 });
+    return NextResponse.json({ error: "Email inválido." }, { status: 400 });
   }
   if (email.length > 254) {
-    return NextResponse.json({ error: "email inválido." }, { status: 400 });
+    return NextResponse.json({ error: "Email inválido." }, { status: 400 });
   }
   if (password.length < 8) {
     return NextResponse.json(
-      { error: "senha precisa de ao menos 8 caracteres." },
+      { error: "Senha precisa de ao menos 8 caracteres." },
       { status: 400 },
     );
   }
   if (Buffer.byteLength(password, "utf8") > 72) {
     return NextResponse.json(
-      { error: "senha deve ter no máximo 72 bytes." },
+      { error: "Senha deve ter no máximo 72 bytes." },
       { status: 400 },
     );
   }
   if (name && name.length > 80) {
-    return NextResponse.json({ error: "nome deve ter no máximo 80 caracteres." }, { status: 400 });
+    return NextResponse.json({ error: "Nome deve ter no máximo 80 caracteres." }, { status: 400 });
   }
 
   // caminho rápido só para não pagar bcrypt em email já cadastrado. Quem
   // garante a unicidade é a constraint, não esta consulta.
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (existing) {
-    return NextResponse.json({ error: "email já cadastrado." }, { status: 409 });
+    return NextResponse.json({ error: "Email já cadastrado." }, { status: 409 });
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ user }, { status: 201 });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      return NextResponse.json({ error: "email já cadastrado." }, { status: 409 });
+      return NextResponse.json({ error: "Email já cadastrado." }, { status: 409 });
     }
     throw err;
   }

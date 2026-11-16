@@ -4,11 +4,11 @@ import { sfuBlockedReason, sfuLivekitReason } from "./sfu-status";
 
 describe("sfuBlockedReason", () => {
   it.each([
-    [503, "transmissão não configurada neste deploy"],
-    [403, "você não pode transmitir nesta sala"],
-    [401, "sessão expirada — recarregue a sala"],
-    [500, "servidor de transmissão indisponível"],
-    [null, "servidor de transmissão indisponível"],
+    [503, "Transmissão não configurada neste deploy"],
+    [403, "Você não pode transmitir nesta sala"],
+    [401, "Sessão expirada — recarregue a sala"],
+    [500, "Servidor de transmissão indisponível"],
+    [null, "Servidor de transmissão indisponível"],
   ])("unavailable %s", (httpStatus, expected) => {
     const auth = { status: "unavailable" as const, httpStatus, detail: "" };
     expect(sfuBlockedReason(auth, ConnectionState.Connected)).toBe(expected);
@@ -18,7 +18,7 @@ describe("sfuBlockedReason", () => {
     "credencial não pronta ($status)",
     (auth) => {
       expect(sfuBlockedReason(auth, ConnectionState.Connected)).toBe(
-        "conectando ao servidor de transmissão",
+        "Conectando ao servidor de transmissão",
       );
     },
   );
@@ -26,13 +26,13 @@ describe("sfuBlockedReason", () => {
   it("distingue um estado de conexão por estado", () => {
     const auth = { status: "ready" as const };
     expect(sfuBlockedReason(auth, ConnectionState.Connecting)).toBe(
-      "conectando ao servidor de transmissão",
+      "Conectando ao servidor de transmissão",
     );
     expect(sfuBlockedReason(auth, ConnectionState.Reconnecting)).toBe(
-      "reconectando ao servidor de transmissão",
+      "Reconectando ao servidor de transmissão",
     );
     expect(sfuBlockedReason(auth, ConnectionState.Disconnected)).toBe(
-      "sem conexão com o servidor de transmissão",
+      "Sem conexão com o servidor de transmissão",
     );
   });
 

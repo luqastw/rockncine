@@ -66,7 +66,7 @@ function emitSystem(text: string, ts = NOW) {
 }
 
 function field() {
-  return screen.getByLabelText("mensagem para o chat da sala") as HTMLTextAreaElement;
+  return screen.getByLabelText("Mensagem para o chat da sala") as HTMLTextAreaElement;
 }
 
 function log() {
@@ -115,7 +115,7 @@ function renderChat() {
 /** Abre o popover de emoji (o gatilho fica ao lado do campo). */
 function abrirEmojis() {
   act(() => {
-    fireEvent.click(screen.getByRole("button", { name: "emoji" }));
+    fireEvent.click(screen.getByRole("button", { name: "Emoji" }));
   });
 }
 
@@ -189,7 +189,7 @@ describe("Chat — agrupamento por autor", () => {
     emitRemote({ text: "oi", ts: NOW });
     emitRemote({ text: "tudo bem?", ts: NOW + 1000 });
     // o texto acessível do segundo item só existe na versão agrupada
-    expect(screen.getByText(/^bruno, \d{2}:\d{2}:$/)).toBeTruthy();
+    expect(screen.getByText(/^bruno, \d{2}:\d{2}:$/i)).toBeTruthy();
   });
 
   it("marca a mensagem do próprio usuário como própria (AC-013)", () => {
@@ -266,8 +266,8 @@ describe("Chat — agrupamento por autor", () => {
     at(0, () => emitRemote({ text: "hoje", ts: NOW }));
     // "hoje" aparece em dois lugares — a divisória e o texto da própria
     // mensagem do teste — então a asserção é pela divisória.
-    expect(screen.getByText("ontem")).toBeTruthy();
-    expect(screen.getAllByText("hoje").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Ontem")).toBeTruthy();
+    expect(screen.getAllByText("Hoje").length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -294,7 +294,7 @@ describe("Chat — não lidas e posição no log", () => {
     emitRemote({ text: "perdida", ts: NOW + 1000 });
     emitRemote({ text: "perdida 2", ts: NOW + 2000 });
 
-    expect(screen.getByText("novas mensagens")).toBeTruthy(); // divisória
+    expect(screen.getByText("Novas mensagens")).toBeTruthy(); // divisória
     expect(screen.getByLabelText("2 mensagens não lidas")).toBeTruthy();
   });
 
@@ -303,15 +303,15 @@ describe("Chat — não lidas e posição no log", () => {
     emitRemote({ text: "primeira", ts: NOW });
     const { setTop } = scrollUp(log());
     emitRemote({ text: "perdida", ts: NOW + 1000 });
-    expect(screen.getByText("novas mensagens")).toBeTruthy();
+    expect(screen.getByText("Novas mensagens")).toBeTruthy();
 
     // rola de volta até o fim: o handler de scroll marca como lida
     setTop(699);
     act(() => {
       fireEvent.scroll(log());
     });
-    expect(screen.queryByText("novas mensagens")).toBeNull();
-    expect(screen.queryByLabelText(/não lidas/)).toBeNull();
+    expect(screen.queryByText("Novas mensagens")).toBeNull();
+    expect(screen.queryByLabelText(/não lidas/i)).toBeNull();
   });
 
   it("botão de novas mensagens volta para o fim e limpa a marca (AC-011)", () => {
@@ -329,7 +329,7 @@ describe("Chat — não lidas e posição no log", () => {
     // rolar é a promessa do rótulo: sem isto ele só limpava a marca
     expect(scrollToSpy).toHaveBeenCalledWith(expect.objectContaining({ behavior: "auto" }));
     expect(setTop(699)).toBe(699);
-    expect(screen.queryByLabelText(/não lidas/)).toBeNull();
+    expect(screen.queryByLabelText(/não lidas/i)).toBeNull();
   });
 
   it("mostra a sombra de conteúdo acima só quando rola (AC-012)", () => {
@@ -434,12 +434,12 @@ describe("Chat — envio e composer", () => {
       fireEvent.change(field(), { target: { value: "a".repeat(450) } });
     });
     expect(screen.getByText(`450/${MAX_TEXT_LENGTH}`)).toBeTruthy();
-    expect(screen.queryByText(/vai ser cortada/)).toBeNull();
+    expect(screen.queryByText(/vai ser cortada/i)).toBeNull();
 
     act(() => {
       fireEvent.change(field(), { target: { value: "a".repeat(MAX_TEXT_LENGTH + 1) } });
     });
-    expect(screen.getByText(/vai ser cortada/)).toBeTruthy();
+    expect(screen.getByText(/vai ser cortada/i)).toBeTruthy();
   });
 
   it("não mostra o contador longe do limite (AC-020)", () => {
@@ -480,9 +480,9 @@ describe("Chat — envio e composer", () => {
 
   it("popover abre com foco no primeiro emoji e Escape devolve o foco (T-017)", () => {
     renderChat();
-    const trigger = screen.getByRole("button", { name: "emoji" });
+    const trigger = screen.getByRole("button", { name: "Emoji" });
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByRole("group", { name: "emojis" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Emojis" })).toBeNull();
 
     act(() => {
       fireEvent.click(trigger);
@@ -494,7 +494,7 @@ describe("Chat — envio e composer", () => {
     act(() => {
       fireEvent.keyDown(document, { key: "Escape" });
     });
-    expect(screen.queryByRole("group", { name: "emojis" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Emojis" })).toBeNull();
     expect(document.activeElement).toBe(trigger);
   });
 
@@ -525,7 +525,7 @@ describe("Chat — envio e composer", () => {
 
   it("não mostra aviso de fila quando conectado", () => {
     renderChat();
-    expect(screen.queryByText(/fila/)).toBeNull();
+    expect(screen.queryByText(/fila/i)).toBeNull();
   });
 });
 
@@ -617,9 +617,9 @@ describe("Chat — indicador de digitação", () => {
       { presence: { userId: "eu", name: "ana", typing: true } },
     ];
     renderChat();
-    expect(screen.getByText(/bruno, carla estão digitando/)).toBeTruthy();
-    expect(screen.queryByText(/dani está digitando/)).toBeNull();
-    expect(screen.queryByText(/ana está digitando/)).toBeNull();
+    expect(screen.getByText(/bruno, carla estão digitando/i)).toBeTruthy();
+    expect(screen.queryByText(/dani está digitando/i)).toBeNull();
+    expect(screen.queryByText(/ana está digitando/i)).toBeNull();
   });
 
   // O log é região `aria-live`: um nó que aparece e some a cada tecla seria
@@ -628,13 +628,13 @@ describe("Chat — indicador de digitação", () => {
   it("tira o indicador de digitação da árvore de anúncios do log", () => {
     mocks.others = [{ presence: { userId: "b", name: "bruno", typing: true } }];
     renderChat();
-    const item = screen.getByText(/bruno está digitando/).closest("li");
+    const item = screen.getByText(/bruno está digitando/i).closest("li");
     expect(item?.getAttribute("aria-live")).toBe("off");
   });
 
   it("não mostra nada quando ninguém está digitando", () => {
     renderChat();
-    expect(screen.queryByText(/digitando/)).toBeNull();
+    expect(screen.queryByText(/digitando/i)).toBeNull();
   });
 
   it("o indicador de digitação fica depois da última mensagem, junto do campo", () => {
@@ -643,7 +643,7 @@ describe("Chat — indicador de digitação", () => {
     emitRemote({ text: "oi pessoal" });
 
     const items = Array.from(log().querySelectorAll(":scope > li"));
-    const indicator = screen.getByText(/bruno está digitando/).closest("li");
+    const indicator = screen.getByText(/bruno está digitando/i).closest("li");
     const message = screen.getByText("oi pessoal").closest("li");
 
     expect(items.at(-1)).toBe(indicator);

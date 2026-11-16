@@ -14,10 +14,10 @@ import { Badge } from "@/components/ui/Badge";
 import { iconButtonClass } from "@/components/ui/IconButton";
 
 const CONNECTION_LABEL: Partial<Record<ReturnType<typeof useStatus>, string>> = {
-  initial: "conectando…",
-  connecting: "conectando…",
-  reconnecting: "reconectando…",
-  disconnected: "desconectado — tentando religar…",
+  initial: "Conectando…",
+  connecting: "Conectando…",
+  reconnecting: "Reconectando…",
+  disconnected: "Desconectado — tentando religar…",
 };
 
 export function RoomHeader({
@@ -68,7 +68,7 @@ export function RoomHeader({
       <div className="flex min-w-0 items-center gap-3 lg:contents">
         <Link
           href="/rooms"
-          aria-label="voltar para suas salas"
+          aria-label="Voltar para suas salas"
           className={iconButtonClass({ variant: "ghost", className: "shrink-0" })}
         >
           ←
@@ -76,11 +76,11 @@ export function RoomHeader({
         <div className="flex min-w-0 flex-col gap-0.5 lg:contents">
           <div className="flex min-w-0 items-center gap-2 lg:order-1 lg:shrink">
             <h1 className="min-w-0 truncate font-display text-heading font-semibold tracking-tight text-[var(--ink)]">
-              {roomName || "sala sem nome"}
+              {roomName || "Sala sem nome"}
             </h1>
             {/* Indicador, não controle: quem liga/desliga é o botão de
                 `RoomActions` (44px, com `aria-pressed`). */}
-            {economyMode && <Badge variant="soft">economy</Badge>}
+            {economyMode && <Badge variant="soft">Economy</Badge>}
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:order-4 lg:min-w-0 lg:shrink-0 lg:flex-nowrap">
             <LastActionNote lastEvent={lastEvent} userId={userId} />
@@ -103,7 +103,7 @@ export function RoomHeader({
           <InviteCode code={roomCode} />
         </div>
         {livekitUrl !== null && (
-          <div className="min-w-0 lg:order-3 lg:shrink-0">
+          <div className="min-w-0 lg:order-3 lg:shrink">
             <BroadcastControls
               broadcast={broadcast}
               userId={userId}
@@ -116,7 +116,7 @@ export function RoomHeader({
           <button
             type="button"
             onClick={() => setProfileOpen(true)}
-            aria-label="imagem de perfil"
+            aria-label="Imagem de perfil"
             aria-haspopup="dialog"
             className={iconButtonClass({ variant: "ghost", className: "shrink-0" })}
           >

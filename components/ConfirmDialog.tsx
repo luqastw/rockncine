@@ -124,7 +124,7 @@ export function ConfirmDialog({
         {error && (
           <p
             role="alert"
-            className="rounded-lg border border-[var(--ink)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--ink)]"
+            className="rounded-lg border border-[var(--heart)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--heart)]"
           >
             {error}
           </p>
@@ -136,7 +136,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onClose}
             disabled={busy}
-            className={buttonClass({ variant: "outline", surface: true })}
+            className={buttonClass({ variant: "outline" })}
           >
             {cancelLabel}
           </button>
@@ -144,7 +144,9 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className={buttonClass({ variant: "primary", surface: true })}
+            className={buttonClass({
+              variant: "danger",
+            })}
           >
             {busy ? busyLabel : confirmLabel}
           </button>

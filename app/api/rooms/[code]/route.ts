@@ -9,12 +9,12 @@ export async function DELETE(
   { params }: { params: Promise<{ code: string }> },
 ) {
   if (!sameOrigin(req)) {
-    return NextResponse.json({ error: "origem não permitida." }, { status: 403 });
+    return NextResponse.json({ error: "Origem não permitida." }, { status: 403 });
   }
 
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "não autenticado." }, { status: 401 });
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
 
   const { code } = await params;
@@ -25,11 +25,11 @@ export async function DELETE(
     select: { id: true, ownerId: true },
   });
   if (!room) {
-    return NextResponse.json({ error: "sala não encontrada." }, { status: 404 });
+    return NextResponse.json({ error: "Sala não encontrada." }, { status: 404 });
   }
 
   if (room.ownerId !== session.user.id) {
-    return NextResponse.json({ error: "só o dono pode excluir esta sala." }, { status: 403 });
+    return NextResponse.json({ error: "Só o dono pode excluir esta sala." }, { status: 403 });
   }
 
   // `RoomMember` antes de `Room`, numa transação: a migration que adiciona

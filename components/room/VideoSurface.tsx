@@ -41,17 +41,16 @@ export function VideoSurface({
             <button
               type="button"
               onClick={() => youtubeController.play()}
-              aria-label="tocar"
+              aria-label="Tocar"
               // z-20: acima da camada que captura ponteiro sobre o
               // iframe (z-10 em PlayerShell) e ABAIXO da barra de
               // controles (z-30) — antes era z-10 e cobria a barra
               // inteira sempre que o vídeo estava pausado, deixando
               // tela cheia/scrubber/volume inclicáveis (achado 2).
-              // anel de foco: era `focus:outline-none` sem anel
-              // nenhum, num alvo que ocupa a tela inteira do player
-              // (achado 17). `ring-inset` porque o botão sangra até
-              // a borda da caixa.
-              className="group absolute inset-0 z-20 flex items-center justify-center bg-black focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[var(--outline-strong)]"
+              // foco: alvo que ocupa a tela inteira do player
+              // (achado 17); os colchetes da classe `reticle` ficam
+              // dentro da área, porque o botão sangra até a borda.
+              className="group absolute inset-0 z-20 flex items-center justify-center bg-black reticle"
             >
               <span className="flex size-16 items-center justify-center rounded-full border border-[var(--line-strong)] bg-[var(--bg-surface)] text-[var(--ink)] transition-colors duration-150 group-hover:bg-[var(--leaf)] group-hover:text-[var(--bg-void)]">
                 <PlayIcon className="h-6 w-6" />
@@ -70,17 +69,17 @@ export function VideoSurface({
           <span className="h-2 w-40 rounded-full bg-[var(--fill-1)]" aria-hidden />
           <span className="h-2 w-24 rounded-full bg-[var(--fill-1)]" aria-hidden />
           <span className="sr-only" role="status">
-            carregando a sala
+            Carregando a sala
           </span>
         </div>
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-6 text-center">
           <Staff notes={4} className="mb-2 h-auto w-32" />
           <p className="font-display text-heading font-semibold tracking-tight text-[var(--ink)]">
-            nenhum vídeo carregado
+            Nenhum vídeo carregado
           </p>
           <p className="text-body text-[var(--ink-muted)]">
-            cole um link do youtube, vimeo ou mídia direta
+            Cole um link do YouTube, Vimeo ou mídia direta
           </p>
         </div>
     )

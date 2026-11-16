@@ -21,8 +21,8 @@ export function JoinRoomForm() {
       <Input
         value={code}
         onChange={(e) => setCode(e.target.value)}
-        placeholder="código da sala"
-        aria-label="código da sala"
+        placeholder="Código da sala"
+        aria-label="Código da sala"
         autoComplete="off"
         autoCapitalize="characters"
         spellCheck={false}
@@ -30,7 +30,7 @@ export function JoinRoomForm() {
         className="min-w-0 flex-1 font-mono tracking-wider placeholder:font-sans placeholder:tracking-normal [&:not(:placeholder-shown)]:uppercase"
       />
       <Button type="submit" variant="primary" className="shrink-0">
-        entrar
+        Entrar
       </Button>
     </form>
   );

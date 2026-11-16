@@ -63,14 +63,14 @@ describe("lista de salas — botão de exclusão (FR-001, FR-002)", () => {
 
     await renderPage();
 
-    const botoes = screen.getAllByText("excluir sala");
+    const botoes = screen.getAllByRole("button", { name: /excluir sala/i });
     expect(botoes).toHaveLength(1);
 
     const itemProprio = screen.getByRole("link", { name: /minha sala/i }).closest("li");
     const itemAlheio = screen.getByRole("link", { name: /sala deles/i }).closest("li");
 
-    expect(itemProprio?.textContent).toContain("excluir sala");
-    expect(itemAlheio?.textContent).not.toContain("excluir sala");
+    expect(itemProprio?.textContent).toContain("Excluir sala");
+    expect(itemAlheio?.textContent).not.toContain("Excluir sala");
   });
 
   it("não renderiza botão nenhum quando o usuário não é dono de nenhuma sala", async () => {
@@ -81,7 +81,7 @@ describe("lista de salas — botão de exclusão (FR-001, FR-002)", () => {
 
     await renderPage();
 
-    expect(screen.queryByText("excluir sala")).toBeNull();
+    expect(screen.queryByRole("button", { name: /excluir sala/i })).toBeNull();
     expect(screen.getByRole("link", { name: /sala deles/i })).toBeTruthy();
   });
 
@@ -95,7 +95,7 @@ describe("lista de salas — botão de exclusão (FR-001, FR-002)", () => {
     expect(link.querySelector("button")).toBeNull();
 
     const item = link.closest("li");
-    expect(item?.querySelector("button")?.textContent).toBe("excluir sala");
+    expect(item?.querySelector("button")?.textContent).toBe("Excluir sala");
   });
 });
 
@@ -132,7 +132,8 @@ describe("ordem e metadados da lista", () => {
     // A linha do código é a segunda do card; o `·` separador só existe quando
     // há fonte. ("sua · " no canto é outro rótulo, por isso o alvo é o span.)
     const linha = screen.getByText(/MINHA123/);
-    expect(linha.textContent).toBe("MINHA123");
+    expect(linha.textContent?.startsWith("MINHA123")).toBe(true);
+    expect(linha.textContent).not.toContain("YouTube");
   });
 
   it("usa data relativa para hoje e ontem", async () => {
@@ -144,8 +145,8 @@ describe("ordem e metadados da lista", () => {
 
     await renderPage();
 
-    expect(screen.getByRole("link", { name: /sala de hoje/i }).textContent).toContain("hoje");
-    expect(screen.getByRole("link", { name: /sala de ontem/i }).textContent).toContain("ontem");
+    expect(screen.getByRole("link", { name: /sala de hoje/i }).textContent).toContain("Hoje");
+    expect(screen.getByRole("link", { name: /sala de ontem/i }).textContent).toContain("Ontem");
   });
 });
 
@@ -159,7 +160,7 @@ describe("estado vazio e linha da sala (FR-016, FR-017)", () => {
     const texto = screen.getByText(/ninguém por aqui ainda/i);
     expect(texto).toBeTruthy();
     const bloco = texto.parentElement;
-    expect(bloco?.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(bloco?.querySelector('[data-motif="fairy"][aria-hidden="true"]')).not.toBeNull();
   });
 
   it("AC-010: a sala abc123 aparece como ABC123 com link para /rooms/abc123", async () => {
@@ -222,7 +223,7 @@ describe("paginação", () => {
       expect.objectContaining({ skip: PAGE_SIZE, take: PAGE_SIZE + 1 }),
     );
     expect(screen.getByRole("link", { name: /← anteriores/i })).toBeTruthy();
-    expect(screen.getByText("página 2")).toBeTruthy();
+    expect(screen.getByText("Página 2")).toBeTruthy();
   });
 
   // `Number.parseInt("abc")` é `NaN` e `Number.parseInt("-3")` é negativo:

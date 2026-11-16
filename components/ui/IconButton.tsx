@@ -6,12 +6,11 @@ export type IconButtonVariant = "ghost" | "outline";
 type IconButtonStyleOptions = {
   variant?: IconButtonVariant;
   active?: boolean;
-  surface?: boolean;
   className?: string;
 };
 
 const BASE =
-  "inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex min-h-11 min-w-11 items-center justify-center gap-2 btn-round reticle transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50";
 
 const VARIANTS: Record<IconButtonVariant, string> = {
   ghost:
@@ -23,7 +22,6 @@ const VARIANTS: Record<IconButtonVariant, string> = {
 export function iconButtonClass({
   variant = "outline",
   active = false,
-  surface = false,
   className,
 }: IconButtonStyleOptions = {}): string {
   return cx(
@@ -31,9 +29,6 @@ export function iconButtonClass({
     active
       ? "border border-[var(--leaf)] bg-[var(--fill-2)] text-[var(--ink)]"
       : VARIANTS[variant],
-    surface
-      ? "focus:ring-offset-[var(--bg-surface)]"
-      : "focus:ring-offset-[var(--focus-offset)]",
     className,
   );
 }
@@ -43,7 +38,6 @@ type IconButtonProps = ComponentPropsWithoutRef<"button"> & IconButtonStyleOptio
 export function IconButton({
   variant,
   active,
-  surface,
   className,
   type = "button",
   ...props
@@ -51,7 +45,7 @@ export function IconButton({
   return (
     <button
       type={type}
-      className={iconButtonClass({ variant, active, surface, className })}
+      className={iconButtonClass({ variant, active, className })}
       {...props}
     />
   );

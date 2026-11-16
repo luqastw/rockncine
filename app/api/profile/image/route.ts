@@ -6,12 +6,12 @@ import { MAX_UPLOAD_BYTES, processProfileImage } from "@/lib/profile-image";
 import { rateLimitUser } from "@/lib/rate-limit";
 
 const MULTIPART_OVERHEAD_BYTES = 65_536;
-const TOO_LARGE = "imagem muito grande (máx 2 MB).";
+const TOO_LARGE = "Imagem muito grande (máx 2 MB).";
 
 const RATE_LIMIT = { scope: "profile-image", limit: 10, windowMs: 3_600_000 };
 
 function unauthenticated() {
-  return NextResponse.json({ error: "não autenticado." }, { status: 401 });
+  return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 }
 
 function tooLarge() {
@@ -70,7 +70,7 @@ export async function PUT(req: Request) {
   const body = await readLimitedBody(req, MAX_UPLOAD_BYTES + MULTIPART_OVERHEAD_BYTES);
   if (body === "too-large") return tooLarge();
   if (!body) {
-    return NextResponse.json({ error: "envie uma imagem." }, { status: 400 });
+    return NextResponse.json({ error: "Envie uma imagem." }, { status: 400 });
   }
 
   const form = await new Response(body as BodyInit, {
@@ -80,14 +80,14 @@ export async function PUT(req: Request) {
     .catch(() => null);
   const file = form?.get("file");
   if (!isUploadedFile(file)) {
-    return NextResponse.json({ error: "envie uma imagem." }, { status: 400 });
+    return NextResponse.json({ error: "Envie uma imagem." }, { status: 400 });
   }
 
   if (file.size > MAX_UPLOAD_BYTES) return tooLarge();
 
   const processed = await processProfileImage(Buffer.from(await file.arrayBuffer()));
   if (!processed.ok) {
-    return NextResponse.json({ error: "formato de imagem não suportado." }, { status: 415 });
+    return NextResponse.json({ error: "Formato de imagem não suportado." }, { status: 415 });
   }
 
   const data = new Uint8Array(processed.data);

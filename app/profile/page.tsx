@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/session";
+import { Divider } from "@/components/chrome/Divider";
 import { PageShell } from "@/components/chrome/PageShell";
 import { Reveal } from "@/components/chrome/Reveal";
 import { ProfileAvatarForm } from "@/components/ProfileAvatarForm";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
-export const metadata: Metadata = { title: "perfil · rockncine" };
+export const metadata: Metadata = { title: "Perfil · Rockncine" };
 
 export default async function ProfilePage() {
   const { userId, userName } = await requireSession();
@@ -25,16 +26,18 @@ export default async function ProfilePage() {
       className="gap-8"
       actions={
         <ButtonLink href="/rooms" variant="ghost" size="sm">
-          ← suas salas
+          ← Suas salas
         </ButtonLink>
       }
     >
       <Reveal as="header" className="flex flex-col items-center gap-1 text-center">
         <h1 className="font-display text-title font-semibold tracking-tight text-[var(--ink)]">
-          seu perfil
+          Seu perfil
         </h1>
         <p className="text-body text-[var(--ink-muted)]">{userName}</p>
       </Reveal>
+
+      <Divider />
 
       <Reveal as="section">
         <Card className="p-6 sm:p-8">

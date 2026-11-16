@@ -30,6 +30,7 @@ import {
 import { Chat } from "@/components/room/Chat";
 import { usePresenceAccessory } from "@/components/room/PresenceAccessory";
 import { useVideoQuality } from "@/hooks/useVideoQuality";
+import { RoomIris } from "@/components/room/RoomIris";
 import { usePlaybackState } from "@/hooks/usePlaybackClock";
 import { EconomySuggestion } from "@/components/room/EconomySuggestion";
 import { ScreenSharePlayer } from "@/components/room/ScreenSharePlayer";
@@ -222,6 +223,7 @@ export function RoomExperience({
     // mobile deixavam o selo por cima do campo de mensagem (medido a 390px:
     // selo em y 794-832, input em y 784-828 — achado 1 da revisão de design).
     <main className="room-shell mx-auto flex h-dvh w-full max-w-[1800px] flex-col gap-5 overflow-hidden px-4 pt-6 pb-14 sm:px-6 lg:px-8">
+      <RoomIris />
       <RoomHeader
         roomCode={roomCode}
         roomName={roomName}
@@ -263,7 +265,7 @@ export function RoomExperience({
           // (box-shadow que sangra ~15px pra fora da caixa) era recortado
           // nos três lados em vez de vazar pro gap. A margem negativa
           // cancela o respiro na largura ocupada pelos irmãos flex.
-          className={`relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4 -m-4 ${
+          className={`relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4 -m-4 lg:[justify-content:safe_center] ${
             isFullscreen ? "[justify-content:safe_center]" : ""
           } ${
             showAside ? "lg:basis-[78%]" : "w-full"
@@ -303,7 +305,7 @@ export function RoomExperience({
             }`}
           >
             {/* `isPlaying` e `source` zerados no modo transmissão: a moldura de
-                sync e o selo "sync limitado — controle manual" descrevem o
+                sync e o selo "Sync limitado — controle manual" descrevem o
                 sync layer, e no modo transmissão o sync layer não participa
                 (FR-004, docs/specs/12-transmissao-screen-share/spec.md, seção 1).
                 Um anel pulsando sobre a transmissão dos outros seria um
@@ -323,7 +325,7 @@ export function RoomExperience({
                   que a área de vídeo exibe. Com transmissão, nada de
                   `PlayerShell`/`PlayerControls` — os frames SÃO a
                   sincronização. Sem, a sala volta ao estado de player normal,
-                  inclusive o "nenhum vídeo carregado": `video` e `player` não
+                  inclusive o "Nenhum vídeo carregado": `video` e `player` não
                   foram tocados, então o vídeo que já estava carregado está
                   intacto. */}
               {showScreenShare ? (
@@ -395,9 +397,9 @@ export function RoomExperience({
                 href={video!.embedUrl!}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="rounded-sm text-[var(--ink)] underline focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+                className="rounded-sm text-[var(--ink)] underline reticle"
               >
-                abrir em nova aba
+                Abrir em nova aba
               </a>
               .
             </p>

@@ -17,7 +17,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { code } = await params;
   const room = await getRoomByCode(code);
-  return { title: room?.name ? `${room.name} · rockncine` : "sala · rockncine" };
+  return { title: room?.name ? `${room.name} · Rockncine` : "Sala · Rockncine" };
 }
 
 export default async function RoomPage({

@@ -135,10 +135,10 @@ export function isSafeEmbedUrl(value: string): boolean {
 // fonte carregada: a lista de salas mostra "código · youtube" e o estado sem
 // vídeo é information, não string vazia.
 export const SOURCE_LABEL: Record<VideoSourceKind, string> = {
-  YOUTUBE: "youtube",
-  VIMEO: "vimeo",
-  DIRECT_MEDIA: "mídia direta",
-  GENERIC_IFRAME: "link externo",
+  YOUTUBE: "YouTube",
+  VIMEO: "Vimeo",
+  DIRECT_MEDIA: "Mídia direta",
+  GENERIC_IFRAME: "Link externo",
 };
 
 export async function resolveVideoUrl(rawUrl: string): Promise<ResolvedVideo | null> {

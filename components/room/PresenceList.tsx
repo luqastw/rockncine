@@ -72,14 +72,14 @@ export function PresenceTrigger({
       onClick={onToggle}
       aria-expanded={expanded}
       aria-controls="presence-list"
-      className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--fill-1)] px-3 py-2 text-body-sm text-[var(--ink)] hover:border-[var(--ink-muted)] hover:bg-[var(--fill-2)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+      className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--fill-1)] px-3 py-2 text-body-sm text-[var(--ink)] hover:border-[var(--ink-muted)] hover:bg-[var(--fill-2)] reticle"
     >
       <Avatar
         userId={myPresence.userId ?? myUserId}
         avatarV={myAvatarV === undefined ? myPresence.avatarV : myAvatarV}
         size="sm"
       />
-      <span className="font-mono text-caption text-[var(--ink-muted)]">{total} na sala</span>
+      <span className="text-caption text-[var(--ink-muted)]">{total} na sala</span>
       <ChevronDownIcon
         className={`ml-auto h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
       />

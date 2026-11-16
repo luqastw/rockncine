@@ -36,7 +36,7 @@ describe("GET /api/avatar/[userId]", () => {
     mocks.getServerSession.mockResolvedValue(null);
     const res = await call("alvo");
     expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({ error: "não autenticado." });
+    expect(await res.json()).toEqual({ error: "Não autenticado." });
     expect(mocks.findUnique).not.toHaveBeenCalled();
   });
 

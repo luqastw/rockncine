@@ -12,7 +12,7 @@ export function SignOutButton() {
       onClick={() => signOut({ callbackUrl: "/login" })}
       className="shrink-0"
     >
-      sair
+      Sair
     </Button>
   );
 }

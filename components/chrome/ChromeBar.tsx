@@ -22,7 +22,7 @@ export function ChromeBar({ actions }: { actions?: ReactNode }) {
       <div className="flex h-16 w-full max-w-5xl items-center justify-between gap-4 px-6 sm:px-10">
         <Link
           href="/"
-          className="inline-flex min-h-11 items-center rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+          className="inline-flex min-h-11 items-center rounded-md reticle"
         >
           <Wordmark />
         </Link>

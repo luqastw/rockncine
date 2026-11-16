@@ -7,6 +7,7 @@ export function Stump({ className = "size-16" }: StumpProps) {
     <svg
       viewBox="0 0 64 64"
       aria-hidden="true"
+      data-motif="stump"
       focusable="false"
       fill="none"
       stroke="var(--line-strong)"

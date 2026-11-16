@@ -656,7 +656,7 @@ describe("useNativeVideoSync: retry", () => {
   it("recarregar a mesma URL depois de um erro refaz o carregamento e zera isReady e erro", async () => {
     const hook = await mountReady();
     domEvent("error");
-    expect(hook.result.current.error).toBe("não foi possível reproduzir este vídeo.");
+    expect(hook.result.current.error).toBe("Não foi possível reproduzir este vídeo.");
 
     lb.video = videoOf("DIRECT_MEDIA", MP4, 2);
     hook.rerender({});
@@ -803,7 +803,7 @@ describe("useNativeVideoSync: HLS", () => {
     const { result } = await mount();
     act(() => hls().handlers.hlsError("hlsError", { fatal: true }));
 
-    expect(result.current.error).toBe("falha ao carregar o stream (manifest/rede). tente carregar de novo.");
+    expect(result.current.error).toBe("Falha ao carregar o stream (manifest/rede). Tente carregar de novo.");
   });
 
   it("erro não fatal do hls é ignorado", async () => {
@@ -937,8 +937,8 @@ describe("useNativeVideoSync: erros", () => {
     const { result } = await mountReady();
     domEvent("error");
 
-    expect(result.current.error).toBe("não foi possível reproduzir este vídeo.");
-    expect(result.current.controller.error).toBe("não foi possível reproduzir este vídeo.");
+    expect(result.current.error).toBe("Não foi possível reproduzir este vídeo.");
+    expect(result.current.controller.error).toBe("Não foi possível reproduzir este vídeo.");
   });
 
   it("play() rejeitado por política do navegador vira erro", async () => {
@@ -947,7 +947,7 @@ describe("useNativeVideoSync: erros", () => {
     act(() => result.current.controller.play());
     await flush();
 
-    expect(result.current.error).toBe("não foi possível iniciar a reprodução. tente de novo.");
+    expect(result.current.error).toBe("Não foi possível iniciar a reprodução. Tente de novo.");
   });
 
   it("play() rejeitado com AbortError é ignorado", async () => {
@@ -965,6 +965,6 @@ describe("useNativeVideoSync: erros", () => {
     act(() => result.current.controller.togglePlay());
     await flush();
 
-    expect(result.current.error).toBe("não foi possível iniciar a reprodução. tente de novo.");
+    expect(result.current.error).toBe("Não foi possível iniciar a reprodução. Tente de novo.");
   });
 });

@@ -28,15 +28,15 @@ export function EconomySuggestion({
         className="pointer-events-auto flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-[var(--line)] bg-[var(--bg-surface)] p-4 text-body-sm text-[var(--ink)] shadow-[var(--shadow-pop)]"
       >
         <p>
-          detectamos que seu dispositivo pode ter dificuldades com vídeo. ativar
+          Detectamos que seu dispositivo pode ter dificuldades com vídeo. Ativar
           modo economy?
         </p>
         <div className="flex items-center justify-end gap-2">
-          <Button variant="outline" surface onClick={onDismiss}>
-            agora não
+          <Button variant="outline" onClick={onDismiss}>
+            Agora não
           </Button>
-          <Button variant="primary" surface onClick={onAccept}>
-            ativar economy
+          <Button variant="primary" onClick={onAccept}>
+            Ativar economy
           </Button>
         </div>
       </div>

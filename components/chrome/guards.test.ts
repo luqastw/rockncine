@@ -47,13 +47,37 @@ function toMs(value: number, unit: string): number {
 const SOURCES = ["app", "components"];
 
 describe("guardas do chrome", () => {
-  it("AC-003: --torch aparece em no máximo 3 arquivos .tsx", () => {
+  it("AC-003: orçamento de ouro, no máximo 5 arquivos .tsx com --gold ou --torch", () => {
     const files = tsxFiles(SOURCES, false)
-      .filter((f) => readFileSync(f, "utf8").includes("--torch"))
+      .filter((f) => /--(gold|torch)/.test(readFileSync(f, "utf8")))
       .map(rel);
-    expect(files, `arquivos com --torch: ${files.join(", ")}`).toSatisfy(
-      (list: string[]) => list.length <= 3,
+    expect(files, `arquivos com ouro: ${files.join(", ")}`).toSatisfy(
+      (list: string[]) => list.length <= 5,
     );
+  });
+
+  it("AC-003: --heart só aparece em arquivos de erro ou ação destrutiva", () => {
+    const permitidos = new Set([
+      "error.tsx",
+      "global-error.tsx",
+      "not-found.tsx",
+      "DeleteRoomButton.tsx",
+      "ConfirmDialog.tsx",
+      "LoginForm.tsx",
+      "RegisterForm.tsx",
+      "CreateRoomForm.tsx",
+      "JoinRoomForm.tsx",
+      "ProfileAvatarForm.tsx",
+      "Input.tsx",
+      "Button.tsx",
+      "PlayerLoadStatus.tsx",
+      "LoadVideoModal.tsx",
+    ]);
+    const fora = tsxFiles(SOURCES, false)
+      .filter((f) => readFileSync(f, "utf8").includes("--heart"))
+      .filter((f) => !permitidos.has(path.basename(f)))
+      .map(rel);
+    expect(fora).toEqual([]);
   });
 
   it("AC-004: nenhum resquício do cenário ASCII antigo", () => {
@@ -77,7 +101,7 @@ describe("guardas do chrome", () => {
     );
 
     it("globals.css não tem animação infinita", () => {
-      expect(css).not.toMatch(/\binfinite\b/);
+      expect(css).not.toMatch(/\binfinite\b/i);
     });
 
     it("globals.css limita durações a 380ms", () => {
@@ -107,9 +131,9 @@ describe("guardas do chrome", () => {
         }
       }
       const block = css.slice(open, end);
-      expect(block).toMatch(/animation-duration:\s*0\.01ms\s*!important/);
-      expect(block).toMatch(/transition-duration:\s*0\.01ms\s*!important/);
-      expect(block).toMatch(/animation-iteration-count:\s*1\s*!important/);
+      expect(block).toMatch(/animation-duration:\s*0\.01ms\s*!important/i);
+      expect(block).toMatch(/transition-duration:\s*0\.01ms\s*!important/i);
+      expect(block).toMatch(/animation-iteration-count:\s*1\s*!important/i);
     });
 
     it("tsx não usa animate-spin/pulse/bounce/ping", () => {

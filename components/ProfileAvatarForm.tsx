@@ -7,8 +7,8 @@ import { avatarSrc } from "@/lib/avatar";
 import { Button, buttonClass } from "@/components/ui/Button";
 
 const MAX_BYTES = 2_097_152;
-const TOO_LARGE_MESSAGE = "imagem muito grande (máx 2 MB).";
-const NETWORK_MESSAGE = "não foi possível enviar. tente de novo.";
+const TOO_LARGE_MESSAGE = "Imagem muito grande (máx 2 MB).";
+const NETWORK_MESSAGE = "Não foi possível enviar. Tente de novo.";
 
 function broadcastAvatar(v: number | null) {
   try {
@@ -136,7 +136,7 @@ export function ProfileAvatarForm({
         data-avatar-preview
         unoptimized
         src={shownSrc}
-        alt="prévia da imagem de perfil"
+        alt="Prévia da imagem de perfil"
         width={160}
         height={160}
         className={`${stacked ? "size-30" : "size-40"} shrink-0 rounded-full object-cover outline-2 outline-offset-4 outline-[var(--fairy)]`}
@@ -154,17 +154,17 @@ export function ProfileAvatarForm({
           />
           <label
             htmlFor="profile-image-file"
-            className={`${buttonClass({ variant: "outline", className: "w-full cursor-pointer" })} peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--outline-strong)] peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[var(--bg-surface)] peer-disabled:pointer-events-none peer-disabled:opacity-50`}
+            className={`${buttonClass({ variant: "outline", className: "w-full cursor-pointer" })} reticle-peer peer-disabled:pointer-events-none peer-disabled:opacity-50`}
           >
-            escolher imagem
+            Escolher imagem
           </label>
           <p className="max-w-full truncate text-caption text-[var(--ink-muted)]">
-            {file ? file.name : "png, jpeg ou webp, até 2 MB"}
+            {file ? file.name : "PNG, JPEG ou WebP, até 2 MB"}
           </p>
         </div>
         <div className="flex w-full flex-col gap-2">
           <Button type="submit" disabled={busy || !file} aria-busy={busy} className="w-full">
-            {busy ? "enviando..." : "enviar"}
+            {busy ? "Enviando..." : "Enviar"}
           </Button>
           <Button
             type="button"
@@ -173,11 +173,11 @@ export function ProfileAvatarForm({
             disabled={busy || avatarV === null}
             className="w-full"
           >
-            remover imagem
+            Remover imagem
           </Button>
         </div>
         {error ? (
-          <p role="alert" className="text-body text-[var(--ink)]">
+          <p role="alert" className="text-body text-[var(--heart)]">
             {error}
           </p>
         ) : null}

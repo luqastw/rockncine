@@ -31,7 +31,7 @@ export function useLoadVideo(roomCode: string, userId: string) {
 
     if (!res.ok) {
       const data = await res.json().catch(() => null);
-      throw new Error(data?.error ?? "não foi possível carregar o link.");
+      throw new Error(data?.error ?? "Não foi possível carregar o link.");
     }
 
     const resolved: ResolvedVideo = await res.json();

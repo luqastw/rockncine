@@ -11,7 +11,7 @@ const IMMUTABLE = "private, max-age=31536000, immutable";
 export async function GET(req: Request, ctx: { params: Promise<{ userId: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "não autenticado." }, { status: 401 });
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
 
   const { userId } = await ctx.params;

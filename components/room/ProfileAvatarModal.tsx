@@ -67,13 +67,13 @@ export function ProfileAvatarModal({
       >
         <div className="mb-5 flex items-center justify-between">
           <h2 id="profile-avatar-modal-title" className={sectionLabelClass}>
-            imagem de perfil
+            Imagem de perfil
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="fechar"
-            className={iconButtonClass({ variant: "ghost", surface: true })}
+            aria-label="Fechar"
+            className={iconButtonClass({ variant: "ghost" })}
           >
             <CloseIcon className="h-4 w-4" />
           </button>

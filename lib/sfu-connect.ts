@@ -44,25 +44,25 @@ export function sfuFailureHint(failure: SfuFailure): string {
 
   if (reason === ConnectionErrorReason[ConnectionErrorReason.NotAllowed]) {
     if (httpStatus === 403) {
-      return "sem permissão para entrar nesta room (403).";
+      return "Sem permissão para entrar nesta room (403).";
     }
-    return "o SFU recusou a credencial.";
+    return "O SFU recusou a credencial.";
   }
 
   if (reason === ConnectionErrorReason[ConnectionErrorReason.ServerUnreachable]) {
-    return "o servidor de transmissão não respondeu. confira o LIVEKIT_URL.";
+    return "O servidor de transmissão não respondeu. Confira o LIVEKIT_URL.";
   }
 
   if (reason === ConnectionErrorReason[ConnectionErrorReason.InternalError]) {
-    return "erro interno no servidor de transmissão.";
+    return "Erro interno no servidor de transmissão.";
   }
 
   if (reason === ConnectionErrorReason[ConnectionErrorReason.Cancelled]) {
-    return "a conexão foi cancelada antes de subir.";
+    return "A conexão foi cancelada antes de subir.";
   }
 
   if (httpStatus !== null) return `o SFU respondeu ${httpStatus}.`;
-  return "não foi possível falar com o servidor de transmissão.";
+  return "Não foi possível falar com o servidor de transmissão.";
 }
 
 // A causa mais provável de token recusado: a URL e as chaves vêm de páginas

@@ -7,6 +7,7 @@ export function Fog({ className = "" }: FogProps) {
     <div
       aria-hidden="true"
       data-fog=""
+      data-motif="fog"
       className={`pointer-events-none absolute inset-x-0 bottom-0 z-0 ${className}`.trim()}
     >
       <svg

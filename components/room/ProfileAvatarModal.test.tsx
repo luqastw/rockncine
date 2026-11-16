@@ -11,10 +11,10 @@ describe("ProfileAvatarModal", () => {
   it("abre com o formulário e fecha por Escape e pelo botão", () => {
     const onClose = vi.fn();
     render(<ProfileAvatarModal userId="u1" avatarV={null} open onClose={onClose} />);
-    expect(screen.getByRole("dialog", { name: "imagem de perfil" })).toBeTruthy();
-    expect(screen.getByLabelText(/escolher imagem/)).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Imagem de perfil" })).toBeTruthy();
+    expect(screen.getByLabelText(/escolher imagem/i)).toBeTruthy();
     fireEvent.keyDown(window, { key: "Escape" });
-    fireEvent.click(screen.getByRole("button", { name: "fechar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 

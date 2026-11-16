@@ -19,7 +19,7 @@ export function CreateRoomForm() {
       className="flex flex-col gap-2"
     >
       <label htmlFor="room-name" className="sr-only">
-        nome da sala
+        Nome da sala
       </label>
       <Input
         surface
@@ -27,10 +27,10 @@ export function CreateRoomForm() {
         type="text"
         name="name"
         maxLength={60}
-        placeholder="nome da sala (opcional)"
+        placeholder="Nome da sala (opcional)"
       />
-      <Button surface type="submit" disabled={submitting} className="w-full">
-        {submitting ? "criando..." : "nova sala"}
+      <Button type="submit" disabled={submitting} className="w-full">
+        {submitting ? "Criando..." : "Nova sala"}
       </Button>
     </form>
   );

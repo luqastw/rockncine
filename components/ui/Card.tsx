@@ -1,9 +1,9 @@
 import type { ComponentPropsWithoutRef } from "react";
 import { cx } from "@/lib/cx";
 
-export const cardClass = "rounded-md border border-[var(--line)] bg-[var(--bg-surface)]";
+export const cardClass = "frame";
 
-export const cardPrimaryClass = "rounded-md border border-[var(--leaf)]/40 bg-[var(--bg-surface)]";
+export const cardPrimaryClass = "frame [--line:rgb(95_158_79/0.4)]";
 
 export const cardHoverClass =
   "transition-colors duration-150 hover:bg-[var(--bg-elevated)]";

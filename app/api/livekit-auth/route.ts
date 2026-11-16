@@ -16,7 +16,7 @@ import { LIVEKIT_TOKEN_TTL, livekitCredentials } from "@/lib/livekit";
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return new Response("não autenticado.", { status: 401 });
+    return new Response("Não autenticado.", { status: 401 });
   }
 
   // Sem credencial do Livekit não há token possível. 503 e não 500: a falha é
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   // indisponível" em vez de erro.
   const credentials = livekitCredentials();
   if (!credentials) {
-    return new Response("transmissão não configurada.", { status: 503 });
+    return new Response("Transmissão não configurada.", { status: 503 });
   }
 
   // `req.json()` pode lançar em corpo malformado; a rota do Liveblocks tem o
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   const body: unknown = await req.json().catch(() => null);
   const roomCode = (body as { room?: unknown } | null)?.room;
   if (typeof roomCode !== "string" || roomCode.length === 0) {
-    return new Response("room inválida.", { status: 400 });
+    return new Response("Room inválida.", { status: 400 });
   }
 
   const access = await findRoomForMember(roomCode, session.user.id);
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
   // (não-objetivo explícito).
   const token = new AccessToken(credentials.apiKey, credentials.apiSecret, {
     identity: session.user.id,
-    name: session.user.name ?? session.user.email ?? "sem nome",
+    name: session.user.name ?? session.user.email ?? "Sem nome",
     ttl: LIVEKIT_TOKEN_TTL,
   });
   token.addGrant({

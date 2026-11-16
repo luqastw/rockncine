@@ -111,7 +111,7 @@ export function LiveKitProvider({
           auth: {
             status: "unavailable",
             httpStatus: null,
-            detail: "não foi possível contatar o servidor de transmissão.",
+            detail: "Não foi possível contatar o servidor de transmissão.",
           },
         };
       })

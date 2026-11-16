@@ -48,9 +48,9 @@ export function DeleteRoomButton({
       }
 
       const data: { error?: string } | null = await res.json().catch(() => null);
-      setError(data?.error ?? "não foi possível excluir a sala.");
+      setError(data?.error ?? "Não foi possível excluir a sala.");
     } catch {
-      setError("não foi possível excluir a sala. verifique sua conexão e tente de novo.");
+      setError("Não foi possível excluir a sala. Verifique sua conexão e tente de novo.");
     } finally {
       setBusy(false);
     }
@@ -65,18 +65,18 @@ export function DeleteRoomButton({
           setError(null);
           setOpen(true);
         }}
-        aria-label={`excluir sala ${displayName ?? roomCode}`}
-        className={buttonClass({ variant: "ghost", size: "sm", className: "shrink-0" })}
+        aria-label={`Excluir sala ${displayName ?? roomCode}`}
+        className={buttonClass({ variant: "danger", size: "sm", className: "shrink-0" })}
       >
-        excluir sala
+        Excluir<span className="max-sm:hidden"> sala</span>
       </button>
 
       <ConfirmDialog
         open={open}
-        title="excluir sala"
+        title="Excluir sala"
         description={description}
-        confirmLabel="excluir sala"
-        busyLabel="excluindo..."
+        confirmLabel="Excluir sala"
+        busyLabel="Excluindo..."
         busy={busy}
         error={error}
         onConfirm={confirmDelete}

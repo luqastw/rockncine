@@ -147,12 +147,12 @@ describe("useChat — entrada pela rede", () => {
   // React no render do `Chat` e a tela inteira da sala caía.
   it("ignora payload com text malformado em vez de derrubar o render", () => {
     expect(() => emit({ type: "CHAT_MESSAGE", ...base, text: { toString: () => "p" } })).not.toThrow();
-    expect(screen.queryByText(/ana:/)).toBeNull();
+    expect(screen.queryByText(/ana:/i)).toBeNull();
   });
 
   it("ignora evento de player que arrives pelo mesmo canal", () => {
     emit({ type: "PLAY", time: 10, source: "YOUTUBE", actorId: "a", ts: Date.now() });
-    expect(screen.queryByText(/ana:/)).toBeNull();
+    expect(screen.queryByText(/ana:/i)).toBeNull();
   });
 
   it("deduplica por id, como antes", () => {

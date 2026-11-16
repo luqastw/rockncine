@@ -30,7 +30,7 @@ export function RegisterForm() {
 
           if (!res.ok) {
             const data = await res.json().catch(() => null);
-            setError(data?.error ?? "não foi possível cadastrar.");
+            setError(data?.error ?? "Não foi possível cadastrar.");
             return;
           }
 
@@ -49,7 +49,7 @@ export function RegisterForm() {
           // Mesmo caso do LoginForm: sem o catch, falha de rede em qualquer um
           // dos dois `await` (registro ou login automático) deixava o botão
           // travado em "criando..." sem mensagem nenhuma.
-          setError("não foi possível cadastrar. verifique sua conexão e tente de novo.");
+          setError("Não foi possível cadastrar. verifique sua conexão e tente de novo.");
         } finally {
           setLoading(false);
         }
@@ -57,7 +57,7 @@ export function RegisterForm() {
       className="flex flex-col gap-4"
     >
       <label className="flex flex-col gap-1.5 text-body-sm text-[var(--ink-muted)]">
-        nome (opcional)
+        Nome (opcional)
         <Input
           type="text"
           autoComplete="name"
@@ -66,7 +66,7 @@ export function RegisterForm() {
         />
       </label>
       <label className="flex flex-col gap-1.5 text-body-sm text-[var(--ink-muted)]">
-        email
+        Email
         <Input
           type="email"
           required
@@ -76,7 +76,7 @@ export function RegisterForm() {
         />
       </label>
       <label className="flex flex-col gap-1.5 text-body-sm text-[var(--ink-muted)]">
-        senha (mín. 8 caracteres)
+        Senha (mín. 8 caracteres)
         <Input
           type="password"
           required
@@ -89,13 +89,13 @@ export function RegisterForm() {
       {error && (
         <p
           role="alert"
-          className="rounded-lg border border-[var(--ink)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--ink)]"
+          className="rounded-lg border border-[var(--heart)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--heart)]"
         >
           {error}
         </p>
       )}
       <Button type="submit" disabled={loading} className="w-full">
-        {loading ? "criando..." : "criar conta"}
+        {loading ? "Criando..." : "Criar conta"}
       </Button>
     </form>
   );

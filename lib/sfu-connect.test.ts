@@ -129,7 +129,7 @@ describe("sfuFailureHint", () => {
   });
 
   it("sem status e sem reason cai no genérico honesto", () => {
-    expect(sfuFailureHint({ httpStatus: null, reason: null, detail: "" })).toMatch(/não foi possível/);
+    expect(sfuFailureHint({ httpStatus: null, reason: null, detail: "" })).toMatch(/não foi possível/i);
   });
 
   it("status sem reason conhecido cai no status", () => {

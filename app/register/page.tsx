@@ -5,15 +5,15 @@ import { Reveal } from "@/components/chrome/Reveal";
 import { Card } from "@/components/ui/Card";
 import { TextLink } from "@/components/ui/TextLink";
 
-export const metadata: Metadata = { title: "criar conta · rockncine" };
+export const metadata: Metadata = { title: "Criar conta · Rockncine" };
 
 export default function RegisterPage() {
   return (
     <PageShell width="sm" chrome className="justify-center gap-8">
       <Reveal as="header" className="flex flex-col gap-2">
-        <h1 className="text-title font-semibold tracking-tight text-[var(--ink)]">criar conta</h1>
+        <h1 className="text-title font-semibold tracking-tight text-[var(--ink)]">Criar conta</h1>
         <p className="text-body-sm text-[var(--ink-muted)]">
-          leva um minuto. depois é só colar o link e chamar o pessoal.
+          Leva um minuto. Depois é só colar o link e chamar o pessoal.
         </p>
       </Reveal>
 
@@ -23,8 +23,8 @@ export default function RegisterPage() {
         </Card>
 
         <p className="text-center text-body-sm text-[var(--ink-muted)]">
-          já tem conta?{" "}
-          <TextLink href="/login">entrar</TextLink>
+          Já tem conta?{" "}
+          <TextLink href="/login">Entrar</TextLink>
         </p>
       </Reveal>
     </PageShell>

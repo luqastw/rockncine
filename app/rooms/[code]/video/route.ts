@@ -17,12 +17,12 @@ export async function PATCH(
   // preflight em alguns caminhos, e a rota é de escrita. A assimetria não se
   // justifica — as duas rotas mexem em dados do dono.
   if (!sameOrigin(req)) {
-    return NextResponse.json({ error: "origem não permitida." }, { status: 403 });
+    return NextResponse.json({ error: "Origem não permitida." }, { status: 403 });
   }
 
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "não autenticado." }, { status: 401 });
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
 
   const limited = await rateLimitUser(session.user.id, {
@@ -36,7 +36,7 @@ export async function PATCH(
   const body = await req.json().catch(() => null);
   const sourceUrl = typeof body?.sourceUrl === "string" ? body.sourceUrl : null;
   if (!sourceUrl) {
-    return NextResponse.json({ error: "payload inválido." }, { status: 400 });
+    return NextResponse.json({ error: "Payload inválido." }, { status: 400 });
   }
 
   const access = await findRoomForMember(code, session.user.id);
@@ -53,7 +53,7 @@ export async function PATCH(
   // aqui, pelo mesmo caminho de validação usado em `/api/resolve-embed`.
   const resolved = await resolveVideoUrl(sourceUrl);
   if (!resolved) {
-    return NextResponse.json({ error: "link inválido." }, { status: 400 });
+    return NextResponse.json({ error: "Link inválido." }, { status: 400 });
   }
 
   await prisma.room.update({

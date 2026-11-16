@@ -138,9 +138,9 @@ describe("diálogos usam o trap compartilhado", () => {
     render(
       <ConfirmDialog
         open
-        title="excluir sala"
+        title="Excluir sala"
         description="a sala será apagada"
-        confirmLabel="excluir sala"
+        confirmLabel="Excluir sala"
         onConfirm={() => {}}
         onClose={() => {}}
       />,

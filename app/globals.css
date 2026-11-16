@@ -18,7 +18,19 @@
   --ink-muted: #a8ad98;
   --leaf: #5f9e4f;
   --leaf-ink: #7bb86a;
-  --torch: #d9a441;
+  --parchment: #e8dfc2;
+  --parchment-ink: #2a2417;
+  --parchment-edge: #c9bd96;
+  --gold-hi: #f0cf7a;
+  --gold: #d9a441;
+  --gold-lo: #a87a2a;
+  --heart: #e07a6e;
+  --heart-ink: #8f2a22;
+  --clip: 8px;
+  --torch: var(--gold);
+  --motion-dur: 200ms;
+  --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-factor: 1;
   --fairy: #bfe6ff;
   --accent: var(--leaf);
 
@@ -83,7 +95,7 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Barra de chrome (FR-005, docs/specs/15-identidade-kimi/spec.md). Único ponto
+/* Barra de chrome. Único ponto
    de blur do chrome: 6px, fundo 72% e
    fio de 1px que só aparece depois do primeiro scroll — o mesmo comportamento
    da navegação da Kimi. O fio é separação real, não só desfoque. */
@@ -113,7 +125,7 @@ body {
 }
 
 .animate-sync-flash {
-  animation: sync-flash 350ms ease-out;
+  animation: sync-flash calc(var(--motion-dur) * var(--motion-factor) * 1.75) ease-out;
 }
 
 /* Scrubber/volume do player: o track fica transparente e o progresso é
@@ -170,7 +182,7 @@ html::-webkit-scrollbar {
   display: none;
 }
 
-/* A casca da sala tem altura fixa enquanto o conteúdo cabe. Quando NÃO cabe —
+/* A casca da sala (FR-028, docs/specs/17-lost-woods-oot/spec.md) tem altura fixa enquanto o conteúdo cabe. Quando NÃO cabe —
    janela de 256px de altura ou texto a 200% — espremer é pior que rolar. A
    unidade `em` acompanha a preferência do usuário (FR-049 da spec 01). */
 @media (max-height: 32em) {
@@ -192,6 +204,7 @@ button,
 .reduce-motion *,
 .reduce-motion *::before,
 .reduce-motion *::after {
+  --motion-factor: 0;
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
@@ -202,6 +215,7 @@ button,
   *,
   *::before,
   *::after {
+    --motion-factor: 0;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -224,11 +238,11 @@ button,
   textarea,
   [role="button"] {
     transition:
-      color 160ms cubic-bezier(0.16, 1, 0.3, 1),
-      background-color 160ms cubic-bezier(0.16, 1, 0.3, 1),
-      border-color 160ms cubic-bezier(0.16, 1, 0.3, 1),
-      opacity 160ms cubic-bezier(0.16, 1, 0.3, 1),
-      transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+      color calc(var(--motion-dur) * var(--motion-factor) * 0.8) var(--motion-ease),
+      background-color calc(var(--motion-dur) * var(--motion-factor) * 0.8) var(--motion-ease),
+      border-color calc(var(--motion-dur) * var(--motion-factor) * 0.8) var(--motion-ease),
+      opacity calc(var(--motion-dur) * var(--motion-factor) * 0.8) var(--motion-ease),
+      transform calc(var(--motion-dur) * var(--motion-factor) * 0.8) var(--motion-ease);
   }
 }
 
@@ -258,7 +272,7 @@ button,
 }
 
 /* ---------------------------------------------------------------------------
-   Movimento: entradas curtas, uma cascata discreta e resposta imediata ao
+   Movimento (FR-030, docs/specs/17-lost-woods-oot/spec.md): entradas curtas, uma cascata discreta e resposta imediata ao
    toque. Nada coreografado; tudo morre em reduced-motion.
    --------------------------------------------------------------------------- */
 
@@ -294,30 +308,30 @@ button,
 }
 
 .animate-pop {
-  animation: pop-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: pop-in calc(var(--motion-dur) * var(--motion-factor)) var(--motion-ease) both;
 }
 .animate-fade {
-  animation: fade-in 160ms ease-out both;
+  animation: fade-in calc(var(--motion-dur) * var(--motion-factor) * 0.8) ease-out both;
 }
 
 /* Cascata da lista de salas: cada item entra 24ms depois do anterior. */
 .room-list > li {
-  animation: rise-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: rise-in calc(var(--motion-dur) * var(--motion-factor) * 1.3) var(--motion-ease) both;
 }
 .room-list > li:nth-child(2) {
-  animation-delay: 24ms;
+  animation-delay: calc(var(--motion-dur) * var(--motion-factor) * 0.12);
 }
 .room-list > li:nth-child(3) {
-  animation-delay: 48ms;
+  animation-delay: calc(var(--motion-dur) * var(--motion-factor) * 0.24);
 }
 .room-list > li:nth-child(4) {
-  animation-delay: 72ms;
+  animation-delay: calc(var(--motion-dur) * var(--motion-factor) * 0.36);
 }
 .room-list > li:nth-child(5) {
-  animation-delay: 96ms;
+  animation-delay: calc(var(--motion-dur) * var(--motion-factor) * 0.48);
 }
 .room-list > li:nth-child(n + 6) {
-  animation-delay: 120ms;
+  animation-delay: calc(var(--motion-dur) * var(--motion-factor) * 0.6);
 }
 
 /* Press: confirmação de estado, não movimento. */
@@ -327,7 +341,7 @@ a[href]:active {
 }
 
 /* ---------------------------------------------------------------------------
-   Realce progressivo (FR-013/FR-014, docs/specs/14-identidade-fanzine-crt/spec.md).
+   Realce progressivo (FR-030, docs/specs/17-lost-woods-oot/spec.md).
    Só `opacity`/`transform` e
    nunca portão: sem JavaScript, `.reveal` não casa seletor e o conteúdo nasce
    visível; o marcador `[data-reveal]` é a rede de segurança.
@@ -336,8 +350,8 @@ a[href]:active {
   opacity: 0;
   transform: translateY(10px);
   transition:
-    opacity 320ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity calc(var(--motion-dur) * var(--motion-factor) * 1.6) var(--motion-ease),
+    transform calc(var(--motion-dur) * var(--motion-factor) * 1.6) var(--motion-ease);
 }
 
 [data-js] .reveal[data-visible] {
@@ -356,5 +370,244 @@ a[href]:active {
   .chrome-blur {
     backdrop-filter: none;
     background: var(--bg-void);
+  }
+}
+
+@layer components {
+  .frame {
+    position: relative;
+    isolation: isolate;
+    background: var(--line);
+    clip-path: polygon(
+      var(--clip) 0,
+      calc(100% - var(--clip)) 0,
+      100% var(--clip),
+      100% calc(100% - var(--clip)),
+      calc(100% - var(--clip)) 100%,
+      var(--clip) 100%,
+      0 calc(100% - var(--clip)),
+      0 var(--clip)
+    );
+  }
+
+  .frame::before {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    z-index: -1;
+    background: var(--frame-fill, var(--bg-surface));
+    clip-path: polygon(
+      calc(var(--clip) - 1px) 0,
+      calc(100% - var(--clip) + 1px) 0,
+      100% calc(var(--clip) - 1px),
+      100% calc(100% - var(--clip) + 1px),
+      calc(100% - var(--clip) + 1px) 100%,
+      calc(var(--clip) - 1px) 100%,
+      0 calc(100% - var(--clip) + 1px),
+      0 calc(var(--clip) - 1px)
+    );
+  }
+
+  .frame::after {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border: 1px solid var(--line);
+    pointer-events: none;
+  }
+
+  .frame-btn {
+    clip-path: polygon(
+      var(--clip) 0,
+      calc(100% - var(--clip)) 0,
+      100% var(--clip),
+      100% calc(100% - var(--clip)),
+      calc(100% - var(--clip)) 100%,
+      var(--clip) 100%,
+      0 calc(100% - var(--clip)),
+      0 var(--clip)
+    );
+  }
+
+  .parchment {
+    --heart: var(--heart-ink);
+    --line: var(--parchment-edge);
+    --frame-fill: var(--parchment);
+    position: relative;
+    isolation: isolate;
+    background: var(--parchment);
+    color: var(--parchment-ink);
+  }
+
+  .parchment::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .frame.parchment::before {
+    inset: 1px;
+    opacity: 1;
+    background-color: var(--parchment);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+
+  .frame.parchment {
+    background: var(--line);
+  }
+
+  .parchment [data-variant="primary"] {
+    border: 1px solid var(--parchment-ink);
+  }
+
+  .reticle,
+  .reticle-peer {
+    position: relative;
+    outline: none;
+  }
+
+  .reticle:focus-visible::after,
+  .peer:focus-visible + .reticle-peer::after {
+    --reticle: var(--fairy);
+    content: "";
+    position: absolute;
+    inset: 2px;
+    pointer-events: none;
+    background-repeat: no-repeat;
+    background-image:
+      linear-gradient(var(--reticle), var(--reticle)),
+      linear-gradient(var(--reticle), var(--reticle)),
+      linear-gradient(var(--reticle), var(--reticle)),
+      linear-gradient(var(--reticle), var(--reticle)),
+      linear-gradient(var(--reticle), var(--reticle)),
+      linear-gradient(var(--reticle), var(--reticle)),
+      linear-gradient(var(--reticle), var(--reticle)),
+      linear-gradient(var(--reticle), var(--reticle));
+    background-size:
+      8px 2px,
+      2px 8px,
+      8px 2px,
+      2px 8px,
+      8px 2px,
+      2px 8px,
+      8px 2px,
+      2px 8px;
+    background-position:
+      left top,
+      left top,
+      right top,
+      right top,
+      left bottom,
+      left bottom,
+      right bottom,
+      right bottom;
+  }
+
+  .parchment .reticle:focus-visible::after {
+    --reticle: var(--parchment-ink);
+  }
+
+  .reticle.reticle-on-leaf:focus-visible::after {
+    --reticle: var(--bg-void);
+  }
+
+  .field-ring {
+    outline: none;
+  }
+
+  .field-ring:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--fairy);
+  }
+
+  .parchment .field-ring:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--parchment-ink);
+  }
+
+  .reticle.frame-btn:focus-visible::after,
+  .reticle.frame:focus-visible::after {
+    inset: calc(var(--clip) * 0.65);
+  }
+
+  .btn-round {
+    border-radius: 50%;
+    min-width: 44px;
+    min-height: 44px;
+    border: 1px solid var(--line-strong);
+  }
+
+  .divider-gold {
+    height: 1px;
+    width: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--gold-lo),
+      var(--gold-hi),
+      var(--gold-lo),
+      transparent
+    );
+  }
+
+  [data-js] .divider-gold {
+    opacity: 0;
+    transform: scaleX(0.4);
+    transition:
+      opacity calc(var(--motion-dur) * var(--motion-factor) * 1.6) var(--motion-ease),
+      transform calc(var(--motion-dur) * var(--motion-factor) * 1.9) var(--motion-ease);
+  }
+
+  [data-js] .reveal[data-visible] .divider-gold,
+  [data-js] .divider-gold[data-visible] {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  [data-reveal] .divider-gold {
+    opacity: 1;
+    transform: none;
+  }
+
+  .iris {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    width: 100vmax;
+    height: 100vmax;
+    margin: -50vmax 0 0 -50vmax;
+    will-change: transform;
+    pointer-events: none;
+    z-index: 60;
+    background: radial-gradient(
+      circle at center,
+      transparent 0,
+      transparent 8%,
+      var(--bg-void) 8.5%
+    );
+    animation: iris-open calc(var(--motion-dur) * var(--motion-factor) * 1.8) var(--motion-ease)
+      both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .iris {
+      display: none;
+    }
+  }
+
+  .reduce-motion .iris {
+    display: none;
+  }
+
+  @keyframes iris-open {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(36);
+      opacity: 0;
+    }
   }
 }

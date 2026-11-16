@@ -47,18 +47,18 @@ export function BroadcastControls({
     return (
       <div className="flex flex-wrap items-center gap-2">
         <Badge role="status" variant="solid">
-          transmitindo
+          Transmitindo
         </Badge>
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={stop}
-          aria-label="parar transmissão"
+          aria-label="Parar transmissão"
           className="shrink-0"
         >
-          <span className="sm:hidden">parar</span>
-          <span className="hidden sm:inline">parar transmissão</span>
+          <span className="sm:hidden">Parar</span>
+          <span className="hidden sm:inline">Parar transmissão</span>
         </Button>
       </div>
     );
@@ -75,18 +75,18 @@ export function BroadcastControls({
         disabled={busy || otherBroadcaster !== null || blockedReason !== null}
         aria-label={
           otherBroadcaster
-            ? "já há alguém transmitindo"
+            ? "Já há alguém transmitindo"
             : blockedReason
               ? blockedReason
               : busy
-                ? "abrindo o seletor de tela"
-                : "transmitir tela"
+                ? "Abrindo o seletor de tela"
+                : "Transmitir tela"
         }
         aria-busy={busy || undefined}
         className={buttonClass({ variant: "outline", size: "sm", className: "shrink-0" })}
       >
-        <span className="sm:hidden">transmitir</span>
-        <span className="hidden sm:inline">transmitir tela</span>
+        <span className="sm:hidden">Transmitir</span>
+        <span className="hidden sm:inline">Transmitir tela</span>
       </button>
       {otherBroadcaster && (
         <span className="text-caption text-[var(--ink-muted)]">
@@ -94,7 +94,12 @@ export function BroadcastControls({
         </span>
       )}
       {blockedReason && !otherBroadcaster && auth.status !== "disabled" && (
-        <span role="status" aria-live="polite" className="text-caption text-[var(--ink-muted)]">
+        <span
+          role="status"
+          aria-live="polite"
+          title={livekitReason ? `${blockedReason} — ${livekitReason}` : blockedReason}
+          className="min-w-0 max-w-full truncate text-caption text-[var(--ink-muted)] lg:max-w-[22rem]"
+        >
           {blockedReason}
           {livekitReason && ` — ${livekitReason}`}
         </span>

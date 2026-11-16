@@ -18,6 +18,6 @@ export const requireSession = cache(async (): Promise<SessionUser> => {
 
   return {
     userId: session.user.id,
-    userName: session.user.name ?? session.user.email ?? "sem nome",
+    userName: session.user.name ?? session.user.email ?? "Sem nome",
   };
 });

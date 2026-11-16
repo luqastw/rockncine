@@ -11,10 +11,10 @@ import { insertAtCaret, isEmojiOnly } from "@/lib/emoji";
 const COUNTER_FROM = Math.floor(MAX_TEXT_LENGTH * 0.8);
 
 const STATUS_NOTICE: Record<string, string> = {
-  initial: "conectando… a mensagem fica na fila até a sala abrir.",
-  connecting: "conectando… a mensagem fica na fila até a sala abrir.",
-  reconnecting: "reconectando… a mensagem fica na fila e sai assim que voltar.",
-  disconnected: "sem conexão… a mensagem fica na fila e sai assim que voltar.",
+  initial: "Conectando… A mensagem fica na fila até a sala abrir.",
+  connecting: "Conectando… A mensagem fica na fila até a sala abrir.",
+  reconnecting: "Reconectando… A mensagem fica na fila e sai assim que voltar.",
+  disconnected: "Sem conexão… A mensagem fica na fila e sai assim que voltar.",
 };
 
 export function ChatComposer({
@@ -98,7 +98,7 @@ export function ChatComposer({
           para a fila local de `useChat`, que despeja no `connected` — o que não
           existia antes desta spec. */}
       {notice && (
-        <p role="status" className="font-mono text-caption text-[var(--ink-muted)]">
+        <p role="status" className="text-caption text-[var(--ink-muted)]">
           {notice}
         </p>
       )}
@@ -128,8 +128,8 @@ export function ChatComposer({
             }
           }}
           rows={1}
-          placeholder="mensagem"
-          aria-label="mensagem para o chat da sala"
+          placeholder="Mensagem"
+          aria-label="Mensagem para o chat da sala"
           autoComplete="off"
           className={inputClass({
             className:
@@ -138,7 +138,7 @@ export function ChatComposer({
         />
         <EmojiButton onPick={insertEmoji} />
         <Button type="submit" className="shrink-0">
-          enviar
+          Enviar
         </Button>
       </div>
       {/* Nenhum corte mudo (FR-025): o teto de 500 caracteres é do validador de

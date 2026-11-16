@@ -64,7 +64,7 @@ export const SyncRing = memo(function SyncRing({
       )}
       {syncLimited && (
         <span className="absolute right-2 top-2 rounded-full bg-[var(--fill-1)] px-2 py-0.5 text-caption text-[var(--ink-muted)]">
-          sync limitado — controle manual
+          Sync limitado — controle manual
         </span>
       )}
     </div>

@@ -706,12 +706,12 @@ describe("useVimeoSync: controller", () => {
 
 describe("useVimeoSync: erros", () => {
   it.each([
-    ["Password required", "este vídeo é privado e exige senha."],
-    ["The video does not exist", "vídeo não encontrado ou privado."],
-    ["404", "vídeo não encontrado ou privado."],
-    ["Embed privacy settings", "o dono deste vídeo não permite reprodução embutida."],
-    ["domain not allowed", "o dono deste vídeo não permite reprodução embutida."],
-    ["whatever", "não foi possível reproduzir este vídeo."],
+    ["Password required", "Este vídeo é privado e exige senha."],
+    ["The video does not exist", "Vídeo não encontrado ou privado."],
+    ["404", "Vídeo não encontrado ou privado."],
+    ["Embed privacy settings", "O dono deste vídeo não permite reprodução embutida."],
+    ["domain not allowed", "O dono deste vídeo não permite reprodução embutida."],
+    ["whatever", "Não foi possível reproduzir este vídeo."],
   ])("evento error com %j mapeia a mensagem", async (raw, message) => {
     const { result } = await mount();
     fire("error", { message: raw });
@@ -724,14 +724,14 @@ describe("useVimeoSync: erros", () => {
     const { result } = await mount();
     fire("error");
 
-    expect(result.current.error).toBe("não foi possível reproduzir este vídeo.");
+    expect(result.current.error).toBe("Não foi possível reproduzir este vídeo.");
   });
 
   it("falha ao carregar o módulo do Vimeo vira erro e não cria player", async () => {
     mod.load.mockRejectedValue(new Error("chunk"));
     const { result } = await mount();
 
-    expect(result.current.error).toBe("falha ao carregar o player do Vimeo. tente carregar o vídeo de novo.");
+    expect(result.current.error).toBe("Falha ao carregar o player do Vimeo. Tente carregar o vídeo de novo.");
     expect(FakeVimeo.instances).toHaveLength(0);
   });
 
@@ -744,7 +744,7 @@ describe("useVimeoSync: erros", () => {
     hook.rerender({});
     await flush();
 
-    expect(hook.result.current.error).toBe("este vídeo é privado e exige senha.");
+    expect(hook.result.current.error).toBe("Este vídeo é privado e exige senha.");
     expect(player().setCurrentTime).not.toHaveBeenCalled();
   });
 

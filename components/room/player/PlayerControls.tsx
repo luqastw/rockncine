@@ -21,9 +21,9 @@ function resolutionUnavailableReason(
   sourceType: VideoSourceKind | null | undefined,
   isSafari?: boolean,
 ): string {
-  if (sourceType === "YOUTUBE") return "o YouTube controla a qualidade automaticamente";
-  if (isSafari) return "o Safari controla a qualidade automaticamente";
-  return "esta fonte não suporta mudança de resolução";
+  if (sourceType === "YOUTUBE") return "O YouTube controla a qualidade automaticamente";
+  if (isSafari) return "O Safari controla a qualidade automaticamente";
+  return "Esta fonte não suporta mudança de resolução";
 }
 
 // Classe dos botões de estado (resolução/FPS): o sufixo de desabilitado era
@@ -40,7 +40,7 @@ function resolutionUnavailableReason(
 // cinco linhas e ficava com 434px de altura sobre um vídeo de 163 (medido).
 // Alvo de toque é físico; quem escala é o rótulo.
 function toggleButtonClass(disabled: boolean): string {
-  return `flex min-h-[44px] shrink-0 items-center justify-center rounded-md px-2.5 font-mono text-caption text-[var(--ink-muted)] hover:bg-[var(--fill-2)] hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]${
+  return `flex min-h-[44px] shrink-0 items-center justify-center rounded-md px-2.5 font-mono text-caption text-[var(--ink-muted)] hover:bg-[var(--fill-2)] hover:text-[var(--ink)] reticle${
     disabled ? " cursor-not-allowed opacity-50" : ""
   }`;
 }
@@ -139,8 +139,8 @@ export function PlayerControls({
         type="button"
         onClick={controller.togglePlay}
         disabled={!controller.isReady}
-        aria-label={isPlaying ? "pausar" : "tocar"}
-        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--fill-2)] disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        aria-label={isPlaying ? "Pausar" : "Tocar"}
+        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full text-[var(--ink)] hover:bg-[var(--fill-2)] disabled:opacity-40 reticle"
       >
         {isPlaying ? (
           <PauseIcon className="h-5 w-5" />
@@ -173,7 +173,7 @@ export function PlayerControls({
         onBlur={(e) => {
           if (dragTime !== null) commitSeek(Number(e.target.value));
         }}
-        aria-label="progresso do vídeo"
+        aria-label="Progresso do vídeo"
         aria-valuetext={`${formatTime(displayTime)} de ${formatTime(duration)}`}
         style={trackStyle(progressPct)}
         // O anel de foco entra aqui porque os dois ranges eram os ÚNICOS
@@ -181,14 +181,14 @@ export function PlayerControls({
         // 1px e sem offset, enquanto todo o resto usa 2px + offset (achado 6 da
         // revisão de design). O box do anel é a caixa de 44px que o `py-5` com
         // `boxSizing: content-box` já cria, não a barra de 4px.
-        className="range-mono h-1 min-w-[96px] flex-1 cursor-pointer py-5 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        className="range-mono h-1 min-w-[96px] flex-1 cursor-pointer py-5 disabled:cursor-not-allowed disabled:opacity-40 field-ring"
       />
 
       <button
         type="button"
         onClick={controller.toggleMute}
-        aria-label={isMuted ? "reativar áudio" : "mutar"}
-        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--fill-2)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        aria-label={isMuted ? "Reativar áudio" : "mutar"}
+        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full text-[var(--ink)] hover:bg-[var(--fill-2)] reticle"
       >
         {isMuted ? (
           <VolumeMutedIcon className="h-4 w-4" />
@@ -204,10 +204,10 @@ export function PlayerControls({
         step={0.05}
         value={isMuted ? 0 : volume}
         onChange={(e) => controller.setVolume(Number(e.target.value))}
-        aria-label="volume"
+        aria-label="Volume"
         style={trackStyle(volumePct)}
         // mesmo anel de foco do scrubber — ver comentário lá (achado 6).
-        className="range-mono hidden h-1 w-16 shrink-0 cursor-pointer py-5 sm:block focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        className="range-mono hidden h-1 w-16 shrink-0 cursor-pointer py-5 sm:block field-ring"
       />
 
       {sourceType && sourceType !== "GENERIC_IFRAME" && (
@@ -235,7 +235,7 @@ export function PlayerControls({
           type="button"
           onClick={onToggleFps}
           disabled={!onToggleFps}
-          title={!onToggleFps ? "esta fonte não suporta limite de FPS" : undefined}
+          title={!onToggleFps ? "Esta fonte não suporta limite de FPS" : undefined}
           aria-label={`fps: ${fpsLimit ?? "auto"}`}
           className={`hidden sm:flex ${toggleButtonClass(!onToggleFps)}`}
         >
@@ -253,13 +253,13 @@ export function PlayerControls({
           onClick={onToggleCaptions}
           disabled={!onToggleCaptions}
           aria-pressed={captions}
-          aria-label={captions ? "desativar legenda" : "ativar legenda"}
-          title={captions ? "desativar legenda" : "ativar legenda"}
-          className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-md ${
+          aria-label={captions ? "Desativar legenda" : "Ativar legenda"}
+          title={captions ? "Desativar legenda" : "Ativar legenda"}
+          className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full ${
             captions
               ? "bg-[var(--fill-3)] text-[var(--ink)]"
               : "text-[var(--ink)] hover:bg-[var(--fill-2)]"
-          } disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]`}
+          } disabled:cursor-not-allowed disabled:opacity-50 reticle`}
         >
           <CaptionsIcon className="h-4 w-4" />
         </button>
@@ -268,8 +268,8 @@ export function PlayerControls({
       <button
         type="button"
         onClick={onToggleFullscreen}
-        aria-label={isFullscreen ? "sair da tela cheia" : "tela cheia"}
-        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-md text-[var(--ink)] hover:bg-[var(--fill-2)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+        aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+        className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full text-[var(--ink)] hover:bg-[var(--fill-2)] reticle"
       >
         {isFullscreen ? (
           <FullscreenExitIcon className="h-4 w-4" />

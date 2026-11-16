@@ -78,7 +78,7 @@ export const Chat = memo(function Chat({
     <div className="flex h-full min-h-0 flex-col gap-3 max-lg:overflow-y-auto">
       <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-[var(--line)] bg-[var(--bg-surface)]">
         <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[var(--line)] px-3">
-          <h2 className="text-body font-medium text-[var(--ink)]">chat</h2>
+          <h2 className="text-body font-medium text-[var(--ink)]">Chat</h2>
           {unreadCount > 0 && (
             <Badge
               variant="solid"
@@ -100,7 +100,7 @@ export const Chat = memo(function Chat({
             className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-3"
           >
           {/* A barra de rolagem é escondida em toda a aplicação
-              (app/globals.css), então "há conteúdo acima" não tem sinal. Esta
+              (app/globals.css), então "Há conteúdo acima" não tem sinal. Esta
               sombra é esse sinal, e ela só aparece quando há mesmo (FR-016). */}
           {scrolledUp && (
             <span
@@ -114,7 +114,7 @@ export const Chat = memo(function Chat({
           )}
           <li aria-hidden className="mt-auto" />
           {messages.length === 0 && (
-            <li className="text-body-sm text-[var(--ink-muted)]">silêncio por aqui. diga oi.</li>
+            <li className="text-body-sm text-[var(--ink-muted)]">Silêncio por aqui. Diga oi.</li>
           )}
           {entries.map((entry) => {
             if (entry.kind === "day") {
@@ -161,9 +161,9 @@ export const Chat = memo(function Chat({
           <button
             type="button"
             onClick={goToLatest}
-            className="absolute inset-x-3 bottom-3 min-h-11 rounded-lg bg-[var(--invert-bg)] px-3 text-caption font-medium text-[var(--invert-fg)] focus:outline-none focus:ring-2 focus:ring-[var(--outline-strong)] focus:ring-offset-2 focus:ring-offset-[var(--focus-offset)]"
+            className="absolute inset-x-3 bottom-3 min-h-11 rounded-lg bg-[var(--invert-bg)] px-3 text-caption font-medium text-[var(--invert-fg)] reticle reticle-on-leaf"
           >
-            novas mensagens ↓
+            Novas mensagens ↓
           </button>
         )}
         </div>

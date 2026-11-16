@@ -2,8 +2,7 @@ import type { ReactNode } from "react";
 import { ChromeBar } from "./ChromeBar";
 import { Fog } from "./Fog";
 
-// Invólucro único de página (FR-018 da spec 14, mantido pela FR-008 da spec 15,
-// docs/specs/15-identidade-kimi/spec.md): largura e padding vivem só aqui,
+// Invólucro único de página: largura e padding vivem só aqui,
 // no lugar das mesmas classes de `main` repetidas em cada tela.
 //
 // Sem "use client": precisa ser importado por páginas server (`/`, `/rooms`,

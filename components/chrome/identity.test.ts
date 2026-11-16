@@ -28,6 +28,13 @@ const PALETA = [
   "#d9a441",
   "#bfe6ff",
   "#000000",
+  "#e8dfc2",
+  "#2a2417",
+  "#c9bd96",
+  "#f0cf7a",
+  "#a87a2a",
+  "#e07a6e",
+  "#8f2a22",
 ];
 
 const TOKENS_EXATOS: Record<string, string> = {
@@ -41,8 +48,19 @@ const TOKENS_EXATOS: Record<string, string> = {
   "ink-muted": "#a8ad98",
   leaf: "#5f9e4f",
   "leaf-ink": "#7bb86a",
-  torch: "#d9a441",
+  torch: "var(--gold)",
   fairy: "#bfe6ff",
+  parchment: "#e8dfc2",
+  "parchment-ink": "#2a2417",
+  "parchment-edge": "#c9bd96",
+  "gold-hi": "#f0cf7a",
+  gold: "#d9a441",
+  "gold-lo": "#a87a2a",
+  heart: "#e07a6e",
+  clip: "8px",
+  "motion-dur": "200ms",
+  "motion-ease": "cubic-bezier(0.16, 1, 0.3, 1)",
+  "motion-factor": "1",
 };
 
 const TOKENS_LEGADOS = [
@@ -93,7 +111,7 @@ function valorDoToken(nome: string): string | undefined {
 }
 
 describe("identidade Lost Woods", () => {
-  it("AC-001: todo literal de cor pertence ao conjunto fechado", () => {
+  it("AC-001: literais de cor pertencem ao conjunto", () => {
     const { total, fora } = literaisForaDaPaleta(css);
     expect(total).toBeGreaterThanOrEqual(10);
     expect(fora).toEqual([]);
@@ -116,7 +134,7 @@ describe("identidade Lost Woods", () => {
     expect(funcaoDeCroma.test(css), "função de cor fora do scan").toBe(false);
   });
 
-  it("AC-002: tokens do FR-001 têm o valor exato", () => {
+  it("AC-002: declara os tokens da identidade pergaminho", () => {
     const divergentes = Object.entries(TOKENS_EXATOS)
       .filter(([nome, valor]) => valorDoToken(nome) !== valor)
       .map(([nome]) => nome);
@@ -132,7 +150,7 @@ describe("identidade Lost Woods", () => {
   });
 
   it("AC-022: layout carrega Fraunces e --font-display a referencia", () => {
-    expect(layout).toMatch(/Fraunces[\s\S]*from "next\/font\/google"/);
+    expect(layout).toMatch(/Fraunces[\s\S]*from "next\/font\/google"/i);
     expect(layout).toContain('variable: "--font-fraunces"');
     expect(layout).toContain("fraunces.variable");
     expect(valorDoToken("font-display")).toContain("var(--font-fraunces)");

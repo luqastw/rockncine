@@ -13,7 +13,7 @@ export function GenericIframe({ src }: { src: string }) {
   if (!isSafeEmbedUrl(src)) {
     return (
       <div className="flex h-full w-full items-center justify-center p-6 text-center text-body-sm text-[var(--ink-muted)]">
-        link inválido pra incorporação.
+        Link inválido pra incorporação.
       </div>
     );
   }
@@ -23,7 +23,7 @@ export function GenericIframe({ src }: { src: string }) {
       src={src}
       // iframe sem nome acessível é anunciado como "frame" sem contexto
       // nenhum por leitor de tela (achado 18 da auditoria).
-      title="player de vídeo incorporado"
+      title="Player de vídeo incorporado"
       className="h-full w-full"
       sandbox="allow-scripts allow-same-origin allow-presentation"
       allow="autoplay; fullscreen; picture-in-picture"

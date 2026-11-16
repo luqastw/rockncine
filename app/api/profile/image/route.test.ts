@@ -52,7 +52,7 @@ describe("PUT /api/profile/image", () => {
     const png = await solid(300, 300).png().toBuffer();
     const res = await put(formWith(png, "a.png", "image/png"));
     expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({ error: "não autenticado." });
+    expect(await res.json()).toEqual({ error: "Não autenticado." });
     expect(mocks.upsert).not.toHaveBeenCalled();
   });
 
@@ -87,7 +87,7 @@ describe("PUT /api/profile/image", () => {
     const gif = await solid(50, 50).gif().toBuffer();
     const res = await put(formWith(gif, "a.png", "image/png"));
     expect(res.status).toBe(415);
-    expect(await res.json()).toEqual({ error: "formato de imagem não suportado." });
+    expect(await res.json()).toEqual({ error: "Formato de imagem não suportado." });
     expect(mocks.upsert).not.toHaveBeenCalled();
   });
 
@@ -117,7 +117,7 @@ describe("PUT /api/profile/image", () => {
   it("2_097_153 bytes => 413", async () => {
     const res = await put(formWith(new Uint8Array(MAX_UPLOAD_BYTES + 1), "a.jpg", "image/jpeg"));
     expect(res.status).toBe(413);
-    expect(await res.json()).toEqual({ error: "imagem muito grande (máx 2 MB)." });
+    expect(await res.json()).toEqual({ error: "Imagem muito grande (máx 2 MB)." });
     expect(mocks.upsert).not.toHaveBeenCalled();
   });
 
@@ -135,7 +135,7 @@ describe("PUT /api/profile/image", () => {
     form.set("file", "texto");
     const res = await put(form);
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "envie uma imagem." });
+    expect(await res.json()).toEqual({ error: "Envie uma imagem." });
     expect(mocks.upsert).not.toHaveBeenCalled();
   });
 
@@ -183,7 +183,7 @@ describe("PUT /api/profile/image", () => {
         "content-type": "multipart/form-data; boundary=x",
       });
       expect(res.status).toBe(413);
-      expect(await res.json()).toEqual({ error: "imagem muito grande (máx 2 MB)." });
+      expect(await res.json()).toEqual({ error: "Imagem muito grande (máx 2 MB)." });
       expect(cancel).toHaveBeenCalled();
       expect(mocks.upsert).not.toHaveBeenCalled();
     });
@@ -247,7 +247,7 @@ describe("DELETE /api/profile/image", () => {
     mocks.getServerSession.mockResolvedValue(null);
     const res = await DELETE();
     expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({ error: "não autenticado." });
+    expect(await res.json()).toEqual({ error: "Não autenticado." });
     expect(mocks.deleteMany).not.toHaveBeenCalled();
   });
 

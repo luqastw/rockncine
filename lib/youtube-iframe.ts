@@ -20,7 +20,7 @@ export function loadYouTubeIframeApi(): Promise<void> {
 
     const timeout = window.setTimeout(() => {
       apiPromise = null;
-      reject(new Error("timeout carregando a API do YouTube."));
+      reject(new Error("Timeout carregando a API do YouTube."));
     }, API_LOAD_TIMEOUT_MS);
 
     window.onYouTubeIframeAPIReady = () => {
@@ -34,7 +34,7 @@ export function loadYouTubeIframeApi(): Promise<void> {
     tag.onerror = () => {
       window.clearTimeout(timeout);
       apiPromise = null;
-      reject(new Error("falha ao carregar o script da API do YouTube."));
+      reject(new Error("Falha ao carregar o script da API do YouTube."));
     };
     document.head.appendChild(tag);
   });

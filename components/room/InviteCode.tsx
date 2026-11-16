@@ -50,7 +50,7 @@ export const InviteCode = memo(function InviteCode({ code }: { code: string }) {
     <div className="flex items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--bg-surface)] py-0.5 pl-3 pr-0.5">
       <span
         id="invite-code-text"
-        className="select-all font-mono text-body tracking-wider text-[var(--ink)]"
+        className="select-all font-mono text-body uppercase tracking-wider text-[var(--ink)]"
       >
         {code}
       </span>
@@ -59,16 +59,16 @@ export const InviteCode = memo(function InviteCode({ code }: { code: string }) {
         variant="ghost"
         size="sm"
         onClick={copy}
-        aria-label="copiar link de convite"
+        aria-label="Copiar link de convite"
         className="shrink-0"
       >
-        {status === "copied" ? "copiado" : status === "failed" ? "copie" : "copiar"}
+        {status === "copied" ? "Copiado" : status === "failed" ? "Copie" : "Copiar"}
       </Button>
       <span role="status" aria-live="polite" className="sr-only">
         {status === "copied"
-          ? "link de convite copiado"
+          ? "Link de convite copiado"
           : status === "failed"
-            ? "não foi possível copiar. o código está selecionado, copie manualmente."
+            ? "Não foi possível copiar. O código está selecionado, copie manualmente."
             : ""}
       </span>
     </div>
