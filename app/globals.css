@@ -339,6 +339,9 @@ button,
 .animate-fade {
   animation: fade-in calc(var(--motion-dur) * var(--motion-factor) * 0.8) ease-out both;
 }
+.animate-rise {
+  animation: rise-in calc(var(--motion-dur) * var(--motion-factor) * 1.3) var(--motion-ease) both;
+}
 
 .room-list > li {
   animation: rise-in calc(var(--motion-dur) * var(--motion-factor) * 1.3) var(--motion-ease) both;

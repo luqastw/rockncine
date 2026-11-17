@@ -460,7 +460,7 @@ describe("Chat — envio e composer", () => {
     input.setSelectionRange(1, 1);
     abrirEmojis();
     act(() => {
-      fireEvent.click(screen.getByRole("button", { name: "inserir ❤️ na mensagem" }));
+      fireEvent.click(screen.getByRole("button", { name: "Inserir coração vermelho" }));
     });
     expect(input.value).toBe("a❤️bc");
     expect(mocks.broadcast).not.toHaveBeenCalled();
@@ -472,29 +472,31 @@ describe("Chat — envio e composer", () => {
     input.setSelectionRange(0, 0);
     abrirEmojis();
     act(() => {
-      fireEvent.click(screen.getByRole("button", { name: "inserir ❤️ na mensagem" }));
+      fireEvent.click(screen.getByRole("button", { name: "Inserir coração vermelho" }));
     });
     expect(mocks.broadcast).toHaveBeenCalledTimes(1);
     expect(input.value).toBe("");
   });
 
-  it("popover abre com foco no primeiro emoji e Escape devolve o foco (T-017)", () => {
+  it("popover abre com foco na busca e Escape devolve o foco (T-017)", () => {
+    vi.spyOn(window, "matchMedia").mockImplementation(
+      (query: string) => ({ matches: true, media: query }) as MediaQueryList,
+    );
     renderChat();
     const trigger = screen.getByRole("button", { name: "Emoji" });
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByRole("group", { name: "Emojis" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Emojis" })).toBeNull();
 
     act(() => {
       fireEvent.click(trigger);
     });
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
-    const first = screen.getByRole("button", { name: "inserir ❤️ na mensagem" });
-    expect(document.activeElement).toBe(first);
+    expect(document.activeElement).toBe(screen.getByRole("searchbox", { name: "Buscar emoji" }));
 
     act(() => {
       fireEvent.keyDown(document, { key: "Escape" });
     });
-    expect(screen.queryByRole("group", { name: "Emojis" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Emojis" })).toBeNull();
     expect(document.activeElement).toBe(trigger);
   });
 

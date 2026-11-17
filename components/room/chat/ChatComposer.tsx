@@ -65,7 +65,6 @@ export function ChatComposer({
       }
 
       requestAnimationFrame(() => {
-        field.focus();
         field.setSelectionRange(caret, caret);
       });
     },
@@ -91,7 +90,7 @@ export function ChatComposer({
         event.preventDefault();
         submit();
       }}
-      className="flex flex-col gap-1 max-lg:sticky max-lg:bottom-0 max-lg:bg-[var(--bg-void)]"
+      className="relative flex flex-col gap-1 max-lg:sticky max-lg:bottom-0 max-lg:bg-[var(--bg-void)]"
     >
       {/* Envio em fila, e não descarte silencioso (FR-005/FR-006): o campo
           continua aceitando texto durante a reconexão porque a mensagem vai

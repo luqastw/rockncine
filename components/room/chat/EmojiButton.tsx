@@ -1,42 +1,27 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { REACTION_EMOJIS } from "@/liveblocks.config";
 import { SmileIcon } from "@/components/room/player/icons";
+import { EmojiPicker } from "@/components/room/chat/EmojiPicker";
 
-/**
- * Botão de emoji com popover (FR-028 da onda 3 / `tasks.md` T-017).
- *
- * A fileira de seis emojis vivia em uma linha fixa de 44px acima do composer,
- * dentro de um painel de 272px. Em tela curta essa linha é o que empurra o
- * campo para fora da viewport — a medida que está no comentário do `aside`. Com
- * o popover, os emojis só existem enquanto alguém quer usá-los, e o painel
- * ganha 44px de log.
- *
- * Foco: abre levando o foco para o primeiro emoji, fecha com Escape devolvendo o
- * foco ao gatilho, e fecha em clique fora. Sem isso o popover vira um canto morto
- * para quem navega por teclado.
- */
 export function EmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const panelRef = useRef<HTMLDivElement | null>(null);
+  const layerRef = useRef<HTMLDivElement | null>(null);
   const panelId = useId();
 
-  const close = useCallback((devolverFoco: boolean) => {
+  const close = useCallback((returnFocus: boolean) => {
     setOpen(false);
-    if (devolverFoco) triggerRef.current?.focus();
+    if (returnFocus) triggerRef.current?.focus();
   }, []);
 
   useEffect(() => {
     if (!open) return;
-    const first = panelRef.current?.querySelector("button");
-    first?.focus();
-
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") close(true);
     };
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
-      if (target && (panelRef.current?.contains(target) || triggerRef.current?.contains(target))) return;
+      if (!target) return;
+      if (layerRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
       close(false);
     };
     document.addEventListener("keydown", onKeyDown);
@@ -48,44 +33,29 @@ export function EmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
   }, [close, open]);
 
   return (
-    <div className="relative shrink-0">
+    <div className="shrink-0">
       <button
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
+        aria-haspopup="dialog"
         aria-label="Emoji"
         className="flex h-11 w-11 items-center justify-center rounded-sm border border-[var(--ink-muted)] text-base text-[var(--ink)] hover:border-[var(--ink)] hover:bg-[var(--fill-1)] reticle"
       >
         <SmileIcon className="size-5" />
       </button>
       {open && (
-        <div
-          ref={panelRef}
-          id={panelId}
-          role="group"
-          aria-label="Emojis"
-          // `bottom-full` acima do botão: o popover abre para dentro da área do
-          // log, que é onde o olho já está, e nunca empurra o composer para
-          // baixo.
-          className="absolute right-0 bottom-full z-30 mb-2 flex gap-1 rounded-sm border border-[var(--line)] bg-[var(--bg-surface)] p-1 shadow-[var(--shadow-pop)]"
-        >
-          {REACTION_EMOJIS.map((emoji) => (
-            <button
-              key={emoji}
-              type="button"
-              onClick={() => {
-                onPick(emoji);
-                triggerRef.current?.focus();
-              }}
-              aria-label={`inserir ${emoji} na mensagem`}
-              className="flex h-11 w-11 items-center justify-center rounded-sm text-base hover:bg-[var(--fill-1)] reticle"
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
+        <>
+          <div aria-hidden className="fixed inset-0 z-30 bg-[var(--bg-void)]/70 animate-fade lg:hidden" />
+          <div
+            ref={layerRef}
+            className="absolute right-0 bottom-full z-40 mb-2 w-[min(22rem,100%)] animate-rise drop-shadow-[0_4px_10px_rgb(0_0_0/0.5)] max-lg:-right-3 max-lg:-left-3 max-lg:w-auto sm:max-lg:-right-4 sm:max-lg:-left-4"
+          >
+            <EmojiPicker id={panelId} onPick={onPick} />
+          </div>
+        </>
       )}
     </div>
   );
