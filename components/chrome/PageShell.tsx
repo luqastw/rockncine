@@ -1,43 +1,53 @@
 import type { ReactNode } from "react";
 import { ChromeBar } from "./ChromeBar";
 import { Fog } from "./Fog";
+import { SiteNav, type NavKey } from "./SiteNav";
 
-// Invólucro único de página: largura e padding vivem só aqui,
-// no lugar das mesmas classes de `main` repetidas em cada tela.
-//
-// Sem "use client": precisa ser importado por páginas server (`/`, `/rooms`,
-// 404) e pelos boundaries client (`error.tsx`).
+const WIDTHS = {
+  sm: "max-w-xl",
+  md: "max-w-5xl",
+  lg: "max-w-7xl",
+  full: "",
+} as const;
+
 export function PageShell({
   children,
-  width = "sm",
-  chrome = false,
+  width = "lg",
+  nav = "none",
+  current,
   actions,
   fog = false,
   className,
 }: {
   children: ReactNode;
-  /** Largura da coluna: `sm` (auth/estados), `md` (lista) ou `lg` (landing). */
-  width?: "sm" | "md" | "lg";
-  /** Renderiza a barra fixa de chrome. Quando ligada, o padding-top reserva a altura dela. */
-  chrome?: boolean;
+  width?: keyof typeof WIDTHS;
+  nav?: "none" | "public" | "app";
+  current?: NavKey;
   actions?: ReactNode;
   fog?: boolean;
-  /** Classes da tela (gap, alinhamento). Nunca largura — a largura é do shell. */
   className?: string;
 }) {
-  const maxWidth =
-    width === "lg" ? "max-w-5xl" : width === "md" ? "max-w-3xl" : "max-w-[26rem]";
+  const topPadding =
+    nav === "app" ? "pt-20 lg:pt-14" : nav === "public" ? "pt-24 sm:pt-28" : "pt-10 sm:pt-14";
+  const bottomPadding = fog ? "pb-40 sm:pb-44" : "pb-16 sm:pb-20";
+  const gutters = width === "full" ? "" : "px-6 sm:px-10";
 
   return (
     <>
-      {chrome ? <ChromeBar actions={actions} /> : null}
-      <div className="relative flex min-h-dvh w-full flex-col overflow-x-clip">
+      {nav === "public" ? <ChromeBar actions={actions} /> : null}
+      {nav === "app" ? <SiteNav current={current} /> : null}
+      <div
+        className={`relative flex min-h-dvh w-full flex-col overflow-x-clip ${
+          nav === "app" ? "lg:pl-[var(--rail)]" : ""
+        }`}
+      >
         <main
           className={[
-            "relative z-10 mx-auto flex w-full flex-1 flex-col px-6 sm:px-10",
-            chrome ? "pt-24 sm:pt-28" : "pt-10 sm:pt-14",
-            fog ? "pb-44 sm:pb-48" : chrome ? "pb-20 sm:pb-24" : "pb-10 sm:pb-14",
-            maxWidth,
+            "relative z-10 mx-auto flex w-full flex-1 flex-col",
+            gutters,
+            width === "full" ? "" : topPadding,
+            width === "full" ? "" : bottomPadding,
+            WIDTHS[width],
             className,
           ]
             .filter(Boolean)

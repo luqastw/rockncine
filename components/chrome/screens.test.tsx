@@ -30,7 +30,7 @@ describe("telas de formulário", () => {
     }
   });
 
-  it("AC-005: /rooms tem ≤ 3 superfícies de pergaminho e a lista está em pergaminho", async () => {
+  it("AC-005: /rooms lista as salas em cartões chanfrados e sem superfície de pergaminho", async () => {
     vi.mocked(getServerSession).mockResolvedValue({ user: { id: "eu", name: "eu" } } as never);
     findMany.mockResolvedValue([
       {
@@ -45,12 +45,11 @@ describe("telas de formulário", () => {
       },
     ]);
     const { container } = render(await RoomsPage({ searchParams: Promise.resolve({}) }));
-    const surfaces = container.querySelectorAll('[data-surface="parchment"]');
-    expect(surfaces.length).toBeGreaterThan(0);
-    expect(surfaces.length).toBeLessThanOrEqual(3);
+    expect(container.querySelectorAll(".parchment").length).toBe(0);
     const list = container.querySelector("ul.room-list");
-    expect(list?.closest('[data-surface="parchment"]')).not.toBeNull();
-    expect(list?.closest(".parchment.frame")).not.toBeNull();
+    expect(list).not.toBeNull();
+    const cards = list?.querySelectorAll(":scope > li > a.frame") ?? [];
+    expect(cards.length).toBe(1);
   });
 
   it("FR-016: preview de avatar circular ≥ 160px em /profile", () => {

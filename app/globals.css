@@ -1,10 +1,5 @@
 @import "tailwindcss";
 
-/* ---------------------------------------------------------------------------
-   Paleta verde escura: fundo quase preto esverdeado, superfícies em verde
-   profundo, texto em verde claro, acento menta e separadores de 1px em verde.
-   Estado é sinalizado por contraste, opacidade, peso e inversão.
-   --------------------------------------------------------------------------- */
 :root {
   --pure-black: #000000;
 
@@ -26,13 +21,28 @@
   --gold-lo: #a87a2a;
   --heart: #e07a6e;
   --heart-ink: #8f2a22;
-  --clip: 8px;
   --torch: var(--gold);
+  --fairy: #bfe6ff;
+  --accent: var(--leaf);
+
+  --gold-grad: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold) 55%, var(--gold-lo) 100%);
+  --gold-edge: color-mix(in srgb, var(--gold-lo) 88%, var(--bg-void));
+
+  --clip: 20px;
+  --clip-lg: 32px;
+  --clip-btn: 12px;
+  --rail: 72px;
+
   --motion-dur: 200ms;
   --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
   --motion-factor: 1;
-  --fairy: #bfe6ff;
-  --accent: var(--leaf);
+  --ease-reveal: cubic-bezier(0, 0, 0.58, 1);
+  --ease-menu: cubic-bezier(0.73, 0.42, 0.52, 0.703);
+  --dur-reveal: 800ms;
+  --dur-menu: 500ms;
+  --dur-menu-item: 300ms;
+  --stagger-reveal: 200ms;
+  --stagger-menu: 70ms;
 
   --fill-1: rgb(95 158 79 / 0.06);
   --fill-2: rgb(95 158 79 / 0.12);
@@ -55,13 +65,15 @@
   --id-2: #a8ad98;
   --id-3: #7bb86a;
   --id-4: #6b7f68;
+
+  --lattice: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23d9a441' stroke-opacity='0.05' stroke-width='1'%3E%3Cpath d='M36 0 72 36 36 72 0 36Z'/%3E%3Cpath d='M36 14 58 36 36 58 14 36Z'/%3E%3C/g%3E%3Cpath d='M36 30c4 0 6 3 6 6s-2 6-6 6c0-4-1-8 0-12Z' fill='%23d9a441' fill-opacity='0.05'/%3E%3C/svg%3E");
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  --font-sans: var(--font-inter), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-geologica), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono:
     var(--font-geist-mono), ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
     "Liberation Mono", monospace;
@@ -69,6 +81,14 @@
 }
 
 @theme {
+  --text-display: clamp(3rem, 1.6rem + 6vw, 6rem);
+  --text-display--line-height: 1.02;
+  --text-display--letter-spacing: -0.02em;
+  --text-h2: clamp(2rem, 1.4rem + 2.4vw, 3.5rem);
+  --text-h2--line-height: 1.08;
+  --text-h2--letter-spacing: -0.015em;
+  --text-card: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+  --text-card--line-height: 1.15;
   --text-title: 1.75rem;
   --text-title--line-height: 2.25rem;
   --text-heading: 1.25rem;
@@ -82,11 +102,11 @@
   --text-micro: 0.8125rem;
   --text-micro--line-height: 1.125rem;
 
-  --radius-sm: 0.375rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.375rem;
-  --radius-xl: 0.5rem;
-  --radius-2xl: 0.5rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.25rem;
+  --radius-2xl: 0.25rem;
 }
 
 body {
@@ -95,10 +115,22 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Barra de chrome. Único ponto
-   de blur do chrome: 6px, fundo 72% e
-   fio de 1px que só aparece depois do primeiro scroll — o mesmo comportamento
-   da navegação da Kimi. O fio é separação real, não só desfoque. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(120% 70% at 50% -10%, rgb(217 164 65 / 0.09), transparent 60%),
+    radial-gradient(90% 90% at 50% 50%, transparent 50%, rgb(0 0 0 / 0.5) 100%),
+    var(--lattice);
+  background-size:
+    100% 100%,
+    100% 100%,
+    72px 72px;
+}
+
 .chrome-blur {
   background: rgb(15 26 20 / 0.8);
   backdrop-filter: blur(6px);
@@ -106,11 +138,9 @@ body {
 }
 
 .chrome-blur[data-scrolled="true"] {
-  border-bottom-color: var(--hairline);
+  border-bottom-color: var(--gold-edge);
 }
 
-/* Pulso do "ao vivo": estático, sem keyframe — animar border-width força
-   reflow a cada frame. Só box-shadow (compositor). */
 .animate-sync-pulse {
   box-shadow: 0 0 20px 1px rgb(191 230 255 / 0.14);
 }
@@ -128,8 +158,6 @@ body {
   animation: sync-flash calc(var(--motion-dur) * var(--motion-factor) * 1.75) ease-out;
 }
 
-/* Scrubber/volume do player: o track fica transparente e o progresso é
-   desenhado pelo background do próprio input (linear-gradient inline). */
 .range-mono {
   appearance: none;
   -webkit-appearance: none;
@@ -182,9 +210,6 @@ html::-webkit-scrollbar {
   display: none;
 }
 
-/* A casca da sala (altura da sala) tem altura fixa enquanto o conteúdo cabe. Quando NÃO cabe —
-   janela de 256px de altura ou texto a 200% — espremer é pior que rolar. A
-   unidade `em` acompanha a preferência do usuário (FR-049 da spec 01). */
 @media (max-height: 32em) {
   .room-shell {
     height: auto;
@@ -193,7 +218,6 @@ html::-webkit-scrollbar {
   }
 }
 
-/* Remove a espera de ~300ms do duplo-toque no toque, sem desligar o zoom. */
 a,
 button,
 [role="button"] {
@@ -206,8 +230,10 @@ button,
 .reduce-motion *::after {
   --motion-factor: 0;
   animation-duration: 0.01ms !important;
+  animation-delay: 0s !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
+  transition-delay: 0s !important;
   scroll-behavior: auto !important;
 }
 
@@ -217,18 +243,22 @@ button,
   *::after {
     --motion-factor: 0;
     animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
   }
 }
 
-/* Transição de pintura para hover/foco. Sem box-shadow: o anel de foco precisa
-   aparecer na hora. Dentro de `@layer base` para qualquer utilitário
-   `transition-*` continuar vencendo. */
 @layer base {
   h1,
-  h2 {
+  h2,
+  h3 {
     font-family: var(--font-display);
+    font-variation-settings:
+      "opsz" 144,
+      "SOFT" 100,
+      "WONK" 0;
   }
 
   a,
@@ -246,8 +276,6 @@ button,
   }
 }
 
-/* Selo do Liveblocks: nó de terceiro com estilo inline. O botão de esconder
-   nasce invisível e sem foco; aqui ganha alvo de 24px e anel do projeto. */
 #liveblocks-badge-hide-button {
   width: 24px !important;
   height: 24px !important;
@@ -259,14 +287,13 @@ button,
   outline-offset: 2px !important;
 }
 
-/* O selo vem com z-index 9999 inline e pintava sobre o modal (`z-50`). */
 #liveblocks-badge {
   z-index: 40 !important;
+  left: auto !important;
+  right: 12px !important;
+  bottom: 8px !important;
 }
 
-/* Centralização vertical que não recorta: `center` enquanto cabe, `start`
-   quando o conteúdo passa da caixa. Tailwind v4 não gera
-   `justify-[safe_center]`. */
 .justify-safe-center {
   justify-content: safe center;
 }
@@ -275,7 +302,6 @@ button,
    Movimento (FR-020, docs/specs/13-chat-sala/spec.md): entradas curtas, uma cascata discreta e resposta imediata ao
    toque. Nada coreografado; tudo morre em reduced-motion.
    --------------------------------------------------------------------------- */
-
 @keyframes rise-in {
   from {
     opacity: 0;
@@ -314,27 +340,11 @@ button,
   animation: fade-in calc(var(--motion-dur) * var(--motion-factor) * 0.8) ease-out both;
 }
 
-/* Cascata da lista de salas: cada item entra 24ms depois do anterior. */
 .room-list > li {
   animation: rise-in calc(var(--motion-dur) * var(--motion-factor) * 1.3) var(--motion-ease) both;
-}
-.room-list > li:nth-child(2) {
-  animation-delay: calc(var(--motion-dur) * var(--motion-factor) * 0.12);
-}
-.room-list > li:nth-child(3) {
-  animation-delay: calc(var(--motion-dur) * var(--motion-factor) * 0.24);
-}
-.room-list > li:nth-child(4) {
-  animation-delay: calc(var(--motion-dur) * var(--motion-factor) * 0.36);
-}
-.room-list > li:nth-child(5) {
-  animation-delay: calc(var(--motion-dur) * var(--motion-factor) * 0.48);
-}
-.room-list > li:nth-child(n + 6) {
-  animation-delay: calc(var(--motion-dur) * var(--motion-factor) * 0.6);
+  animation-delay: calc(var(--i, 0) * var(--motion-dur) * var(--motion-factor) * 0.12);
 }
 
-/* Press: confirmação de estado, não movimento. */
 button:not(:disabled):active,
 a[href]:active {
   opacity: 0.88;
@@ -348,10 +358,12 @@ a[href]:active {
    --------------------------------------------------------------------------- */
 [data-js] .reveal {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(28px);
   transition:
-    opacity calc(var(--motion-dur) * var(--motion-factor) * 1.6) var(--motion-ease),
-    transform calc(var(--motion-dur) * var(--motion-factor) * 1.6) var(--motion-ease);
+    opacity calc(var(--dur-reveal) * var(--motion-factor)) var(--ease-reveal)
+      calc(var(--reveal-i, 0) * var(--stagger-reveal) * var(--motion-factor)),
+    transform calc(var(--dur-reveal) * var(--motion-factor)) var(--ease-reveal)
+      calc(var(--reveal-i, 0) * var(--stagger-reveal) * var(--motion-factor));
 }
 
 [data-js] .reveal[data-visible] {
@@ -364,20 +376,49 @@ a[href]:active {
   transform: none;
 }
 
-/* FR-006: quando o usuário pede menos transparência, o desfoque sai de cena; a
-   barra volta a ser opaca para o conteúdo não vazar por trás. */
 @media (prefers-reduced-transparency: reduce) {
   .chrome-blur {
     backdrop-filter: none;
     background: var(--bg-void);
   }
+  .menu-overlay {
+    backdrop-filter: none;
+  }
 }
 
 @layer components {
+  .font-display {
+    font-variation-settings:
+      "opsz" 144,
+      "SOFT" 100,
+      "WONK" 0;
+  }
+
+  .text-gold {
+    color: var(--gold);
+    background-image: var(--gold-grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .chamfer {
+    clip-path: polygon(
+      var(--clip) 0,
+      calc(100% - var(--clip)) 0,
+      100% var(--clip),
+      100% calc(100% - var(--clip)),
+      calc(100% - var(--clip)) 100%,
+      var(--clip) 100%,
+      0 calc(100% - var(--clip)),
+      0 var(--clip)
+    );
+  }
+
   .frame {
     position: relative;
     isolation: isolate;
-    background: var(--line);
+    background: var(--frame-edge, var(--gold-edge));
     clip-path: polygon(
       var(--clip) 0,
       calc(100% - var(--clip)) 0,
@@ -411,12 +452,43 @@ a[href]:active {
   .frame::after {
     content: "";
     position: absolute;
-    inset: 3px;
-    border: 1px solid var(--line);
+    inset: 0;
     pointer-events: none;
+    background-repeat: no-repeat;
+    background-image:
+      linear-gradient(
+        to bottom right,
+        transparent calc(50% - 0.5px),
+        var(--gold) calc(50% - 0.5px),
+        var(--gold) calc(50% + 0.5px),
+        transparent calc(50% + 0.5px)
+      ),
+      linear-gradient(
+        to bottom right,
+        transparent calc(50% - 0.5px),
+        var(--gold) calc(50% - 0.5px),
+        var(--gold) calc(50% + 0.5px),
+        transparent calc(50% + 0.5px)
+      );
+    background-size:
+      calc(var(--clip) + 9px) calc(var(--clip) + 9px),
+      calc(var(--clip) + 9px) calc(var(--clip) + 9px);
+    background-position:
+      left top,
+      right bottom;
+  }
+
+  .frame-lg {
+    --clip: var(--clip-lg);
+  }
+
+  .frame-hover:hover {
+    --frame-edge: var(--gold);
+    --frame-fill: var(--bg-elevated);
   }
 
   .frame-btn {
+    --clip: var(--clip-btn);
     clip-path: polygon(
       var(--clip) 0,
       calc(100% - var(--clip)) 0,
@@ -427,6 +499,15 @@ a[href]:active {
       0 calc(100% - var(--clip)),
       0 var(--clip)
     );
+  }
+
+  .btn-gold {
+    background-image: var(--gold-grad);
+    color: var(--bg-void);
+  }
+
+  .btn-gold:hover {
+    filter: brightness(1.1);
   }
 
   .parchment {
@@ -556,8 +637,8 @@ a[href]:active {
     opacity: 0;
     transform: scaleX(0.4);
     transition:
-      opacity calc(var(--motion-dur) * var(--motion-factor) * 1.6) var(--motion-ease),
-      transform calc(var(--motion-dur) * var(--motion-factor) * 1.9) var(--motion-ease);
+      opacity calc(var(--dur-reveal) * var(--motion-factor)) var(--ease-reveal),
+      transform calc(var(--dur-reveal) * var(--motion-factor)) var(--ease-reveal);
   }
 
   [data-js] .reveal[data-visible] .divider-gold,
@@ -569,6 +650,70 @@ a[href]:active {
   [data-reveal] .divider-gold {
     opacity: 1;
     transform: none;
+  }
+
+  .band {
+    background-color: rgb(22 36 28 / 0.55);
+    background-image: var(--lattice);
+    background-size: 72px 72px;
+  }
+
+  .rail {
+    border-right: 1px solid var(--gold-edge);
+    background: linear-gradient(180deg, rgb(15 26 20 / 0.96), rgb(15 26 20 / 0.99));
+  }
+
+  .menu-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    visibility: hidden;
+    pointer-events: none;
+    opacity: 0;
+    background:
+      radial-gradient(80% 80% at 70% 40%, rgb(217 164 65 / 0.08), transparent 70%),
+      rgb(15 26 20 / 0.94);
+    backdrop-filter: blur(0px);
+    transition:
+      opacity calc(var(--dur-menu) * var(--motion-factor)) var(--ease-menu),
+      backdrop-filter calc(var(--dur-menu) * var(--motion-factor)) var(--ease-menu),
+      visibility 0s linear calc(var(--dur-menu) * var(--motion-factor));
+  }
+
+  .menu-overlay[data-open="true"] {
+    visibility: visible;
+    pointer-events: auto;
+    opacity: 1;
+    backdrop-filter: blur(14px);
+    transition-delay: 0s;
+  }
+
+  .menu-emblem,
+  .menu-item,
+  .menu-art {
+    opacity: 0;
+    transform: translateY(14px);
+    transition:
+      opacity calc(var(--dur-menu-item) * var(--motion-factor)) var(--ease-reveal),
+      transform calc(var(--dur-menu-item) * var(--motion-factor)) var(--ease-reveal);
+  }
+
+  .menu-overlay[data-open="true"] .menu-emblem {
+    opacity: 1;
+    transform: none;
+    transition-delay: calc(100ms * var(--motion-factor));
+  }
+
+  .menu-overlay[data-open="true"] .menu-item {
+    opacity: 1;
+    transform: none;
+    transition-delay: calc((200ms + var(--i, 0) * var(--stagger-menu)) * var(--motion-factor));
+  }
+
+  .menu-overlay[data-open="true"] .menu-art {
+    opacity: 1;
+    transform: none;
+    transition-delay: calc(300ms * var(--motion-factor));
   }
 
   .iris {

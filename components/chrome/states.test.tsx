@@ -6,7 +6,7 @@ vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 
 vi.mock("next/font/google", () => ({
-  Inter: () => ({ variable: "--font-inter", className: "font-inter" }),
+  Geologica: () => ({ variable: "--font-geologica", className: "font-geologica" }),
   Fraunces: () => ({ variable: "--font-fraunces", className: "font-fraunces" }),
   Geist_Mono: () => ({ variable: "--font-geist-mono", className: "font-geist-mono" }),
 }));
@@ -63,12 +63,11 @@ describe("hierarquia de controle nos estados (FR-020)", () => {
   it("o CTA primário do erro é o bloco invertido", () => {
     render(<SegmentError error={new Error("boom")} reset={() => {}} />);
     const primario = screen.getByRole("button", { name: "Tentar de novo" });
-    expect(primario.className).toContain("bg-[var(--leaf)]");
-    expect(primario.className).toContain("text-[var(--bg-void)]");
+    expect(primario.className).toContain("btn-gold");
     expect(primario.className).toContain("reticle");
 
     const secundario = screen.getByRole("link", { name: "Voltar pro menu" });
-    expect(secundario.className).toContain("border-[var(--line-strong)]");
+    expect(secundario.className).toContain("border-[var(--gold-edge)]");
   });
 
   it("NFR-2: os alvos de toque do erro de segmento têm 44px", () => {
@@ -96,7 +95,8 @@ describe("landing e moldura dos estados (FR-013, FR-018)", () => {
     expect(listas).toHaveLength(1);
     expect(listas[0].querySelectorAll(":scope > li")).toHaveLength(3);
     expect(container.querySelector('[role="slider"]')).toBeNull();
-    expect(container.querySelector('[class*="grid-cols-3"]')).toBeNull();
+    expect(container.querySelector('[data-motif="product-preview"]')).not.toBeNull();
+    expect(container.querySelectorAll("section").length).toBeGreaterThanOrEqual(4);
   });
 
   it("AC-019/FR-018: estados de erro dentro de moldura", () => {

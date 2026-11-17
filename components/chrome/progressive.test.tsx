@@ -57,6 +57,6 @@ describe("realce progressivo (FR-013, FR-014)", () => {
   it("o conteúdo da landing é renderizado dentro dos wrappers (o portão de AC-001 é o CSS, em styles.test.ts)", async () => {
     render(await Home());
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Assista junto");
-    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(document.querySelectorAll("ol > li")).toHaveLength(3);
   });
 });

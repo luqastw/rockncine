@@ -3,10 +3,10 @@ import { cx } from "@/lib/cx";
 
 export const cardClass = "frame";
 
-export const cardPrimaryClass = "frame [--line:rgb(95_158_79/0.4)]";
+export const cardPrimaryClass = "frame [--frame-edge:var(--gold)]";
 
 export const cardHoverClass =
-  "transition-colors duration-150 hover:bg-[var(--bg-elevated)]";
+  "frame-hover";
 
 export function Card({
   className,

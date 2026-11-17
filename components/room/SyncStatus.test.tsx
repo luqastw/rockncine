@@ -20,15 +20,15 @@ describe("SyncStatus", () => {
     expect(container.querySelector("[data-sync-dot]")).not.toBeNull();
   });
 
-  it("pausado mostra pausado sem ponto", () => {
+  it("pausado mostra Pausado sem ponto", () => {
     const { container } = render(<SyncStatus {...base} />);
-    expect(screen.getByText("pausado")).toBeTruthy();
+    expect(screen.getByText("Pausado")).toBeTruthy();
     expect(container.querySelector("[data-sync-dot]")).toBeNull();
   });
 
-  it("transmissão mostra transmissão sem ponto", () => {
+  it("transmissão mostra Transmissão sem ponto", () => {
     const { container } = render(<SyncStatus {...base} isPlaying isBroadcasting />);
-    expect(screen.getByText("transmissão")).toBeTruthy();
+    expect(screen.getByText("Transmissão")).toBeTruthy();
     expect(container.querySelector("[data-sync-dot]")).toBeNull();
   });
 

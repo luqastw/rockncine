@@ -19,10 +19,10 @@ export function ChromeBar({ actions }: { actions?: ReactNode }) {
       data-scrolled={scrolled ? "true" : "false"}
       className="chrome-blur fixed inset-x-0 top-0 z-30 flex justify-center"
     >
-      <div className="flex h-16 w-full max-w-5xl items-center justify-between gap-4 px-6 sm:px-10">
+      <div className="flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-6 sm:px-10">
         <Link
           href="/"
-          className="inline-flex min-h-11 items-center rounded-md reticle"
+          className="inline-flex min-h-11 items-center rounded-sm reticle"
         >
           <Wordmark />
         </Link>

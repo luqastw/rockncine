@@ -91,29 +91,27 @@ describe("landing", () => {
     expect(container.querySelector('input[type="range"]')).toBeNull();
   });
 
-  it("AC-021: pauta no hero e névoa são aria-hidden", async () => {
+  it("AC-021: a landing não usa a pauta e a névoa é aria-hidden", async () => {
     anon();
     const { container } = render(await Home());
-    const hero = screen.getByRole("heading", { level: 1 }).closest("section");
-    const pauta = hero?.querySelector("svg[data-lit]");
-    expect(pauta?.getAttribute("aria-hidden")).toBe("true");
-    expect(pauta?.querySelectorAll("[data-staff-line]").length).toBeGreaterThan(0);
+    expect(container.querySelector("svg[data-lit]")).toBeNull();
+    const preview = container.querySelector('[data-motif="product-preview"]');
+    expect(preview?.querySelector('[aria-hidden="true"]')).not.toBeNull();
     const nevoa = container.querySelector("[data-fog]");
     expect(nevoa?.getAttribute("aria-hidden")).toBe("true");
     expect(nevoa?.querySelector("svg")).not.toBeNull();
   });
 
-  it("o CTA primário usa inversão e foco; o secundário usa contorno", async () => {
+  it("o CTA primário usa o gradiente dourado e foco; o secundário usa contorno dourado", async () => {
     anon();
     render(await Home());
 
     const primario = screen.getByRole("link", { name: "Começar agora" });
-    expect(primario.className).toContain("bg-[var(--leaf)]");
-    expect(primario.className).toContain("text-[var(--bg-void)]");
+    expect(primario.className).toContain("btn-gold");
     expect(primario.className).toContain("reticle");
 
     const secundario = screen.getByRole("link", { name: "Já tenho conta" });
-    expect(secundario.className).toContain("border-[var(--line-strong)]");
+    expect(secundario.className).toContain("border-[var(--gold-edge)]");
   });
 
   it("NFR-2: os alvos de toque da landing têm 44px", async () => {

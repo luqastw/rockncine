@@ -45,12 +45,12 @@ export function LastActionNote({
 
   const name =
     actorId === userId
-      ? "você"
-      : others.find((other) => other.presence?.userId === actorId)?.presence.name ?? "alguém";
+      ? "Você"
+      : others.find((other) => other.presence?.userId === actorId)?.presence.name ?? "Alguém";
 
   return (
     <p className="text-caption text-[var(--ink-muted)]">
-      {name} {VERB[lastEvent.type]}
+      {name.charAt(0).toUpperCase() + name.slice(1)} {VERB[lastEvent.type]}
     </p>
   );
 }

@@ -11,7 +11,11 @@ import { BroadcastControls } from "@/components/room/BroadcastControls";
 import { RoomActions } from "@/components/room/RoomActions";
 import { ProfileAvatarModal } from "@/components/room/ProfileAvatarModal";
 import { Badge } from "@/components/ui/Badge";
+import { buttonClass } from "@/components/ui/Button";
 import { iconButtonClass } from "@/components/ui/IconButton";
+import { ArrowLeftIcon, MoreIcon, UserIcon } from "@/components/room/player/icons";
+
+const TOOLS_ID = "room-header-tools";
 
 const CONNECTION_LABEL: Partial<Record<ReturnType<typeof useStatus>, string>> = {
   initial: "Conectando…",
@@ -61,79 +65,82 @@ export function RoomHeader({
 }) {
   const status = useStatus();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const connectionLabel = CONNECTION_LABEL[status];
 
   return (
-    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--line)] pb-3 lg:flex-nowrap lg:items-center">
-      <div className="flex min-w-0 items-center gap-3 lg:contents">
-        <Link
-          href="/rooms"
-          aria-label="Voltar para suas salas"
-          className={iconButtonClass({ variant: "ghost", className: "shrink-0" })}
-        >
-          ←
-        </Link>
-        <div className="flex min-w-0 flex-col gap-0.5 lg:contents">
-          <div className="flex min-w-0 items-center gap-2 lg:order-1 lg:shrink">
-            <h1 className="min-w-0 truncate font-display text-heading font-semibold tracking-tight text-[var(--ink)]">
-              {roomName || "Sala sem nome"}
-            </h1>
-            {/* Indicador, não controle: quem liga/desliga é o botão de
-                `RoomActions` (44px, com `aria-pressed`). */}
-            {economyMode && <Badge variant="soft">Economy</Badge>}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 lg:order-4 lg:min-w-0 lg:shrink-0 lg:flex-nowrap">
-            <LastActionNote lastEvent={lastEvent} userId={userId} />
-            <SyncStatus
-              isPlaying={isPlayingNow}
-              isBroadcasting={isBroadcasting}
-              syncLimited={syncLimited}
-              lastEvent={lastEvent}
-              connectionLabel={connectionLabel}
-            />
-          </div>
+    <header className="relative flex items-center gap-2 border-b border-[var(--gold-edge)] pb-3 sm:gap-3">
+      <Link
+        href="/rooms"
+        aria-label="Voltar para suas salas"
+        title="Voltar para suas salas"
+        className={iconButtonClass({ variant: "ghost", className: "shrink-0" })}
+      >
+        <ArrowLeftIcon className="size-5" />
+      </Link>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <h1 className="min-w-0 truncate font-display text-heading font-semibold tracking-tight text-[var(--ink)] sm:text-title">
+            {roomName || "Sala sem nome"}
+          </h1>
+          {economyMode && <Badge variant="soft">Economy</Badge>}
+        </div>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5">
+          <LastActionNote lastEvent={lastEvent} userId={userId} />
+          <SyncStatus
+            isPlaying={isPlayingNow}
+            isBroadcasting={isBroadcasting}
+            syncLimited={syncLimited}
+            lastEvent={lastEvent}
+            connectionLabel={connectionLabel}
+          />
         </div>
       </div>
 
-      {/* Ações da sala no mesmo bloco do convite: no mobile o botão de
-          transmissão fica ao lado do código, sem uma linha própria abaixo do
-          vídeo. O chat começa na mesma altura da moldura do vídeo. */}
-      <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:contents">
-        <div className="min-w-0 max-sm:flex-1 max-sm:[&>div]:w-full max-sm:[&>div]:justify-between lg:order-2 lg:shrink-0">
-          <InviteCode code={roomCode} />
-        </div>
+      <button
+        type="button"
+        onClick={() => setToolsOpen((open) => !open)}
+        aria-label="Mais opções da sala"
+        aria-expanded={toolsOpen}
+        aria-controls={TOOLS_ID}
+        className={iconButtonClass({ variant: "ghost", className: "shrink-0 sm:hidden" })}
+      >
+        <MoreIcon className="size-5" />
+      </button>
+
+      <div
+        id={TOOLS_ID}
+        className={`${toolsOpen ? "flex" : "hidden"} z-30 flex-col items-stretch gap-3 max-sm:absolute max-sm:top-full max-sm:right-0 max-sm:mt-2 max-sm:w-[min(20rem,calc(100vw-1.5rem))] max-sm:rounded-sm max-sm:border max-sm:border-[var(--gold-edge)] max-sm:bg-[var(--bg-surface)] max-sm:p-4 max-sm:shadow-[var(--shadow-lg)] sm:flex sm:shrink-0 sm:flex-row sm:items-center sm:gap-2`}
+      >
+        <InviteCode code={roomCode} />
         {livekitUrl !== null && (
-          <div className="min-w-0 lg:order-3 lg:shrink">
-            <BroadcastControls
-              broadcast={broadcast}
-              userId={userId}
-              userName={userName}
-              videoSourceUrl={videoSourceUrl}
-            />
-          </div>
-        )}
-        <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-end lg:order-5 lg:ml-auto lg:shrink-0">
-          <button
-            type="button"
-            onClick={() => setProfileOpen(true)}
-            aria-label="Imagem de perfil"
-            aria-haspopup="dialog"
-            className={iconButtonClass({ variant: "ghost", className: "shrink-0" })}
-          >
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="8" r="4" />
-              <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
-            </svg>
-          </button>
-          <RoomActions
-            onLoadVideo={onLoadVideo}
-            onToggleTheater={onToggleTheater}
-            isTheater={isTheater}
-            showTheaterToggle={isFullscreen}
-            onToggleEconomy={onToggleEconomy}
-            isEconomy={economyMode}
+          <BroadcastControls
+            broadcast={broadcast}
+            userId={userId}
+            userName={userName}
+            videoSourceUrl={videoSourceUrl}
           />
-        </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setProfileOpen(true)}
+          aria-label="Imagem de perfil"
+          aria-haspopup="dialog"
+          title="Imagem de perfil"
+          className={buttonClass({ variant: "ghost", size: "sm", className: "shrink-0 max-sm:justify-start" })}
+        >
+          <UserIcon className="size-5" />
+          <span className="max-sm:inline sm:hidden xl:inline">Perfil</span>
+        </button>
+        <RoomActions
+          onLoadVideo={onLoadVideo}
+          onToggleTheater={onToggleTheater}
+          isTheater={isTheater}
+          showTheaterToggle={isFullscreen}
+          onToggleEconomy={onToggleEconomy}
+          isEconomy={economyMode}
+        />
       </div>
       <ProfileAvatarModal
         userId={userId}

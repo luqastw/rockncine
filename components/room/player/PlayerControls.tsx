@@ -40,7 +40,7 @@ function resolutionUnavailableReason(
 // cinco linhas e ficava com 434px de altura sobre um vídeo de 163 (medido).
 // Alvo de toque é físico; quem escala é o rótulo.
 function toggleButtonClass(disabled: boolean): string {
-  return `flex min-h-[44px] shrink-0 items-center justify-center rounded-md px-2.5 font-mono text-caption text-[var(--ink-muted)] hover:bg-[var(--fill-2)] hover:text-[var(--ink)] reticle${
+  return `flex min-h-[44px] shrink-0 items-center justify-center rounded-sm px-2.5 font-mono text-caption text-[var(--ink-muted)] hover:bg-[var(--fill-2)] hover:text-[var(--ink)] reticle${
     disabled ? " cursor-not-allowed opacity-50" : ""
   }`;
 }
@@ -134,7 +134,7 @@ export function PlayerControls({
     // não couber fica a um swipe (e a um Tab: o browser rola o item focado para
     // dentro da vista) de distância. `min-w-[96px]` no slider para ele não
     // voltar a zero (achado 13 da revisão de design).
-    <div className="flex flex-nowrap items-center gap-1 overflow-x-auto rounded-lg border border-[var(--line)] bg-[rgb(15_26_20/0.9)] px-2 py-1 sm:gap-2 sm:px-3">
+    <div className="flex flex-nowrap items-center gap-1 overflow-x-auto rounded-sm border border-[var(--line)] bg-[rgb(15_26_20/0.9)] px-2 py-1 sm:gap-2 sm:px-3">
       <button
         type="button"
         onClick={controller.togglePlay}

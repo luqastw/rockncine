@@ -40,7 +40,7 @@ export function PlayerLoadStatus({
       {message ? (
         <div
           role="alert"
-          className="flex flex-col items-center gap-2 rounded-xl border border-[var(--heart)] bg-[var(--bg-void)] px-4 py-3"
+          className="flex flex-col items-center gap-2 rounded-sm border border-[var(--heart)] bg-[var(--bg-void)] px-4 py-3"
         >
           <span className="font-semibold text-[var(--heart)]">{message}</span>
           {!error && (
@@ -67,7 +67,7 @@ export function PlayerLoadStatus({
         // anúncio nenhum (achado 5 da revisão de design).
         <span
           role="status"
-          className="rounded-lg bg-[var(--bg-void)] px-3 py-2 text-[var(--ink-muted)]"
+          className="rounded-sm bg-[var(--bg-void)] px-3 py-2 text-[var(--ink-muted)]"
         >
           Preparando o player…
         </span>

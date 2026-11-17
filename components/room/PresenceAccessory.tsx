@@ -21,7 +21,7 @@ export function usePresenceAccessory(userId: string, userName: string, avatarV?:
           myAvatarV={avatarV}
         />
         <div
-          className={`absolute right-0 top-full z-40 mt-2 w-64 rounded-xl border border-[var(--line)] bg-[var(--bg-surface)] p-2 shadow-[var(--shadow-pop)] ${
+          className={`absolute right-0 top-full z-40 mt-2 w-64 rounded-sm border border-[var(--line)] bg-[var(--bg-surface)] p-2 shadow-[var(--shadow-pop)] ${
             presence.expanded ? "block" : "hidden"
           }`}
         >

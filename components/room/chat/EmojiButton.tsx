@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { REACTION_EMOJIS } from "@/liveblocks.config";
+import { SmileIcon } from "@/components/room/player/icons";
 
 /**
  * Botão de emoji com popover (FR-028 da onda 3 / `tasks.md` T-017).
@@ -55,9 +56,9 @@ export function EmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         aria-label="Emoji"
-        className="flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--ink-muted)] text-base text-[var(--ink)] hover:border-[var(--ink)] hover:bg-[var(--fill-1)] reticle"
+        className="flex h-11 w-11 items-center justify-center rounded-sm border border-[var(--ink-muted)] text-base text-[var(--ink)] hover:border-[var(--ink)] hover:bg-[var(--fill-1)] reticle"
       >
-        <EmojiIcon />
+        <SmileIcon className="size-5" />
       </button>
       {open && (
         <div
@@ -68,7 +69,7 @@ export function EmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
           // `bottom-full` acima do botão: o popover abre para dentro da área do
           // log, que é onde o olho já está, e nunca empurra o composer para
           // baixo.
-          className="absolute right-0 bottom-full z-30 mb-2 flex gap-1 rounded-xl border border-[var(--line)] bg-[var(--bg-surface)] p-1 shadow-[var(--shadow-pop)]"
+          className="absolute right-0 bottom-full z-30 mb-2 flex gap-1 rounded-sm border border-[var(--line)] bg-[var(--bg-surface)] p-1 shadow-[var(--shadow-pop)]"
         >
           {REACTION_EMOJIS.map((emoji) => (
             <button
@@ -79,7 +80,7 @@ export function EmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
                 triggerRef.current?.focus();
               }}
               aria-label={`inserir ${emoji} na mensagem`}
-              className="flex h-11 w-11 items-center justify-center rounded-lg text-base hover:bg-[var(--fill-1)] reticle"
+              className="flex h-11 w-11 items-center justify-center rounded-sm text-base hover:bg-[var(--fill-1)] reticle"
             >
               {emoji}
             </button>
@@ -87,15 +88,5 @@ export function EmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
         </div>
       )}
     </div>
-  );
-}
-
-export function EmojiIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" className="h-5 w-5" aria-hidden>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M8.5 14.5c.8 1.1 2 1.7 3.5 1.7s2.7-.6 3.5-1.7" />
-      <path d="M9 9.5h.01M15 9.5h.01" />
-    </svg>
   );
 }

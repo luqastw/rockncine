@@ -23,11 +23,16 @@ describe("superfícies e foco do pergaminho", () => {
     const frame = bloco(".frame");
     expect(frame).toMatch(/clip-path:\s*polygon\([^;]*var\(--clip\)/i);
     expect(bloco(".frame::before")).toMatch(/clip-path:\s*polygon\([^;]*calc\(var\(--clip\) - 1px\)/i);
-    expect(bloco(".frame::after")).toMatch(/inset:\s*3px/i);
+    const ornamento = bloco(".frame::after");
+    expect(ornamento).toMatch(/inset:\s*0/i);
+    expect((ornamento.match(/var\(--gold\)/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect(ornamento).toMatch(/background-position:\s*left top,\s*right bottom/i);
     expect(bloco(".frame-btn")).toMatch(/clip-path:\s*polygon\([^;]*var\(--clip\)/i);
     const clip = Number(css.match(/--clip:\s*(\d+)px/)?.[1]);
-    expect(clip).toBeGreaterThanOrEqual(6);
-    expect(clip).toBeLessThanOrEqual(8);
+    expect(clip).toBeGreaterThanOrEqual(16);
+    expect(clip).toBeLessThanOrEqual(24);
+    expect(Number(css.match(/--clip-lg:\s*(\d+)px/)?.[1])).toBeGreaterThan(clip);
+    expect(Number(css.match(/--clip-btn:\s*(\d+)px/)?.[1])).toBeLessThan(clip);
   });
 
   it("AC-005: orçamento de pergaminho", () => {

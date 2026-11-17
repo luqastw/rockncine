@@ -69,7 +69,7 @@ function resolveLabel({
   connectionLabel?: string;
 }) {
   if (connectionLabel) return connectionLabel;
-  if (isBroadcasting) return "transmissão";
+  if (isBroadcasting) return "Transmissão";
   if (syncLimited) return null;
-  return isPlaying ? "Ao vivo" : "pausado";
+  return isPlaying ? "Ao vivo" : "Pausado";
 }

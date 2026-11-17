@@ -1,20 +1,9 @@
 "use client";
 
 import { memo } from "react";
-import { PlusIcon, TheaterIcon } from "@/components/room/player/icons";
+import { LeafIcon, PlusIcon, TheaterIcon } from "@/components/room/player/icons";
 import { buttonClass } from "@/components/ui/Button";
 import { iconButtonClass } from "@/components/ui/IconButton";
-
-function EconomyIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M12 2L6 8l6-1 6 1-6-6z" />
-      <path d="M12 22V8" />
-      <path d="M6 8c0 0 0 8 6 14" />
-      <path d="M18 8c0 0 0 8-6 14" />
-    </svg>
-  );
-}
 
 // Par de botões renderizado sempre com a mesma ordem/estilo — só a âncora
 // muda conforme o estado de tela cheia (ver docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.2). Pode existir
@@ -55,14 +44,15 @@ export const RoomActions = memo(function RoomActions({
         type="button"
         onClick={onLoadVideo}
         aria-label="Carregar vídeo"
+        title="Carregar vídeo"
         className={buttonClass({
           variant: "primary",
           size: "sm",
-          className: "shrink-0 max-sm:min-w-11 max-sm:px-0",
+          className: "shrink-0",
         })}
       >
-        <PlusIcon className="h-3 w-3" />
-        <span className="hidden sm:inline">Carregar vídeo</span>
+        <PlusIcon className="size-4" />
+        <span className="max-sm:inline sm:hidden xl:inline">Carregar vídeo</span>
       </button>
       <button
         type="button"
@@ -70,19 +60,14 @@ export const RoomActions = memo(function RoomActions({
         aria-label={isEconomy ? "Desativar modo economy" : "Ativar modo economy"}
         aria-pressed={isEconomy}
         title={isEconomy ? "Desativar modo economy" : "Ativar modo economy"}
-        // Só ícone (44x44): com o rótulo "economy" a fileira precisava de 225px
-        // e a coluna da presença oferece ~190 (h2 + os dois botões somam 280 num
-        // espaço de 256–272) — era isso que espremia "carregar vídeo" em duas
-        // linhas dentro do próprio botão e, no modo teatro, empurrava o botão de
-        // teatro para fora do painel. O nome continua no `aria-label` e o estado
-        // também aparece no chip do cabeçalho quando o modo está ligado.
-        className={iconButtonClass({
+        className={buttonClass({
           variant: "ghost",
-          active: isEconomy,
-          className: "shrink-0",
+          size: "sm",
+          className: `shrink-0 ${isEconomy ? "border border-[var(--leaf)] bg-[var(--fill-2)] text-[var(--ink)]" : ""}`,
         })}
       >
-        <EconomyIcon className="h-4 w-4" />
+        <LeafIcon className="size-4" />
+        <span className="max-sm:inline sm:hidden xl:inline">Economy</span>
       </button>
       {showTheaterToggle && (
         <button
@@ -90,15 +75,13 @@ export const RoomActions = memo(function RoomActions({
           onClick={onToggleTheater}
           aria-label={isTheater ? "Expandir vídeo" : "Abrir chat ao lado"}
           aria-pressed={isTheater}
-          // escondido abaixo de lg: teatro pressupõe as duas colunas lado a
-          // lado (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.1 / docs/specs/03-auditoria-ui-ux/spec.md, seção 10) — empilhado, o cálculo de altura do
-          // vídeo não desconta o aside, e o chat fica espremido/cortado.
+          title={isTheater ? "Expandir vídeo" : "Abrir chat ao lado"}
           className={iconButtonClass({
             variant: "ghost",
             className: "shrink-0 max-lg:hidden lg:inline-flex",
           })}
         >
-          <TheaterIcon className="h-4 w-4" />
+          <TheaterIcon className="size-5" />
         </button>
       )}
     </div>

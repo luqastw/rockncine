@@ -89,12 +89,12 @@ export function RegisterForm() {
       {error && (
         <p
           role="alert"
-          className="rounded-lg border border-[var(--heart)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--heart)]"
+          className="rounded-sm border border-[var(--heart)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--heart)]"
         >
           {error}
         </p>
       )}
-      <Button type="submit" disabled={loading} className="w-full">
+      <Button type="submit" size="lg" disabled={loading} className="w-full">
         {loading ? "Criando..." : "Criar conta"}
       </Button>
     </form>

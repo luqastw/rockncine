@@ -76,7 +76,7 @@ export const Chat = memo(function Chat({
     // rolagem. Em `lg+` o chat recebe a altura cheia da coluna e a rolagem
     // continua sendo só a do log.
     <div className="flex h-full min-h-0 flex-col gap-3 max-lg:overflow-y-auto">
-      <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-[var(--line)] bg-[var(--bg-surface)]">
+      <div className="flex min-h-0 flex-1 flex-col rounded-sm border border-[var(--line)] bg-[var(--bg-surface)]">
         <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[var(--line)] px-3">
           <h2 className="text-body font-medium text-[var(--ink)]">Chat</h2>
           {unreadCount > 0 && (
@@ -161,7 +161,7 @@ export const Chat = memo(function Chat({
           <button
             type="button"
             onClick={goToLatest}
-            className="absolute inset-x-3 bottom-3 min-h-11 rounded-lg bg-[var(--invert-bg)] px-3 text-caption font-medium text-[var(--invert-fg)] reticle reticle-on-leaf"
+            className="absolute inset-x-3 bottom-3 min-h-11 rounded-sm bg-[var(--invert-bg)] px-3 text-caption font-medium text-[var(--invert-fg)] reticle reticle-on-leaf"
           >
             Novas mensagens ↓
           </button>

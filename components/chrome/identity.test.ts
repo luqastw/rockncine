@@ -57,7 +57,17 @@ const TOKENS_EXATOS: Record<string, string> = {
   gold: "#d9a441",
   "gold-lo": "#a87a2a",
   heart: "#e07a6e",
-  clip: "8px",
+  clip: "20px",
+  "clip-lg": "32px",
+  "clip-btn": "12px",
+  rail: "72px",
+  "ease-reveal": "cubic-bezier(0, 0, 0.58, 1)",
+  "ease-menu": "cubic-bezier(0.73, 0.42, 0.52, 0.703)",
+  "dur-reveal": "800ms",
+  "dur-menu": "500ms",
+  "dur-menu-item": "300ms",
+  "stagger-reveal": "200ms",
+  "stagger-menu": "70ms",
   "motion-dur": "200ms",
   "motion-ease": "cubic-bezier(0.16, 1, 0.3, 1)",
   "motion-factor": "1",
@@ -154,6 +164,35 @@ describe("identidade Lost Woods", () => {
     expect(layout).toContain('variable: "--font-fraunces"');
     expect(layout).toContain("fraunces.variable");
     expect(valorDoToken("font-display")).toContain("var(--font-fraunces)");
+  });
+
+  it("tipografia: Fraunces com eixos orgânicos e Geologica no corpo", () => {
+    expect(layout).toContain('axes: ["SOFT", "WONK", "opsz"]');
+    expect(layout).toContain('variable: "--font-geologica"');
+    expect(valorDoToken("font-sans")).toContain("var(--font-geologica)");
+    expect(css).toMatch(/"opsz"\s+144/);
+    expect(css).toMatch(/"SOFT"\s+100/);
+  });
+
+  it("escala tipográfica: display 48 a 96px, h2 32 a 56px, cartão 24 a 32px", () => {
+    expect(valorDoToken("text-display")).toMatch(/^clamp\(3rem,[^,]+,\s*6rem\)$/);
+    expect(valorDoToken("text-h2")).toMatch(/^clamp\(2rem,[^,]+,\s*3\.5rem\)$/);
+    expect(valorDoToken("text-card")).toMatch(/^clamp\(1\.5rem,[^,]+,\s*2rem\)$/);
+  });
+
+  it("título dourado em gradiente com recorte no texto", () => {
+    expect(valorDoToken("gold-grad")).toContain("var(--gold-hi)");
+    expect(valorDoToken("gold-grad")).toContain("var(--gold-lo)");
+    expect(css).toMatch(/\.text-gold\s*\{[^}]*background-clip:\s*text/);
+  });
+
+  it("fundo em camadas: vinheta radial e treliça de losangos a no máximo 5%", () => {
+    const corpo = css.match(/body::before\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(corpo).toContain("radial-gradient");
+    expect(corpo).toContain("var(--lattice)");
+    const opacidades = [...cssBruto.matchAll(/stroke-opacity='(0?\.\d+)'/g)].map((m) => Number(m[1]));
+    expect(opacidades.length).toBeGreaterThan(0);
+    for (const o of opacidades) expect(o).toBeLessThanOrEqual(0.05);
   });
 
   it("FR-006: themeColor do viewport", () => {

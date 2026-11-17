@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cx } from "@/lib/cx";
 
 export type ButtonVariant = "primary" | "outline" | "soft" | "ghost" | "danger";
-export type ButtonSize = "md" | "sm";
+export type ButtonSize = "lg" | "md" | "sm";
 
 type ButtonStyleOptions = {
   variant?: ButtonVariant;
@@ -12,13 +12,13 @@ type ButtonStyleOptions = {
 };
 
 const BASE =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-md text-body font-medium transition-colors duration-150 reticle disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-sm text-body font-medium transition-colors duration-150 reticle disabled:pointer-events-none disabled:opacity-50";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary:
-    "frame-btn reticle-on-leaf bg-[var(--leaf)] text-[var(--bg-void)] hover:bg-[var(--leaf-ink)]",
+    "frame-btn btn-gold reticle-on-leaf font-semibold",
   outline:
-    "border border-[var(--line)] bg-[var(--bg-elevated)] text-[var(--ink)] hover:border-[var(--line-strong)]",
+    "border border-[var(--gold-edge)] bg-[var(--bg-elevated)] text-[var(--ink)] hover:border-[var(--gold)]",
   soft: "bg-[var(--fill-1)] text-[var(--ink)] hover:bg-[var(--fill-2)]",
   ghost: "text-[var(--ink-muted)] hover:bg-[var(--fill-1)] hover:text-[var(--ink)]",
   danger:
@@ -26,6 +26,7 @@ const VARIANTS: Record<ButtonVariant, string> = {
 };
 
 const SIZES: Record<ButtonSize, string> = {
+  lg: "min-h-14 px-8 text-[1.0625rem]",
   md: "px-5",
   sm: "px-3.5",
 };

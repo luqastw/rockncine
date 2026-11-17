@@ -1,9 +1,13 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-const { findMany, findUnique, requireSession, getServerSession } = vi.hoisted(() => ({
+const { findMany, findUnique, userFindUnique, roomCount, memberCount, requireSession, getServerSession } =
+  vi.hoisted(() => ({
   findMany: vi.fn(),
   findUnique: vi.fn(),
+  userFindUnique: vi.fn(),
+  roomCount: vi.fn(),
+  memberCount: vi.fn(),
   requireSession: vi.fn(),
   getServerSession: vi.fn(),
 }));
@@ -11,7 +15,12 @@ const { findMany, findUnique, requireSession, getServerSession } = vi.hoisted(()
 vi.mock("next-auth", () => ({ getServerSession }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("@/lib/prisma", () => ({
-  prisma: { roomMember: { findMany }, profileImage: { findUnique } },
+  prisma: {
+    roomMember: { findMany, count: memberCount },
+    profileImage: { findUnique },
+    user: { findUnique: userFindUnique },
+    room: { count: roomCount },
+  },
 }));
 vi.mock("@/lib/session", () => ({ requireSession }));
 vi.mock("@/components/SignOutButton", () => ({ SignOutButton: () => null }));
@@ -22,7 +31,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
 }));
 vi.mock("next/font/google", () => ({
-  Inter: () => ({ variable: "--font-inter", className: "font-inter" }),
+  Geologica: () => ({ variable: "--font-geologica", className: "font-geologica" }),
   Fraunces: () => ({ variable: "--font-fraunces", className: "font-fraunces" }),
   Geist_Mono: () => ({ variable: "--font-geist-mono", className: "font-geist-mono" }),
 }));
@@ -37,6 +46,13 @@ import { Staff } from "./Staff";
 import { Fairy } from "./Fairy";
 import { Stump } from "./Stump";
 import { Wordmark } from "./Wordmark";
+
+function decorativos(container: HTMLElement): string[] {
+  return [...container.querySelectorAll("[data-motif]")]
+    .filter((el) => el.getAttribute("data-motif") !== "product-preview")
+    .filter((el) => el.closest('[aria-hidden="true"]') === null)
+    .map((el) => el.getAttribute("data-motif") ?? "");
+}
 
 describe("motivos (FR-008, FR-009)", () => {
   it("AC-021: pauta é decorativa com cinco linhas", () => {
@@ -129,24 +145,30 @@ describe("identidade de pergaminho (FR-010, FR-011)", () => {
     expect(fada?.getAttribute("alt")).toBe("");
   });
 
-  it("AC-008: orçamento de motivos", async () => {
+  it("AC-008: motivos da landing e do 404 são decorativos e dentro do orçamento", async () => {
     getServerSession.mockResolvedValue(null);
     const landing = render(await Home());
-    expect(landing.container.querySelectorAll("[data-motif]").length).toBeLessThanOrEqual(2);
+    expect(landing.container.querySelectorAll("[data-motif]").length).toBeLessThanOrEqual(8);
+    expect(decorativos(landing.container)).toEqual([]);
     landing.unmount();
 
     const nf = render(<NotFound />);
-    expect(nf.container.querySelectorAll("[data-motif]").length).toBeLessThanOrEqual(2);
+    expect(nf.container.querySelectorAll("[data-motif]").length).toBeLessThanOrEqual(6);
+    expect(decorativos(nf.container)).toEqual([]);
   });
 
-  it("AC-008: orçamento de motivos em /rooms e /profile", async () => {
+  it("AC-008: motivos em /rooms e /profile dentro do orçamento, sem divisor sob o título", async () => {
     getServerSession.mockResolvedValue({ user: { id: "eu", name: "eu" } });
     requireSession.mockResolvedValue({ userId: "eu", userName: "eu" });
     findUnique.mockResolvedValue(null);
+    userFindUnique.mockResolvedValue({ email: "eu@example.com", createdAt: new Date() });
+    roomCount.mockResolvedValue(0);
+    memberCount.mockResolvedValue(0);
 
     findMany.mockResolvedValue([]);
     const vazia = render(await RoomsPage({ searchParams: Promise.resolve({}) }));
-    expect(vazia.container.querySelectorAll("[data-motif]").length).toBeLessThanOrEqual(2);
+    expect(vazia.container.querySelectorAll("[data-motif]").length).toBeLessThanOrEqual(4);
+    expect(decorativos(vazia.container)).toEqual([]);
     vazia.unmount();
 
     findMany.mockResolvedValue([
@@ -162,11 +184,13 @@ describe("identidade de pergaminho (FR-010, FR-011)", () => {
       },
     ]);
     const cheia = render(await RoomsPage({ searchParams: Promise.resolve({}) }));
-    expect(cheia.container.querySelectorAll("[data-motif]").length).toBeLessThanOrEqual(2);
+    expect(cheia.container.querySelectorAll("[data-motif]").length).toBeLessThanOrEqual(4);
+    expect(decorativos(cheia.container)).toEqual([]);
     cheia.unmount();
 
     const perfil = render(await ProfilePage());
-    expect(perfil.container.querySelector('[data-motif="divider"]')).not.toBeNull();
-    expect(perfil.container.querySelectorAll("[data-motif]").length).toBeLessThanOrEqual(2);
+    expect(perfil.container.querySelector('[data-motif="divider"]')).toBeNull();
+    expect(perfil.container.querySelectorAll("[data-motif]").length).toBeLessThanOrEqual(4);
+    expect(decorativos(perfil.container)).toEqual([]);
   });
 });

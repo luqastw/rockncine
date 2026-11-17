@@ -1,7 +1,13 @@
 import Image from "next/image";
 import { cx } from "@/lib/cx";
 
-export function Wordmark({ className }: { className?: string }) {
+export function Wordmark({
+  className,
+  markOnly = false,
+}: {
+  className?: string;
+  markOnly?: boolean;
+}) {
   return (
     <span className={cx("inline-flex items-center gap-2.5", className)}>
       <Image
@@ -13,9 +19,11 @@ export function Wordmark({ className }: { className?: string }) {
         aria-hidden="true"
         className="size-8 shrink-0"
       />
-      <span className="font-display text-heading font-semibold tracking-tight text-[var(--ink)]">
-        Rockncine
-      </span>
+      {markOnly ? null : (
+        <span className="font-display text-heading font-semibold tracking-tight text-[var(--ink)]">
+          Rockncine
+        </span>
+      )}
     </span>
   );
 }

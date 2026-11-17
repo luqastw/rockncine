@@ -18,8 +18,8 @@ export default function RoomLoading() {
           />
         </div>
         <div className="flex w-full flex-col gap-3 lg:min-w-80 lg:basis-[22%]">
-          <span className="h-11 rounded-xl bg-[var(--bg-surface)]" aria-hidden />
-          <span className="min-h-40 flex-1 rounded-xl bg-[var(--bg-surface)]" aria-hidden />
+          <span className="h-11 rounded-sm bg-[var(--bg-surface)]" aria-hidden />
+          <span className="min-h-40 flex-1 rounded-sm bg-[var(--bg-surface)]" aria-hidden />
         </div>
       </div>
       <div className="flex flex-col items-center gap-2">

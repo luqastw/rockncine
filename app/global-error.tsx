@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Inter, Geist_Mono, Fraunces } from "next/font/google";
+import { Geologica, Geist_Mono, Fraunces } from "next/font/google";
 import { PageShell } from "@/components/chrome/PageShell";
 import { Staff } from "@/components/chrome/Staff";
 import { Wordmark } from "@/components/chrome/Wordmark";
@@ -9,15 +9,15 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const geologica = Geologica({
+  variable: "--font-geologica",
   subsets: ["latin"],
   display: "swap",
 });
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
-  weight: ["500", "600"],
+  axes: ["SOFT", "WONK", "opsz"],
   subsets: ["latin"],
   display: "swap",
 });
@@ -42,7 +42,7 @@ export default function GlobalError({
   return (
     <html
       lang="pt-BR"
-      className={`${inter.variable} ${fraunces.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geologica.variable} ${fraunces.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         <title>Alguma coisa quebrou · Rockncine</title>

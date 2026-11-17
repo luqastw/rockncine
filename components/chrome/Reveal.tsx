@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 /** Elementos aceitos pelo invólucro — todos host, para o `ref` continuar seguro. */
 type RevealTag = "div" | "section" | "header" | "footer";
@@ -18,10 +18,12 @@ export function Reveal({
   as = "div",
   children,
   className,
+  index,
 }: {
   as?: RevealTag;
   children: ReactNode;
   className?: string;
+  index?: number;
 }) {
   // Tipado como div (o alvo default). Os outros host elements aceitam este ref
   // porque o tipo deles é o mais largo (`HTMLElement`); o efeito só usa
@@ -59,29 +61,30 @@ export function Reveal({
   }, []);
 
   const classes = ["reveal", className].filter(Boolean).join(" ");
+  const style = index === undefined ? undefined : ({ "--reveal-i": index } as CSSProperties);
 
   switch (as) {
     case "section":
       return (
-        <section ref={ref} className={classes}>
+        <section ref={ref} className={classes} style={style}>
           {children}
         </section>
       );
     case "header":
       return (
-        <header ref={ref} className={classes}>
+        <header ref={ref} className={classes} style={style}>
           {children}
         </header>
       );
     case "footer":
       return (
-        <footer ref={ref} className={classes}>
+        <footer ref={ref} className={classes} style={style}>
           {children}
         </footer>
       );
     default:
       return (
-        <div ref={ref} className={classes}>
+        <div ref={ref} className={classes} style={style}>
           {children}
         </div>
       );

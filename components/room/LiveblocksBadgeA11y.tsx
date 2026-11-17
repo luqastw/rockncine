@@ -24,7 +24,7 @@ export function LiveblocksBadgeA11y() {
       const botao = document.getElementById("liveblocks-badge-hide-button");
       if (!botao) return false;
       if (!botao.hasAttribute("aria-label")) {
-        botao.setAttribute("aria-label", "esconder o selo do Liveblocks");
+        botao.setAttribute("aria-label", "Esconder o selo do Liveblocks");
       }
       return true;
     };

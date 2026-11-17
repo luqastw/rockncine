@@ -3,7 +3,7 @@ import type { ComponentProps } from "react";
 import { cx } from "@/lib/cx";
 
 const textLinkClass =
-  "rounded-sm text-[var(--ink)] underline decoration-[var(--ink-muted)] underline-offset-4 hover:decoration-[var(--ink)] reticle";
+  "inline-flex min-h-11 items-center rounded-sm text-[var(--gold-hi)] underline decoration-[var(--gold-lo)] underline-offset-4 transition-[text-decoration-color] duration-300 hover:decoration-[var(--gold-hi)] reticle";
 
 export function TextLink({ className, ...props }: ComponentProps<typeof Link>) {
   return <Link className={cx(textLinkClass, className)} {...props} />;

@@ -33,7 +33,7 @@ export const MessageItem = memo(function MessageItem({
       <div
         className={
           isSelf
-            ? "max-w-[85%] rounded-xl border border-[var(--line)] bg-[var(--bg-elevated)] px-3 py-2"
+            ? "max-w-[85%] rounded-sm border border-[var(--line)] bg-[var(--bg-elevated)] px-3 py-2"
             : "max-w-full"
         }
       >

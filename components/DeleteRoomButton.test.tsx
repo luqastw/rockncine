@@ -68,11 +68,12 @@ describe("DeleteRoomButton — abertura do modal", () => {
 });
 
 describe("DeleteRoomButton — variant danger", () => {
-  it("gatilho e confirmação usam variant danger", () => {
+  it("gatilho revela o perigo no hover e a confirmação usa variant danger", () => {
     render(<DeleteRoomButton roomCode="ABCD1234" roomName="festa de aniversário" />);
     const gatilho = screen.getByRole("button", { name: /excluir sala/i });
-    expect(gatilho.className).toContain("border-[var(--heart)]");
-    expect(gatilho.className).not.toContain("text-[var(--ink");
+    expect(gatilho.className).toContain("hover:border-[var(--heart)]");
+    expect(gatilho.className).toContain("hover:text-[var(--heart)]");
+    expect(gatilho.className.split(" ")).toContain("btn-round");
     fireEvent.click(gatilho);
     const confirmar = screen
       .getAllByRole("button", { name: "Excluir sala" })

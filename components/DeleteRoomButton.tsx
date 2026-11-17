@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { buttonClass } from "@/components/ui/Button";
+import { TrashIcon } from "@/components/room/player/icons";
+import { iconButtonClass } from "@/components/ui/IconButton";
+import { cx } from "@/lib/cx";
 
 // Botão de exclusão de uma sala, renderizado por linha da lista de /rooms.
 // Fica por linha (e não a lista inteira) para manter `app/rooms/page.tsx` como
@@ -11,9 +13,11 @@ import { buttonClass } from "@/components/ui/Button";
 export function DeleteRoomButton({
   roomCode,
   roomName,
+  className,
 }: {
   roomCode: string;
   roomName: string | null;
+  className?: string;
 }) {
   const router = useRouter();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -23,8 +27,8 @@ export function DeleteRoomButton({
 
   const displayName = roomName?.trim() ? roomName.trim() : null;
   const description = displayName
-    ? `a sala ${displayName} (código ${roomCode}) será apagada para sempre. essa ação não pode ser desfeita.`
-    : `a sala de código ${roomCode} será apagada para sempre. essa ação não pode ser desfeita.`;
+    ? `A sala ${displayName} (código ${roomCode}) será apagada para sempre. Essa ação não pode ser desfeita.`
+    : `A sala de código ${roomCode} será apagada para sempre. Essa ação não pode ser desfeita.`;
 
   const confirmDelete = async () => {
     setBusy(true);
@@ -66,9 +70,16 @@ export function DeleteRoomButton({
           setOpen(true);
         }}
         aria-label={`Excluir sala ${displayName ?? roomCode}`}
-        className={buttonClass({ variant: "danger", size: "sm", className: "shrink-0" })}
+        className={cx(
+          iconButtonClass({
+            variant: "outline",
+            className: "shrink-0 hover:border-[var(--heart)] hover:text-[var(--heart)]",
+          }),
+          className,
+        )}
       >
-        Excluir<span className="max-sm:hidden"> sala</span>
+        <TrashIcon className="size-5" />
+        <span className="sr-only">Excluir sala</span>
       </button>
 
       <ConfirmDialog

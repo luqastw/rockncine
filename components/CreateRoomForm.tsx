@@ -16,7 +16,7 @@ export function CreateRoomForm() {
       action="/rooms/new"
       method="POST"
       onSubmit={() => setSubmitting(true)}
-      className="flex flex-col gap-2"
+      className="flex gap-2"
     >
       <label htmlFor="room-name" className="sr-only">
         Nome da sala
@@ -28,9 +28,10 @@ export function CreateRoomForm() {
         name="name"
         maxLength={60}
         placeholder="Nome da sala (opcional)"
+        className="min-w-0 flex-1 scroll-mt-28"
       />
-      <Button type="submit" disabled={submitting} className="w-full">
-        {submitting ? "Criando..." : "Nova sala"}
+      <Button type="submit" disabled={submitting} className="shrink-0">
+        {submitting ? "Criando..." : "Criar sala"}
       </Button>
     </form>
   );

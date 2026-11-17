@@ -36,7 +36,7 @@ describe("blur isolado no chrome (FR-005)", () => {
     // O fio nasce transparente e aparece com o scroll (comportamento da Kimi).
     expect(body).toContain("border-bottom: 1px solid transparent");
     const scrolled = ruleBody('\\.chrome-blur\\[data-scrolled="true"\\]');
-    expect(scrolled).toContain("border-bottom-color: var(--hairline)");
+    expect(scrolled).toContain("border-bottom-color: var(--gold-edge)");
 
     const fundo = body.match(/rgb\((\d+)\s+(\d+)\s+(\d+)\s*\/\s*0\.\d+\)/);
     expect(fundo, "fundo translúcido").toBeTruthy();

@@ -14,6 +14,7 @@ export const SyncRing = memo(function SyncRing({
   lastEvent,
   isFullscreen,
   economyMode = false,
+  className,
   children,
 }: {
   isPlaying: boolean;
@@ -21,6 +22,7 @@ export const SyncRing = memo(function SyncRing({
   lastEvent: RoomEvent | null;
   isFullscreen: boolean;
   economyMode?: boolean;
+  className?: string;
   children: ReactNode;
 }) {
   const syncLimited = source === "GENERIC_IFRAME";
@@ -40,7 +42,7 @@ export const SyncRing = memo(function SyncRing({
   return (
     <div
       className={[
-        "relative rounded-xl transition-shadow duration-300",
+        "relative rounded-sm transition-shadow duration-300",
         showChrome &&
           (syncLimited
             ? "border border-dashed border-[var(--line)]"
@@ -50,6 +52,7 @@ export const SyncRing = memo(function SyncRing({
         showChrome && !syncLimited && isPlaying && !economyMode
           ? "animate-sync-pulse"
           : "",
+        className,
       ]
         .filter(Boolean)
         .join(" ")}
@@ -59,7 +62,7 @@ export const SyncRing = memo(function SyncRing({
         <span
           key={flashKey}
           aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-xl animate-sync-flash"
+          className="pointer-events-none absolute inset-0 rounded-sm animate-sync-flash"
         />
       )}
       {syncLimited && (

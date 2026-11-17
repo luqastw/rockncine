@@ -72,7 +72,7 @@ export function PresenceTrigger({
       onClick={onToggle}
       aria-expanded={expanded}
       aria-controls="presence-list"
-      className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--fill-1)] px-3 py-2 text-body-sm text-[var(--ink)] hover:border-[var(--ink-muted)] hover:bg-[var(--fill-2)] reticle"
+      className="flex min-h-11 items-center gap-2 rounded-sm border border-[var(--line)] bg-[var(--fill-1)] px-3 py-2 text-body-sm text-[var(--ink)] hover:border-[var(--ink-muted)] hover:bg-[var(--fill-2)] reticle"
     >
       <Avatar
         userId={myPresence.userId ?? myUserId}
@@ -113,7 +113,7 @@ export function PresenceList({
       id="presence-list"
       className={`max-h-[30dvh] flex-col gap-2 overflow-y-auto ${expanded ? "flex" : "hidden"}`}
     >
-      <li className="flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--fill-1)] px-3 py-2 text-body-sm text-[var(--ink)]">
+      <li className="flex items-center gap-2 rounded-sm border border-[var(--line)] bg-[var(--fill-1)] px-3 py-2 text-body-sm text-[var(--ink)]">
         <Avatar
           userId={myId}
           avatarV={myAvatarV === undefined ? myPresence.avatarV : myAvatarV}
@@ -125,7 +125,7 @@ export function PresenceList({
       {[...byUser].map(([userId, { name, avatarV }]) => (
         <li
           key={userId}
-          className="flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--fill-1)] px-3 py-2 text-body-sm text-[var(--ink)]"
+          className="flex items-center gap-2 rounded-sm border border-[var(--line)] bg-[var(--fill-1)] px-3 py-2 text-body-sm text-[var(--ink)]"
         >
           <Avatar userId={userId} avatarV={avatarV} size="md" />
           <span className="min-w-0 truncate">{name}</span>

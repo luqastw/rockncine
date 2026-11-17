@@ -66,7 +66,7 @@ export function LoginForm() {
       {error && (
         <p
           role="alert"
-          className="rounded-lg border border-[var(--heart)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--heart)]"
+          className="rounded-sm border border-[var(--heart)] bg-[var(--fill-1)] px-3 py-2 text-body-sm font-semibold text-[var(--heart)]"
         >
           <span aria-hidden="true" className="mr-2 font-mono text-[var(--heart)]">
             !
@@ -74,7 +74,7 @@ export function LoginForm() {
           {error}
         </p>
       )}
-      <Button type="submit" disabled={loading} className="w-full">
+      <Button type="submit" size="lg" disabled={loading} className="w-full">
         {loading ? "Entrando..." : "Entrar"}
       </Button>
     </form>

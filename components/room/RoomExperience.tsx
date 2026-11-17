@@ -44,14 +44,6 @@ export type VideoQuality = ReturnType<typeof useVideoQuality>;
 // cálculo de altura máxima da caixa do vídeo (docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.1).
 const FULLSCREEN_PAD = "clamp(0.75rem,2.5vmin,2.5rem)";
 
-// altura ocupada pelo chrome da página fora de tela cheia (header + pt-8 +
-// gap + pb-14 reservado pro badge do Liveblocks). Entra no teto de altura da
-// caixa do vídeo: sem isso o vídeo era dimensionado só pela largura e, num
-// laptop 16:9, a barra de controles caía abaixo da dobra (achado 4).
-// PAGE_CHROME = 10rem — está escrito literalmente na classe do vídeo abaixo
-// (o Tailwind não extrai classe montada por interpolação); mudar um exige
-// mudar o outro.
-
 export function RoomExperience({
   roomCode,
   roomName,
@@ -210,42 +202,8 @@ export function RoomExperience({
   }, [setEconomyMode, setResolution]);
 
   return (
-    // A casca é de altura fixa (`room-shell` = `h-dvh` + `overflow-hidden`), como
-    // manda a FR-049: assim o chat recebe uma altura definida, o log rola por
-    // dentro e a página não rola. A exceção mora no `globals.css`: com a
-    // viewport abaixo de `32em` de altura — o que inclui o texto do usuário a
-    // 200%, porque a unidade é `em` — a casca vira altura mínima e a PÁGINA
-    // passa a rolar. Sem isso, o conteúdo não cabia e era espremido: o composer
-    // saía da caixa e, no reflow da WCAG (320×256), o vídeo ficava 0×0 — perda
-    // de conteúdo (achado 12 da revisão de design).
-    // pb-14 SEM a exceção `max-lg:pb-4` que existia aqui: o selo do Liveblocks
-    // ocupa 12px + 38px a partir da borda inferior, então 16px de respiro no
-    // mobile deixavam o selo por cima do campo de mensagem (medido a 390px:
-    // selo em y 794-832, input em y 784-828 — achado 1 da revisão de design).
-    <main className="room-shell mx-auto flex h-dvh w-full max-w-[1800px] flex-col gap-5 overflow-hidden px-4 pt-6 pb-14 sm:px-6 lg:px-8">
+    <main className="room-shell flex h-dvh w-full flex-col overflow-hidden">
       <RoomIris />
-      <RoomHeader
-        roomCode={roomCode}
-        roomName={roomName}
-        userId={userId}
-        userName={userName}
-        avatarV={avatarV}
-        livekitUrl={livekitUrl}
-        broadcast={broadcast}
-        videoSourceUrl={video?.sourceUrl ?? null}
-        lastEvent={lastEvent}
-        isPlayingNow={isPlayingNow}
-        syncLimited={syncLimited}
-        isBroadcasting={isBroadcasting}
-        economyMode={economyMode}
-        isTheater={isTheater}
-        isFullscreen={isFullscreen}
-        onLoadVideo={openLoadModal}
-        onToggleTheater={toggleTheater}
-        onToggleEconomy={toggleEconomy}
-      />
-
-
       <div
         ref={stageRef}
         style={
@@ -253,24 +211,40 @@ export function RoomExperience({
             ? ({ padding: FULLSCREEN_PAD, "--fs-pad": FULLSCREEN_PAD } as React.CSSProperties)
             : undefined
         }
-        className={`relative flex min-h-0 flex-1 flex-col gap-5 bg-[var(--bg-void)] lg:flex-row ${
+        className={`relative flex min-h-0 flex-1 flex-col bg-[var(--bg-void)] lg:flex-row ${
           isFullscreen ? "h-dvh w-dvw overflow-hidden" : ""
         } ${cssFullscreen ? "fixed inset-0 z-50" : ""}`}
       >
         <div
-          // p-4 -m-4: overflow-y-auto (necessário pro fallback de iframe
-          // genérico não ficar inacessível, ver item 14.1) força overflow-x
-          // pra "auto" também (regra do spec de CSS quando só um eixo é
-          // "auto") — sem esse respiro, o glow do SyncRing "ao vivo"
-          // (box-shadow que sangra ~15px pra fora da caixa) era recortado
-          // nos três lados em vez de vazar pro gap. A margem negativa
-          // cancela o respiro na largura ocupada pelos irmãos flex.
-          className={`relative flex min-h-0 flex-col gap-4 overflow-y-auto p-4 -m-4 lg:[justify-content:safe_center] ${
-            isFullscreen ? "[justify-content:safe_center]" : ""
-          } ${
-            showAside ? "lg:basis-[78%]" : "w-full"
-          } ${isFullscreen ? "flex-1" : "max-lg:shrink-0"}`}
+          className={`relative flex min-h-0 min-w-0 flex-col ${
+            isFullscreen
+              ? "flex-1 gap-4 [justify-content:safe_center]"
+              : "max-lg:shrink-0 lg:flex-1"
+          } ${isFullscreen && showAside ? "lg:basis-[78%]" : ""}`}
         >
+          <div className={isFullscreen ? "hidden" : "px-3 pt-3 sm:px-4 lg:px-5"}>
+            <RoomHeader
+              roomCode={roomCode}
+              roomName={roomName}
+              userId={userId}
+              userName={userName}
+              avatarV={avatarV}
+              livekitUrl={livekitUrl}
+              broadcast={broadcast}
+              videoSourceUrl={video?.sourceUrl ?? null}
+              lastEvent={lastEvent}
+              isPlayingNow={isPlayingNow}
+              syncLimited={syncLimited}
+              isBroadcasting={isBroadcasting}
+              economyMode={economyMode}
+              isTheater={isTheater}
+              isFullscreen={isFullscreen}
+              onLoadVideo={openLoadModal}
+              onToggleTheater={toggleTheater}
+              onToggleEconomy={toggleEconomy}
+            />
+          </div>
+
           {isFullscreen && !isTheater && (
             <div className="absolute right-3 top-3 z-20 opacity-60 transition-opacity hover:opacity-100 focus-within:opacity-100">
               <RoomActions
@@ -284,159 +258,111 @@ export function RoomExperience({
             </div>
           )}
 
-          {/* o teto de largura mora AQUI, em volta do SyncRing, e não na caixa
-              do vídeo: a moldura de sync precisa continuar colada no vídeo
-              quando o limite de altura entra em ação, senão a borda passa a
-              contornar a coluna inteira com faixas pretas dos dois lados.
-              Dois eixos, não só a largura. Empilhado (<lg) o teto é o que
-              SOBRA da altura depois do chrome fixo (paddings do main, header,
-              os dois gaps) e do mínimo da aside (presença + emojis + composer):
-              quem cede altura é o vídeo, nunca o campo de mensagem (achado 10
-              da revisão de design). O `max(16rem, ...)` é o PISO: sem ele, em
-              janela muito curta a conta fica negativa e o vídeo colapsava para
-              0×0 — conteúdo perdido, não encolhido (achado 12). Lado a lado
-              (lg+) o desconto do chrome é 10rem, como antes. Classe literal
-              porque o Tailwind não extrai string interpolada (achados 4 e 9). */}
           <div
-            className={`w-full ${
+            className={
               isFullscreen
-                ? "mx-auto max-w-[min(100%,calc((100dvh-2*var(--fs-pad))*16/9))]"
-                : "mx-auto max-w-[min(100%,max(16rem,calc((100dvh-22rem)*16/9)))] lg:max-w-[min(100%,calc((100dvh-10rem)*16/9))]"
-            }`}
+                ? "flex flex-col gap-3"
+                : "flex flex-col gap-3 px-3 pt-3 pb-3 sm:px-4 lg:min-h-0 lg:flex-1 lg:px-5 lg:pb-5"
+            }
           >
-            {/* `isPlaying` e `source` zerados no modo transmissão: a moldura de
-                sync e o selo "Sync limitado — controle manual" descrevem o
-                sync layer, e no modo transmissão o sync layer não participa
-                (FR-004, docs/specs/12-transmissao-screen-share/spec.md, seção 1).
-                Um anel pulsando sobre a transmissão dos outros seria um
-                affordance de controle que não existe. */}
-            <SyncRing
-              isPlaying={isBroadcasting ? false : isPlayingNow}
-              source={isBroadcasting ? null : (video?.source ?? null)}
-              lastEvent={lastEvent}
-              isFullscreen={isFullscreen}
-              economyMode={economyMode}
+            <div
+              className={`w-full ${
+                isFullscreen
+                  ? "mx-auto max-w-[min(100%,calc((100dvh-2*var(--fs-pad))*16/9))]"
+                  : "mx-auto max-lg:max-w-[min(100%,max(16rem,calc((100dvh-17rem)*16/9)))] lg:min-h-0 lg:flex-1"
+              }`}
             >
-              {/* bg-black literal de propósito (não --bg-void): é a letterbox
-                  atrás do vídeo, não uma superfície da UI — ver revisão de
-                  consistência, achado 5 de docs/specs/06-consistencia-design/spec.md. */}
-              <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">
-              {/* FR-004/FR-005: o storage de transmissão é autoritativo sobre o
-                  que a área de vídeo exibe. Com transmissão, nada de
-                  `PlayerShell`/`PlayerControls` — os frames SÃO a
-                  sincronização. Sem, a sala volta ao estado de player normal,
-                  inclusive o "Nenhum vídeo carregado": `video` e `player` não
-                  foram tocados, então o vídeo que já estava carregado está
-                  intacto. */}
-              {showScreenShare ? (
-                // `broadcast` é não-nulo sempre que `isBroadcasting` é: o gate
-                // só acrescenta a condição do Livekit. O `!` fica explícito
-                // porque um `null` aqui renderizaria um player com um
-                // `ScreenSharePlayer` sem nome, que é pior que o fallback.
-                <ScreenSharePlayer
-                  broadcast={broadcast!}
-                  onGiveUp={giveUpOnBroadcast}
-                />
-              ) : (
-                <PlayerShell
-                  controller={activeController}
-                  isFullscreen={isFullscreen}
-                  onToggleFullscreen={toggleFullscreen}
-                  showFullscreenOnly={hasGeneric}
-                  sourceType={video?.source ?? null}
-                  isSafari={isSafari}
-                  fpsLimit={fpsLimit}
-                  // FPS só existe no caminho HLS (hls.js), então o botão só é
-                  // oferecido em DIRECT_MEDIA — antes ele aparecia habilitado
-                  // também em YouTube/Vimeo, onde não faz nada (spec 09, CA-2.3).
-                  onToggleFps={hasDirectMedia ? toggleFps : undefined}
-                  onToggleResolution={
-                    activeController && activeController.resolution !== null
-                      ? toggleResolution
-                      : undefined
-                  }
-                  // Só o YouTube expõe um módulo de legenda com API. Vimeo e
-                  // mídia direta usam o chrome nativo (que está escondido) ou
-                  // não têm controle de legenda — o botão sairia habilitado e
-                  // inerte, que é o defeito que o gate de resolução/FPS já
-                  // evitou.
-                  captions={hasYouTube ? captions : null}
-                  onToggleCaptions={hasYouTube ? toggleCaptions : undefined}
-                >
-                  <VideoSurface
-                    video={video}
-                    hasYouTube={hasYouTube}
-                    hasVimeo={hasVimeo}
-                    hasDirectMedia={hasDirectMedia}
-                    hasGeneric={hasGeneric}
-                    storageLoading={storageLoading}
-                    youtubeController={youtubeController}
-                  />
-                </PlayerShell>
-              )}
-              {/* O scrim de carregamento/erro pertence ao player. Sobre a
-                  transmissão ele anunciaria um erro que não existe — o
-                  `ScreenSharePlayer` tem o próprio estado de espera. */}
-              {!isBroadcasting && (
-                <PlayerLoadStatus
-                  key={`${video?.embedUrl}-${video?.loadedAt}`}
-                  loading={playerLoading}
-                  error={playerError}
-                  sourceUrl={video?.sourceUrl ?? null}
-                />
-              )}
-              </div>
-            </SyncRing>
-
-          </div>
-
-          {!isBroadcasting && hasGeneric && isSafeEmbedUrl(video!.embedUrl!) && (
-            <p className="text-caption text-[var(--ink-muted)]">
-              se a prévia não aparecer, o site pode não permitir incorporação —{" "}
-              <a
-                href={video!.embedUrl!}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="rounded-sm text-[var(--ink)] underline reticle"
+              <SyncRing
+                isPlaying={isBroadcasting ? false : isPlayingNow}
+                source={isBroadcasting ? null : (video?.source ?? null)}
+                lastEvent={lastEvent}
+                isFullscreen={isFullscreen}
+                economyMode={economyMode}
+                className={isFullscreen ? "" : "lg:h-full"}
               >
-                Abrir em nova aba
-              </a>
-              .
-            </p>
-          )}
+                <div
+                  className={`relative w-full overflow-hidden rounded-sm bg-black ${
+                    isFullscreen ? "aspect-video" : "aspect-video lg:aspect-auto lg:h-full"
+                  }`}
+                >
+                  {showScreenShare ? (
+                    <ScreenSharePlayer broadcast={broadcast!} onGiveUp={giveUpOnBroadcast} />
+                  ) : (
+                    <PlayerShell
+                      controller={activeController}
+                      isFullscreen={isFullscreen}
+                      onToggleFullscreen={toggleFullscreen}
+                      showFullscreenOnly={hasGeneric}
+                      sourceType={video?.source ?? null}
+                      isSafari={isSafari}
+                      fpsLimit={fpsLimit}
+                      onToggleFps={hasDirectMedia ? toggleFps : undefined}
+                      onToggleResolution={
+                        activeController && activeController.resolution !== null
+                          ? toggleResolution
+                          : undefined
+                      }
+                      captions={hasYouTube ? captions : null}
+                      onToggleCaptions={hasYouTube ? toggleCaptions : undefined}
+                    >
+                      <VideoSurface
+                        video={video}
+                        hasYouTube={hasYouTube}
+                        hasVimeo={hasVimeo}
+                        hasDirectMedia={hasDirectMedia}
+                        hasGeneric={hasGeneric}
+                        storageLoading={storageLoading}
+                        youtubeController={youtubeController}
+                        roomCode={roomCode}
+                        userId={userId}
+                      />
+                    </PlayerShell>
+                  )}
+                  {!isBroadcasting && (
+                    <PlayerLoadStatus
+                      key={`${video?.embedUrl}-${video?.loadedAt}`}
+                      loading={playerLoading}
+                      error={playerError}
+                      sourceUrl={video?.sourceUrl ?? null}
+                    />
+                  )}
+                </div>
+              </SyncRing>
+            </div>
+
+            {!isBroadcasting && hasGeneric && isSafeEmbedUrl(video!.embedUrl!) && (
+              <p className="shrink-0 text-caption text-[var(--ink-muted)]">
+                Se a prévia não aparecer, o site pode não permitir incorporação —{" "}
+                <a
+                  href={video!.embedUrl!}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="rounded-sm text-[var(--ink)] underline reticle"
+                >
+                  Abrir em nova aba
+                </a>
+                .
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* sempre montado, nunca condicionalmente renderizado — `<Chat>` guarda
-            histórico em estado React local (useChat), e um unmount/remount a
-            cada toggle de fullscreen/teatro zerava as mensagens (bug real,
-            ver docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.6). Visibilidade agora é só CSS (`hidden`). */}
         <aside
           style={
             isFullscreen && isTheater
               ? ({ "--focus-offset": "var(--bg-surface)" } as React.CSSProperties)
               : undefined
           }
-          // `overflow-y-auto`: a aside é o último recurso de altura. Com o teto
-          // do vídeo acima, ela recebe o suficiente para presença + chat em
-          // qualquer viewport de altura razoável; abaixo disso ela rola, em vez
-          // de pintar conteúdo fora da própria caixa (era assim que o composer
-          // caía sob o selo do Liveblocks). Sem overflow, não rola e nada muda.
-          //
-          // `p-2 -m-2`: contêiner de rolagem RECORTA o que sai da caixa de
-          // padding, e sem esse respiro o anel de foco do composer era cortado
-          // na esquerda e embaixo (medido por diff de pixel: o anel aparecia de
-          // x=8 a y=51 em vez de x=4 a y=56). Mesma técnica de `p-4 -m-4` já
-          // usada na coluna do vídeo logo acima. Efeito colateral medido: o
-          // `-m-2` mantém a borda esquerda do conteúdo onde estava, mas o
-          // `lg:min-w-80` é mínimo de caixa de borda, então a largura útil da
-          // coluna cai 16px no desktop. Em modo teatro vale o `p-4` de
-          // verdade, que ali é padding pintado do painel.
-          className={`w-full min-h-0 flex-col gap-5 overflow-y-auto max-lg:flex-1 lg:min-w-80 lg:basis-[22%] ${
-            showAside ? "flex" : "hidden"
-          } ${
+          className={`w-full min-h-0 flex-col gap-5 overflow-y-auto max-lg:flex-1 ${
+            isFullscreen
+              ? "lg:min-w-80 lg:basis-[22%]"
+              : "border-t border-[var(--gold-edge)] bg-[var(--bg-surface)]/60 lg:w-[24rem] lg:shrink-0 lg:border-t-0 lg:border-l"
+          } ${showAside ? "flex" : "hidden"} ${
             isFullscreen && isTheater
-              ? "rounded-2xl border border-[var(--line)] bg-[var(--bg-surface)] p-4"
-              : "p-2 -m-2"
+              ? "rounded-sm border border-[var(--line)] bg-[var(--bg-surface)] p-4"
+              : isFullscreen
+                ? "p-2"
+                : "px-3 pt-3 pb-14 sm:px-4 lg:px-4 lg:pt-4"
           }`}
         >
           <section className="flex min-h-11 flex-1 flex-col gap-3">
@@ -450,11 +376,6 @@ export function RoomExperience({
           </section>
         </aside>
 
-        {/* dentro da árvore do stageRef, não irmão dela — em tela cheia
-            nativa só a subárvore de `document.fullscreenElement` é pintada;
-            como filho de `<main>` o modal ficava fora da árvore renderizada
-            e nunca aparecia (achado pós-deploy, item 14.6). `fixed inset-0`
-            continua resolvendo contra o viewport normalmente aninhado aqui. */}
         <LoadVideoModal
           roomCode={roomCode}
           userId={userId}

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const MAX_MS = 380;
+const MAX_MS = 800;
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -47,13 +47,11 @@ function toMs(value: number, unit: string): number {
 const SOURCES = ["app", "components"];
 
 describe("guardas do chrome", () => {
-  it("AC-003: orçamento de ouro, no máximo 5 arquivos .tsx com --gold ou --torch", () => {
+  it("AC-003: o ouro vem só dos tokens, nenhum literal de ouro nos .tsx", () => {
     const files = tsxFiles(SOURCES, false)
-      .filter((f) => /--(gold|torch)/.test(readFileSync(f, "utf8")))
+      .filter((f) => /#(d9a441|f0cf7a|a87a2a)/i.test(readFileSync(f, "utf8")))
       .map(rel);
-    expect(files, `arquivos com ouro: ${files.join(", ")}`).toSatisfy(
-      (list: string[]) => list.length <= 5,
-    );
+    expect(files).toEqual([]);
   });
 
   it("AC-003: --heart só aparece em arquivos de erro ou ação destrutiva", () => {
@@ -72,6 +70,7 @@ describe("guardas do chrome", () => {
       "Button.tsx",
       "PlayerLoadStatus.tsx",
       "LoadVideoModal.tsx",
+      "EmptyPlayer.tsx",
     ]);
     const fora = tsxFiles(SOURCES, false)
       .filter((f) => readFileSync(f, "utf8").includes("--heart"))
@@ -104,7 +103,7 @@ describe("guardas do chrome", () => {
       expect(css).not.toMatch(/\binfinite\b/i);
     });
 
-    it("globals.css limita durações a 380ms", () => {
+    it("globals.css limita durações literais a 800ms", () => {
       const over: string[] = [];
       const decl = /(animation|animation-duration|transition|transition-duration)\s*:([^;}]+)[;}]/g;
       for (const m of css.matchAll(decl)) {
@@ -140,9 +139,9 @@ describe("guardas do chrome", () => {
       expect(scan(tsxFiles(SOURCES, false), /\banimate-(spin|pulse|bounce|ping)\b/)).toEqual([]);
     });
 
-    it("tsx não usa duração acima de 380ms", () => {
+    it("tsx não usa duração acima de 800ms", () => {
       const files = tsxFiles(SOURCES, false);
-      const named = scan(files, /\bduration-(500|700|1000)\b/);
+      const named = scan(files, /\bduration-(1000|1500|2000)\b/);
       const over: string[] = [];
       for (const file of files) {
         readFileSync(file, "utf8")

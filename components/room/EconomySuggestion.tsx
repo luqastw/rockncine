@@ -25,7 +25,7 @@ export function EconomySuggestion({
     <div className="pointer-events-none fixed inset-x-4 bottom-20 z-50 flex justify-center">
       <div
         role="status"
-        className="pointer-events-auto flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-[var(--line)] bg-[var(--bg-surface)] p-4 text-body-sm text-[var(--ink)] shadow-[var(--shadow-pop)]"
+        className="pointer-events-auto flex w-full max-w-sm flex-col gap-3 rounded-sm border border-[var(--line)] bg-[var(--bg-surface)] p-4 text-body-sm text-[var(--ink)] shadow-[var(--shadow-pop)]"
       >
         <p>
           Detectamos que seu dispositivo pode ter dificuldades com vídeo. Ativar
