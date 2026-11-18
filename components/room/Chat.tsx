@@ -8,7 +8,9 @@ import { useStickyScroll } from "@/hooks/useStickyScroll";
 import { useTypingPresence } from "@/hooks/useTypingPresence";
 import { ChatComposer } from "@/components/room/chat/ChatComposer";
 import { DayDivider, MessageItem, SystemItem, UnreadDivider } from "@/components/room/chat/LogItems";
+import { CloseIcon } from "@/components/room/player/icons";
 import { Badge } from "@/components/ui/Badge";
+import { IconButton } from "@/components/ui/IconButton";
 import { buildLog, keyOf } from "@/lib/chat-log";
 
 // `memo`: as props são primitivas, então um render da sala (presença mudou,
@@ -21,11 +23,13 @@ export const Chat = memo(function Chat({
   avatarV,
   roomCode,
   headerAccessory,
+  onClose,
 }: {
   userId: string;
   userName: string;
   avatarV?: number | null;
   headerAccessory?: ReactNode;
+  onClose?: () => void;
   // Só para a store saber de qual sala é o feed (FR-007). Não é usado para mais
   // nada aqui dentro.
   roomCode: string;
@@ -89,6 +93,17 @@ export const Chat = memo(function Chat({
             </Badge>
           )}
           {headerAccessory && <div className="ml-auto">{headerAccessory}</div>}
+          {onClose && (
+            <IconButton
+              onClick={onClose}
+              aria-label="Fechar chat"
+              title="Fechar chat"
+              variant="outline"
+              className={headerAccessory ? "shrink-0" : "ml-auto shrink-0"}
+            >
+              <CloseIcon className="size-5" />
+            </IconButton>
+          )}
         </div>
         <div className="relative flex min-h-0 flex-1 flex-col">
           <ul

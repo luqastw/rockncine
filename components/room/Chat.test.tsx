@@ -662,3 +662,21 @@ describe("Chat — indicador de digitação", () => {
     expect(log().firstElementChild).toBe(spacer);
   });
 });
+
+describe("botão de fechar o chat", () => {
+  it("não existe sem onClose", () => {
+    render(<Chat {...ME} />);
+
+    expect(screen.queryByRole("button", { name: "Fechar chat" })).toBeNull();
+  });
+
+  it("existe no cabeçalho com onClose e dispara o fechamento", () => {
+    const onClose = vi.fn();
+    render(<Chat {...ME} onClose={onClose} />);
+
+    const close = screen.getByRole("button", { name: "Fechar chat" });
+    fireEvent.click(close);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});

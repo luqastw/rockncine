@@ -13,6 +13,8 @@ import { useBroadcastGate } from "@/hooks/useBroadcastGate";
 import { useReleaseOnLeave } from "@/hooks/useReleaseOnLeave";
 import { useRoomShortcuts } from "@/hooks/useRoomShortcuts";
 import { useStageLayout } from "@/hooks/useStageLayout";
+import { hasActiveHold, useIdleHide } from "@/hooks/useIdleHide";
+import { CHAT_PANEL_ID } from "@/components/room/chat/ids";
 import { useOwnAvatarVersion } from "@/hooks/useOwnAvatarVersion";
 import { SyncRing } from "@/components/room/SyncRing";
 import { isSafeEmbedUrl } from "@/lib/video-source";
@@ -184,6 +186,12 @@ export function RoomExperience({
   const { isPlaying: playingFromClock } = usePlaybackState();
   const isPlayingNow = activeController ? playingFromClock : false;
 
+  const isStageHeld = useCallback(() => hasActiveHold(stageRef.current), [stageRef]);
+  const { idle, wake } = useIdleHide({
+    enabled: !!activeController && isPlayingNow && !isBroadcasting,
+    isHeld: isStageHeld,
+  });
+
   useReleaseOnLeave();
   useRoomShortcuts({
     activeController,
@@ -206,6 +214,12 @@ export function RoomExperience({
       <RoomIris />
       <div
         ref={stageRef}
+        data-idle={idle}
+        onMouseMove={wake}
+        onPointerDown={wake}
+        onTouchStart={wake}
+        onKeyDown={wake}
+        onFocusCapture={wake}
         style={
           isFullscreen
             ? ({ padding: FULLSCREEN_PAD, "--fs-pad": FULLSCREEN_PAD } as React.CSSProperties)
@@ -213,7 +227,7 @@ export function RoomExperience({
         }
         className={`relative flex min-h-0 flex-1 flex-col bg-[var(--bg-void)] lg:flex-row ${
           isFullscreen ? "h-dvh w-dvw overflow-hidden" : ""
-        } ${cssFullscreen ? "fixed inset-0 z-50" : ""}`}
+        } ${idle ? "[&_*]:cursor-none" : ""} ${cssFullscreen ? "fixed inset-0 z-50" : ""}`}
       >
         <div
           className={`relative flex min-h-0 min-w-0 flex-col ${
@@ -245,8 +259,13 @@ export function RoomExperience({
             />
           </div>
 
-          {isFullscreen && !isTheater && (
-            <div className="absolute right-3 top-3 z-20 opacity-60 transition-opacity hover:opacity-100 focus-within:opacity-100">
+          {isFullscreen && (
+            <div
+              data-idle-hold=""
+              className={`absolute right-3 top-3 z-20 transition-opacity duration-[calc(var(--motion-dur)*var(--motion-factor))] ${
+                idle ? "pointer-events-none opacity-0" : "opacity-60 hover:opacity-100 focus-within:opacity-100"
+              }`}
+            >
               <RoomActions
                 onLoadVideo={openLoadModal}
                 onToggleTheater={toggleTheater}
@@ -291,6 +310,7 @@ export function RoomExperience({
                     <PlayerShell
                       controller={activeController}
                       isFullscreen={isFullscreen}
+                      idle={idle}
                       onToggleFullscreen={toggleFullscreen}
                       showFullscreenOnly={hasGeneric}
                       sourceType={video?.source ?? null}
@@ -348,6 +368,7 @@ export function RoomExperience({
         </div>
 
         <aside
+          id={CHAT_PANEL_ID}
           style={
             isFullscreen && isTheater
               ? ({ "--focus-offset": "var(--bg-surface)" } as React.CSSProperties)
@@ -372,6 +393,7 @@ export function RoomExperience({
               avatarV={avatarV}
               roomCode={roomCode}
               headerAccessory={presenceAccessory}
+              onClose={isFullscreen && isTheater ? toggleTheater : undefined}
             />
           </section>
         </aside>

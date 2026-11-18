@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { LeafIcon, PlusIcon, TheaterIcon } from "@/components/room/player/icons";
+import { CHAT_PANEL_ID } from "@/components/room/chat/ids";
 import { buttonClass } from "@/components/ui/Button";
 import { iconButtonClass } from "@/components/ui/IconButton";
 
@@ -73,11 +74,13 @@ export const RoomActions = memo(function RoomActions({
         <button
           type="button"
           onClick={onToggleTheater}
-          aria-label={isTheater ? "Expandir vídeo" : "Abrir chat ao lado"}
-          aria-pressed={isTheater}
-          title={isTheater ? "Expandir vídeo" : "Abrir chat ao lado"}
+          aria-label={isTheater ? "Fechar chat" : "Abrir chat"}
+          aria-expanded={isTheater}
+          aria-controls={CHAT_PANEL_ID}
+          title={isTheater ? "Fechar chat" : "Abrir chat"}
           className={iconButtonClass({
             variant: "ghost",
+            active: isTheater,
             className: "shrink-0 max-lg:hidden lg:inline-flex",
           })}
         >
