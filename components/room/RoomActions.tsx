@@ -1,29 +1,17 @@
 "use client";
 
 import { memo } from "react";
-import { LeafIcon, PlusIcon, TheaterIcon } from "@/components/room/player/icons";
+import { LeafIcon, PlusIcon, TheaterIcon, UserIcon } from "@/components/room/player/icons";
 import { CHAT_PANEL_ID } from "@/components/room/chat/ids";
 import { buttonClass } from "@/components/ui/Button";
 import { iconButtonClass } from "@/components/ui/IconButton";
 
-// Par de botões renderizado sempre com a mesma ordem/estilo — só a âncora
-// muda conforme o estado de tela cheia (ver docs/specs/02-fullscreen-lag-qualidade/spec.md, seção 9.2). Pode existir
-// em duas instâncias no DOM ao mesmo tempo (aside sempre montado desde a
-// seção 9.6), mas nunca mais de uma visível — a outra fica `hidden`.
-//
-// `flex-wrap` + `shrink-0` nos botões: no modo teatro o painel da `aside` fica
-// com 256px de conteúdo e os três botões somam 262 — sem quebra, a fileira
-// transbordava ~50px para fora do painel e o botão de teatro era espremido a
-// 34px e recortado (medido: fileira em l=972..1215 com o painel terminando em
-// 1181). Quebrando em duas linhas, os três ficam inteiros e clicáveis. Fora do
-// teatro nada muda: "carregar vídeo" + o botão de economy somam 176px e cabem
-// nos 256px.
-// `memo` é defesa em profundidade, não o isolamento (FR-010,
-// docs/specs/13-chat-sala/spec.md): o isolamento real vem do feed de chat viver
-// fora do estado da sala. As props aqui são todas estáveis — três booleanos e
-// três `useCallback` — então evento de presença ou de sync não redesenha a
-// fileira. `PlayerShell` NÃO entra nesta lista: recebe `controller`, que os
-// hooks de sync recriam a cada render, e memoizar ali seria placebo.
+const ECONOMY_BASE =
+  "shrink-0 border transition-[color,background-color,border-color,box-shadow] duration-[calc(var(--motion-dur)*var(--motion-factor))]";
+const ECONOMY_IDLE = "border-[var(--line)]";
+const ECONOMY_LIT =
+  "border-[var(--leaf)] bg-[color-mix(in_srgb,var(--leaf)_16%,var(--bg-surface))] text-[var(--leaf-ink)] shadow-[inset_0_0_14px_color-mix(in_srgb,var(--leaf)_38%,transparent),0_0_12px_color-mix(in_srgb,var(--leaf)_24%,transparent)] hover:bg-[color-mix(in_srgb,var(--leaf)_22%,var(--bg-surface))] hover:text-[var(--leaf-ink)]";
+
 export const RoomActions = memo(function RoomActions({
   onLoadVideo,
   onToggleTheater,
@@ -31,6 +19,7 @@ export const RoomActions = memo(function RoomActions({
   showTheaterToggle,
   onToggleEconomy,
   isEconomy,
+  onOpenProfile,
 }: {
   onLoadVideo: () => void;
   onToggleTheater: () => void;
@@ -38,9 +27,40 @@ export const RoomActions = memo(function RoomActions({
   showTheaterToggle: boolean;
   onToggleEconomy: () => void;
   isEconomy: boolean;
+  onOpenProfile?: () => void;
 }) {
+  const economyLabel = isEconomy ? "Desativar modo economy" : "Ativar modo economy";
+
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {onOpenProfile && (
+        <button
+          type="button"
+          onClick={onOpenProfile}
+          aria-label="Perfil"
+          aria-haspopup="dialog"
+          title="Imagem de perfil"
+          className={iconButtonClass({ variant: "ghost", className: "shrink-0" })}
+        >
+          <UserIcon className="size-5" />
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onToggleEconomy}
+        aria-label={economyLabel}
+        aria-pressed={isEconomy}
+        title={economyLabel}
+        data-active={isEconomy}
+        className={buttonClass({
+          variant: "ghost",
+          size: "sm",
+          className: `${ECONOMY_BASE} ${isEconomy ? ECONOMY_LIT : ECONOMY_IDLE}`,
+        })}
+      >
+        <LeafIcon className="size-4" />
+        <span className="max-sm:inline sm:hidden xl:inline">Economy</span>
+      </button>
       <button
         type="button"
         onClick={onLoadVideo}
@@ -54,21 +74,6 @@ export const RoomActions = memo(function RoomActions({
       >
         <PlusIcon className="size-4" />
         <span className="max-sm:inline sm:hidden xl:inline">Carregar vídeo</span>
-      </button>
-      <button
-        type="button"
-        onClick={onToggleEconomy}
-        aria-label={isEconomy ? "Desativar modo economy" : "Ativar modo economy"}
-        aria-pressed={isEconomy}
-        title={isEconomy ? "Desativar modo economy" : "Ativar modo economy"}
-        className={buttonClass({
-          variant: "ghost",
-          size: "sm",
-          className: `shrink-0 ${isEconomy ? "border border-[var(--leaf)] bg-[var(--fill-2)] text-[var(--ink)]" : ""}`,
-        })}
-      >
-        <LeafIcon className="size-4" />
-        <span className="max-sm:inline sm:hidden xl:inline">Economy</span>
       </button>
       {showTheaterToggle && (
         <button

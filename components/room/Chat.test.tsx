@@ -680,3 +680,22 @@ describe("botão de fechar o chat", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("cabeçalho do chat", () => {
+  it("título 'Chat' em h2 e acessório de presença encostado na borda direita", () => {
+    render(<Chat {...ME} headerAccessory={<button type="button">2 na sala</button>} />);
+
+    expect(screen.getByRole("heading", { level: 2, name: "Chat" })).toBeTruthy();
+    const accessory = screen.getByRole("button", { name: "2 na sala" }).parentElement as HTMLElement;
+    expect(accessory.className).toContain("ml-auto");
+    expect(accessory.className).toContain("h-full");
+    expect(accessory.parentElement?.className).toContain("pr-0");
+  });
+
+  it("com onClose o cabeçalho mantém respiro à direita", () => {
+    render(<Chat {...ME} onClose={() => {}} />);
+
+    const header = screen.getByRole("button", { name: "Fechar chat" }).parentElement as HTMLElement;
+    expect(header.className).toContain("pr-3");
+  });
+});

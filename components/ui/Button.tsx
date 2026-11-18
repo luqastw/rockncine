@@ -2,7 +2,7 @@ import type { ComponentPropsWithoutRef } from "react";
 import Link from "next/link";
 import { cx } from "@/lib/cx";
 
-export type ButtonVariant = "primary" | "outline" | "soft" | "ghost" | "danger";
+export type ButtonVariant = "primary" | "outline" | "pair" | "soft" | "ghost" | "danger";
 export type ButtonSize = "lg" | "md" | "sm";
 
 type ButtonStyleOptions = {
@@ -19,6 +19,7 @@ const VARIANTS: Record<ButtonVariant, string> = {
     "frame-btn btn-gold reticle-on-leaf font-semibold",
   outline:
     "border border-[var(--gold-edge)] bg-[var(--bg-elevated)] text-[var(--ink)] hover:border-[var(--gold)]",
+  pair: "border border-[var(--gold-edge)] bg-[var(--bg-surface)] text-[var(--ink)] hover:border-[var(--gold)]",
   soft: "bg-[var(--fill-1)] text-[var(--ink)] hover:bg-[var(--fill-2)]",
   ghost: "text-[var(--ink-muted)] hover:bg-[var(--fill-1)] hover:text-[var(--ink)]",
   danger:

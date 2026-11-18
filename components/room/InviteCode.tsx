@@ -7,15 +7,9 @@ type CopyStatus = "idle" | "copied" | "failed";
 
 const STATUS_TIMEOUT_MS = 2000;
 
-// O código da sala era só um <span> mono: não havia botão de copiar nem link
-// de convite em lugar nenhum do app, e convidar alguém é o fluxo central de
-// uma watch-party (achado 6 da auditoria). Copia a URL completa — o código
-// curto (lib/room-code.ts) continua visível pra quem prefere ditar.
-// `memo` porque a prop é uma string imutável: evento de presença ou de sync na
-// sala não tem por que redesenhar o botão de convidar (FR-010,
-// docs/specs/13-chat-sala/spec.md).
 export const InviteCode = memo(function InviteCode({ code }: { code: string }) {
   const [status, setStatus] = useState<CopyStatus>("idle");
+  const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
     if (status === "idle") return;
@@ -29,11 +23,6 @@ export const InviteCode = memo(function InviteCode({ code }: { code: string }) {
       await navigator.clipboard.writeText(link);
       setStatus("copied");
     } catch {
-      // Sem permissão de clipboard (http em rede local, permissão negada):
-      // seleciona o código pra o usuário copiar à mão. Mas isto precisa ser
-      // ANUNCIADO — antes o fallback era completamente mudo, o botão seguia
-      // dizendo "copiar convite" e nem quem usa leitor de tela nem quem vê a
-      // tela sabia que a cópia tinha falhado.
       const el = document.getElementById("invite-code-text");
       if (el) {
         const range = document.createRange();
@@ -42,16 +31,36 @@ export const InviteCode = memo(function InviteCode({ code }: { code: string }) {
         selection?.removeAllRanges();
         selection?.addRange(range);
       }
+      setRevealed(true);
       setStatus("failed");
     }
   };
 
   return (
-    <div className="flex items-center gap-1 rounded-sm border border-[var(--gold-edge)] bg-[var(--bg-surface)] py-0.5 pl-3 pr-0.5 max-sm:justify-between">
-      <span
-        id="invite-code-text"
-        className="select-all font-mono text-body uppercase tracking-wider text-[var(--ink)]"
+    <div className="flex min-h-11 items-center gap-1 rounded-sm border border-[var(--gold-edge)] bg-[var(--bg-surface)] pl-1 max-sm:justify-between">
+      <button
+        type="button"
+        onClick={() => setRevealed((value) => !value)}
+        aria-label={revealed ? "Ocultar código da sala" : "Mostrar código da sala"}
+        data-revealed={revealed}
+        className="group reticle flex min-h-9 items-center rounded-sm px-2 font-mono text-body uppercase tracking-wider text-[var(--ink)]"
       >
+        <span
+          aria-hidden
+          data-testid="invite-code-mask"
+          className="block group-hover:hidden group-focus-visible:hidden group-data-[revealed=true]:hidden"
+        >
+          {"*".repeat(code.length)}
+        </span>
+        <span
+          aria-hidden
+          data-testid="invite-code-visible"
+          className="hidden group-hover:block group-focus-visible:block group-data-[revealed=true]:block"
+        >
+          {code}
+        </span>
+      </button>
+      <span id="invite-code-text" className="sr-only">
         {code}
       </span>
       <Button
@@ -60,7 +69,7 @@ export const InviteCode = memo(function InviteCode({ code }: { code: string }) {
         size="sm"
         onClick={copy}
         aria-label="Copiar link de convite"
-        className="shrink-0"
+        className="-my-px -mr-px shrink-0"
       >
         {status === "copied" ? "Copiado" : status === "failed" ? "Copie" : "Copiar"}
       </Button>

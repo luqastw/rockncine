@@ -81,8 +81,10 @@ export const Chat = memo(function Chat({
     // continua sendo só a do log.
     <div className="flex h-full min-h-0 flex-col gap-3 max-lg:overflow-y-auto">
       <div className="flex min-h-0 flex-1 flex-col rounded-sm border border-[var(--line)] bg-[var(--bg-surface)]">
-        <div className="flex h-12 shrink-0 items-center gap-2 border-b border-[var(--line)] px-3">
-          <h2 className="text-body font-medium text-[var(--ink)]">Chat</h2>
+        <div
+          className={`flex h-14 shrink-0 items-center gap-3 border-b border-[var(--gold-edge)] pl-4 ${onClose ? "pr-3" : "pr-0"}`}
+        >
+          <h2 className="text-gold font-display text-card font-semibold tracking-tight">Chat</h2>
           {unreadCount > 0 && (
             <Badge
               variant="solid"
@@ -92,7 +94,7 @@ export const Chat = memo(function Chat({
               {unreadCount}
             </Badge>
           )}
-          {headerAccessory && <div className="ml-auto">{headerAccessory}</div>}
+          {headerAccessory && <div className="ml-auto h-full">{headerAccessory}</div>}
           {onClose && (
             <IconButton
               onClick={onClose}

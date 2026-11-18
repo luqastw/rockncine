@@ -11,9 +11,8 @@ import { BroadcastControls } from "@/components/room/BroadcastControls";
 import { RoomActions } from "@/components/room/RoomActions";
 import { ProfileAvatarModal } from "@/components/room/ProfileAvatarModal";
 import { Badge } from "@/components/ui/Badge";
-import { buttonClass } from "@/components/ui/Button";
 import { iconButtonClass } from "@/components/ui/IconButton";
-import { ArrowLeftIcon, MoreIcon, UserIcon } from "@/components/room/player/icons";
+import { ArrowLeftIcon, MoreIcon } from "@/components/room/player/icons";
 
 const TOOLS_ID = "room-header-tools";
 
@@ -70,31 +69,37 @@ export function RoomHeader({
 
   return (
     <header className="relative flex items-center gap-2 border-b border-[var(--gold-edge)] pb-3 sm:gap-3">
-      <Link
-        href="/rooms"
-        aria-label="Voltar para suas salas"
-        title="Voltar para suas salas"
-        className={iconButtonClass({ variant: "ghost", className: "shrink-0" })}
-      >
-        <ArrowLeftIcon className="size-5" />
-      </Link>
+      <div className="flex min-w-0 flex-1 items-center gap-4 sm:min-w-[11rem] sm:gap-5">
+        <Link
+          href="/rooms"
+          aria-label="Voltar para suas salas"
+          title="Voltar para suas salas"
+          className={iconButtonClass({
+            variant: "ghost",
+            className:
+              "shrink-0 border-[var(--gold-edge)] bg-[var(--bg-surface)] hover:border-[var(--gold)] hover:text-[var(--gold-hi)] hover:shadow-[0_0_14px_color-mix(in_srgb,var(--gold)_28%,transparent)]",
+          })}
+        >
+          <ArrowLeftIcon className="size-5" />
+        </Link>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <h1 className="min-w-0 truncate font-display text-heading font-semibold tracking-tight text-[var(--ink)] sm:text-title">
-            {roomName || "Sala sem nome"}
-          </h1>
-          {economyMode && <Badge variant="soft">Economy</Badge>}
-        </div>
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5">
-          <LastActionNote lastEvent={lastEvent} userId={userId} />
-          <SyncStatus
-            isPlaying={isPlayingNow}
-            isBroadcasting={isBroadcasting}
-            syncLimited={syncLimited}
-            lastEvent={lastEvent}
-            connectionLabel={connectionLabel}
-          />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <h1 className="min-w-0 truncate font-display text-heading font-semibold tracking-tight text-[var(--ink)] sm:text-title">
+              {roomName || "Sala sem nome"}
+            </h1>
+            {economyMode && <Badge variant="soft">Economy</Badge>}
+          </div>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5">
+            <LastActionNote lastEvent={lastEvent} userId={userId} />
+            <SyncStatus
+              isPlaying={isPlayingNow}
+              isBroadcasting={isBroadcasting}
+              syncLimited={syncLimited}
+              lastEvent={lastEvent}
+              connectionLabel={connectionLabel}
+            />
+          </div>
         </div>
       </div>
 
@@ -122,17 +127,6 @@ export function RoomHeader({
             videoSourceUrl={videoSourceUrl}
           />
         )}
-        <button
-          type="button"
-          onClick={() => setProfileOpen(true)}
-          aria-label="Imagem de perfil"
-          aria-haspopup="dialog"
-          title="Imagem de perfil"
-          className={buttonClass({ variant: "ghost", size: "sm", className: "shrink-0 max-sm:justify-start" })}
-        >
-          <UserIcon className="size-5" />
-          <span className="max-sm:inline sm:hidden xl:inline">Perfil</span>
-        </button>
         <RoomActions
           onLoadVideo={onLoadVideo}
           onToggleTheater={onToggleTheater}
@@ -140,6 +134,7 @@ export function RoomHeader({
           showTheaterToggle={isFullscreen}
           onToggleEconomy={onToggleEconomy}
           isEconomy={economyMode}
+          onOpenProfile={() => setProfileOpen(true)}
         />
       </div>
       <ProfileAvatarModal

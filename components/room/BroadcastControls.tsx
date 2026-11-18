@@ -83,7 +83,7 @@ export function BroadcastControls({
                 : "Transmitir tela"
         }
         aria-busy={busy || undefined}
-        className={buttonClass({ variant: "outline", size: "sm", className: "shrink-0" })}
+        className={buttonClass({ variant: "pair", size: "sm", className: "shrink-0" })}
       >
         <span className="sm:hidden">Transmitir</span>
         <span className="hidden sm:inline">Transmitir tela</span>
@@ -98,7 +98,7 @@ export function BroadcastControls({
           role="status"
           aria-live="polite"
           title={livekitReason ? `${blockedReason} — ${livekitReason}` : blockedReason}
-          className="min-w-0 max-w-full truncate text-caption text-[var(--ink-muted)] lg:max-w-[22rem]"
+          className="min-w-0 max-w-full truncate text-caption text-[var(--ink-muted)] lg:max-w-[9rem] 2xl:max-w-[22rem]"
         >
           {blockedReason}
           {livekitReason && ` — ${livekitReason}`}
