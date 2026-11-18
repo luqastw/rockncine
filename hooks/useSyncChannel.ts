@@ -5,6 +5,7 @@ import type { VideoSourceKind } from "@/lib/video-source";
 import { parsePlayerEvent, shouldApplyPlayerEvent } from "@/lib/playback/events";
 import { skewFor, updateSkew, type SkewSamples } from "@/lib/playback/clock";
 import { expectedPlaybackTime, CHECK_INTERVAL_MS } from "@/hooks/playerController";
+import { getPlaybackSnapshot } from "@/hooks/usePlaybackClock";
 
 type LocalEventType = "PLAY" | "PAUSE" | "SEEK";
 
@@ -41,6 +42,7 @@ export function useSyncChannel({
 
   const emitLocal = useCallback(
     (type: LocalEventType, time: number, isPlaying?: boolean) => {
+      if (type === "PAUSE" && document.visibilityState === "hidden") return;
       const evt: PlayerEvent = { type, time, source, actorId: userId, ts: Date.now() };
       lastAppliedTsRef.current = evt.ts;
       commitPlayer({
@@ -148,4 +150,39 @@ export function useDriftCheck(channel: SyncChannel, options: DriftOptions) {
     // externa, este efeito não re-assina a cada tick — e `expectedPlaybackTime`
     // já é clampado pela duração que o próprio player fornece.
   }, [isReady, userId, applyRemote, isApplyingRemoteRef, playerStorageRef, skewRef]);
+}
+
+type ResumeOptions = {
+  isReady: boolean;
+  getDuration: () => number;
+  applyRemote: (fn: () => unknown) => void;
+  resume: (time: number) => unknown;
+};
+
+export function useResumeOnVisible(channel: SyncChannel, options: ResumeOptions) {
+  const { skewRef, playerStorageRef } = channel;
+  const optionsRef = useRef(options);
+  useEffect(() => {
+    optionsRef.current = options;
+  });
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      const opts = optionsRef.current;
+      const snapshot = playerStorageRef.current;
+      if (!opts.isReady || !snapshot) return;
+      if (getPlaybackSnapshot().isPlaying) return;
+      const { time, shouldPlay } = expectedPlaybackTime(
+        snapshot,
+        opts.getDuration(),
+        skewFor(skewRef.current, snapshot.lastActorId),
+      );
+      if (!shouldPlay) return;
+      opts.applyRemote(() => opts.resume(time));
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [skewRef, playerStorageRef]);
 }

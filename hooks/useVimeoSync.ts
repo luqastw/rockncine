@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStorage } from "@liveblocks/react";
 import { useApplyRemote } from "@/hooks/useApplyRemote";
-import { useDriftCheck, useRemotePlayerEvents, useSyncChannel } from "@/hooks/useSyncChannel";
+import { useDriftCheck, useRemotePlayerEvents, useResumeOnVisible, useSyncChannel } from "@/hooks/useSyncChannel";
 import {
   VIMEO_MODULE,
   type VimeoPlayer,
@@ -321,6 +321,19 @@ export function useVimeoSync({
     // congelado e o clamp por duração pararia de valer.
     getDuration: () => getPlaybackSnapshot().duration,
     seekTo: (expected) => playerRef.current?.setCurrentTime(expected),
+  });
+
+  useResumeOnVisible(channel, {
+    isReady,
+    applyRemote,
+    getDuration: () => getPlaybackSnapshot().duration,
+    resume: async (time) => {
+      const player = playerRef.current;
+      if (!player) return;
+      await player.setCurrentTime(time);
+      await player.play();
+      setIsPlayingLocal(true);
+    },
   });
 
   // controles imperativos — chamados pela nossa própria barra (chrome nativo

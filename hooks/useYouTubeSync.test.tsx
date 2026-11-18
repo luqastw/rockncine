@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useYouTubeSync } from "./useYouTubeSync";
 import { getPlaybackSnapshot, resetPlaybackClock, setPlayback } from "./usePlaybackClock";
+import { REMOTE_APPLY_COOLDOWN_MS } from "./playerController";
 import { lb, NOW, snapshotOf, videoOf } from "./__testutils__/liveblocksMock";
 
 const api = vi.hoisted(() => ({ load: vi.fn() }));
@@ -809,5 +810,59 @@ describe("useYouTubeSync: legendas", () => {
     tick(500);
 
     expect(player().loadModule).toHaveBeenCalledWith("captions");
+  });
+});
+
+function settle() {
+  tick(REMOTE_APPLY_COOLDOWN_MS);
+  vi.setSystemTime(NOW);
+}
+
+function setVisibility(state: "hidden" | "visible") {
+  Object.defineProperty(document, "visibilityState", { configurable: true, get: () => state });
+  act(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+}
+
+afterEach(() => {
+  Reflect.deleteProperty(document, "visibilityState");
+});
+
+describe("useYouTubeSync: aba em segundo plano", () => {
+  it("PAUSED do player com a aba oculta não é commitado nem transmitido", async () => {
+    lb.player = snapshotOf({ isPlaying: true, currentTime: 30 });
+    await mountReady();
+    settle();
+    setVisibility("hidden");
+    stateChange(PAUSED);
+
+    expect(lb.commits).toEqual([]);
+    expect(lb.broadcast).not.toHaveBeenCalled();
+  });
+
+  it("ao voltar à aba retoma na posição esperada se a sala segue tocando", async () => {
+    lb.player = snapshotOf({ isPlaying: true, currentTime: 30 });
+    await mountReady();
+    settle();
+    setVisibility("hidden");
+    stateChange(PAUSED);
+    player().playVideo.mockClear();
+    setVisibility("visible");
+
+    expect(player().seekTo).toHaveBeenLastCalledWith(30, true);
+    expect(player().playVideo).toHaveBeenCalledTimes(1);
+  });
+
+  it("ao voltar à aba não retoma se a sala está pausada", async () => {
+    lb.player = snapshotOf({ isPlaying: false, currentTime: 30 });
+    await mountReady();
+    settle();
+    setVisibility("hidden");
+    stateChange(PAUSED);
+    player().playVideo.mockClear();
+    setVisibility("visible");
+
+    expect(player().playVideo).not.toHaveBeenCalled();
   });
 });

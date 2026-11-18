@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useStorage } from "@liveblocks/react";
 import { loadYouTubeIframeApi } from "@/lib/youtube-iframe";
 import { useApplyRemote } from "@/hooks/useApplyRemote";
-import { useDriftCheck, useRemotePlayerEvents, useSyncChannel } from "@/hooks/useSyncChannel";
+import { useDriftCheck, useRemotePlayerEvents, useResumeOnVisible, useSyncChannel } from "@/hooks/useSyncChannel";
 import {
   getPlaybackSnapshot,
   resetPlaybackClock,
@@ -324,6 +324,19 @@ export function useYouTubeSync({
       if (isPaused && Math.abs(diff) > SEEK_WHILE_PAUSED_THRESHOLD_S) {
         emitLocal("SEEK", localTime, false);
       }
+    },
+  });
+
+  useResumeOnVisible(channel, {
+    isReady,
+    applyRemote,
+    getDuration: () => getPlaybackSnapshot().duration,
+    resume: (time) => {
+      const player = playerRef.current;
+      if (!player) return;
+      player.seekTo(time, true);
+      player.playVideo();
+      setIsPlayingLocal(true);
     },
   });
 

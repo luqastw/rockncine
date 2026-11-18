@@ -802,3 +802,39 @@ describe("useVimeoSync: capQuality", () => {
     expect(hook.result.current.error).toBeNull();
   });
 });
+
+function setVisibility(state: "hidden" | "visible") {
+  Object.defineProperty(document, "visibilityState", { configurable: true, get: () => state });
+  act(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+}
+
+afterEach(() => {
+  Reflect.deleteProperty(document, "visibilityState");
+});
+
+describe("useVimeoSync: aba em segundo plano", () => {
+  it("pause do player com a aba oculta não é commitado nem transmitido", async () => {
+    lb.player = snapshotOf({ isPlaying: true, currentTime: 30 });
+    await mount();
+    setVisibility("hidden");
+    fire("pause", { seconds: 30 });
+
+    expect(lb.commits).toEqual([]);
+    expect(lb.broadcast).not.toHaveBeenCalled();
+  });
+
+  it("ao voltar à aba retoma na posição esperada se a sala segue tocando", async () => {
+    lb.player = snapshotOf({ isPlaying: true, currentTime: 30 });
+    await mount();
+    setVisibility("hidden");
+    fire("pause", { seconds: 30 });
+    player().play.mockClear();
+    setVisibility("visible");
+    await flush();
+
+    expect(player().setCurrentTime).toHaveBeenLastCalledWith(30);
+    expect(player().play).toHaveBeenCalledTimes(1);
+  });
+});

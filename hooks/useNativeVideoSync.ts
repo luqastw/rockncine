@@ -8,7 +8,7 @@ import {
   resetPlaybackClock,
 } from "@/hooks/usePlaybackClock";
 import { useApplyRemote } from "@/hooks/useApplyRemote";
-import { useDriftCheck, useRemotePlayerEvents, useSyncChannel } from "@/hooks/useSyncChannel";
+import { useDriftCheck, useRemotePlayerEvents, useResumeOnVisible, useSyncChannel } from "@/hooks/useSyncChannel";
 import {
   expectedPlaybackTime,
   DRIFT_THRESHOLD_NATIVE_S,
@@ -370,6 +370,18 @@ export function useNativeVideoSync({
     seekTo: (expected) => {
       const videoEl = videoElRef.current;
       if (videoEl) videoEl.currentTime = expected;
+    },
+  });
+
+  useResumeOnVisible(channel, {
+    isReady,
+    applyRemote,
+    getDuration: () => videoElRef.current?.duration || 0,
+    resume: (time) => {
+      const videoEl = videoElRef.current;
+      if (!videoEl) return undefined;
+      videoEl.currentTime = time;
+      return videoEl.play().catch(() => {});
     },
   });
 

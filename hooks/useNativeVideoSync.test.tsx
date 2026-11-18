@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useNativeVideoSync } from "./useNativeVideoSync";
 import { getPlaybackSnapshot, resetPlaybackClock, setPlayback } from "./usePlaybackClock";
+import { REMOTE_APPLY_COOLDOWN_MS } from "./playerController";
 import { lb, NOW, snapshotOf, videoOf } from "./__testutils__/liveblocksMock";
 
 const hlsMod = vi.hoisted(() => ({ load: vi.fn(), setMaxBufferLength: vi.fn() }));
@@ -966,5 +967,67 @@ describe("useNativeVideoSync: erros", () => {
     await flush();
 
     expect(result.current.error).toBe("Não foi possível iniciar a reprodução. Tente de novo.");
+  });
+});
+
+function settle() {
+  tick(REMOTE_APPLY_COOLDOWN_MS);
+  vi.setSystemTime(NOW);
+}
+
+function setVisibility(state: "hidden" | "visible") {
+  Object.defineProperty(document, "visibilityState", { configurable: true, get: () => state });
+  act(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+}
+
+afterEach(() => {
+  Reflect.deleteProperty(document, "visibilityState");
+});
+
+describe("useNativeVideoSync: aba em segundo plano", () => {
+  it("pause do navegador com a aba oculta não é commitado nem transmitido", async () => {
+    lb.player = snapshotOf({ isPlaying: true, currentTime: 30 });
+    await mountReady();
+    settle();
+    setVisibility("hidden");
+    domEvent("pause");
+
+    expect(lb.commits).toEqual([]);
+    expect(lb.broadcast).not.toHaveBeenCalled();
+  });
+
+  it("ao voltar à aba retoma na posição esperada se a sala segue tocando", async () => {
+    lb.player = snapshotOf({ isPlaying: true, currentTime: 30 });
+    await mountReady();
+    settle();
+    setVisibility("hidden");
+    domEvent("pause");
+    v.play.mockClear();
+    setVisibility("visible");
+
+    expect(v.state.currentTime).toBe(30);
+    expect(v.play).toHaveBeenCalledTimes(1);
+  });
+
+  it("ao voltar à aba não retoma se a sala está pausada", async () => {
+    lb.player = snapshotOf({ isPlaying: false, currentTime: 30 });
+    await mountReady();
+    settle();
+    setVisibility("hidden");
+    domEvent("pause");
+    v.play.mockClear();
+    setVisibility("visible");
+
+    expect(v.play).not.toHaveBeenCalled();
+  });
+
+  it("pause com a aba visível continua sendo transmitido", async () => {
+    await mountReady();
+    setVisibility("visible");
+    domEvent("pause");
+
+    expect(lb.broadcast).toHaveBeenCalledTimes(1);
   });
 });
