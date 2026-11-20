@@ -63,7 +63,7 @@ describe("superfícies e foco do pergaminho", () => {
 
     const campo = bloco(".field-ring");
     expect(campo).toMatch(/outline:\s*none/i);
-    expect(bloco(".field-ring:focus-visible")).toMatch(/box-shadow:\s*inset 0 0 0 2px var\(--fairy\)/i);
+    expect(bloco(".field-ring:focus-visible")).toMatch(/box-shadow:\s*inset 0 0 0 1px var\(--gold\)/i);
     expect(bloco(".parchment .field-ring:focus-visible")).toMatch(
       /box-shadow:\s*inset 0 0 0 2px var\(--parchment-ink\)/,
     );

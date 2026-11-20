@@ -604,7 +604,10 @@ a[href]:active {
   }
 
   .field-ring:focus-visible {
-    box-shadow: inset 0 0 0 2px var(--fairy);
+    box-shadow:
+      inset 0 0 0 1px var(--gold),
+      0 0 0 3px color-mix(in srgb, var(--gold) 18%, transparent),
+      0 0 14px color-mix(in srgb, var(--gold) 22%, transparent);
   }
 
   .parchment .field-ring:focus-visible {

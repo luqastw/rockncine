@@ -69,18 +69,51 @@ describe("EmojiButton", () => {
     expect(recentsRow().getByRole("button", { name: "Inserir coração vermelho" })).toBeTruthy();
   });
 
-  it("escolher chama onPick, atualiza os recentes e mantém o painel aberto", () => {
+  it("escolher chama onPick e mantém o painel aberto sem mexer nos recentes", () => {
     const { onPick } = open();
-    const grid = screen.getByRole("tabpanel");
-    const button = within(grid).getByRole("button", { name: "Inserir sorriso" });
+    const before = recentsRow()
+      .getAllByRole("button")
+      .map((cell) => cell.getAttribute("data-emoji"));
+    const button = within(screen.getByRole("tabpanel")).getByRole("button", { name: "Inserir sorriso" });
     act(() => {
       fireEvent.click(button);
     });
     expect(onPick).toHaveBeenCalledWith("😀");
     expect(screen.getByRole("dialog", { name: "Emojis" })).toBeTruthy();
-    expect(recentsRow().getAllByRole("button")[0].getAttribute("data-emoji")).toBe("😀");
+    expect(
+      recentsRow()
+        .getAllByRole("button")
+        .map((cell) => cell.getAttribute("data-emoji")),
+    ).toEqual(before);
     expect(JSON.parse(window.localStorage.getItem(RECENT_EMOJIS_KEY) ?? "[]")[0]).toBe("😀");
-    expect(document.activeElement?.getAttribute("data-emoji")).toBe("😀");
+  });
+
+  it("cliques repetidos num recente enviam sempre o mesmo emoji", () => {
+    window.localStorage.setItem(RECENT_EMOJIS_KEY, JSON.stringify(["🍕", "🔥"]));
+    const { onPick } = open();
+    const fogo = recentsRow().getAllByRole("button")[1];
+    act(() => {
+      fireEvent.click(fogo);
+    });
+    act(() => {
+      fireEvent.click(recentsRow().getAllByRole("button")[1]);
+    });
+    expect(onPick).toHaveBeenNthCalledWith(1, "🔥");
+    expect(onPick).toHaveBeenNthCalledWith(2, "🔥");
+  });
+
+  it("recentes atualizam ao reabrir o painel", () => {
+    const { trigger } = open();
+    act(() => {
+      fireEvent.click(within(screen.getByRole("tabpanel")).getByRole("button", { name: "Inserir sorriso" }));
+    });
+    act(() => {
+      fireEvent.keyDown(document, { key: "Escape" });
+    });
+    act(() => {
+      fireEvent.click(trigger);
+    });
+    expect(recentsRow().getAllByRole("button")[0].getAttribute("data-emoji")).toBe("😀");
   });
 
   it("lê recentes salvos", () => {

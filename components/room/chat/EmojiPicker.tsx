@@ -13,8 +13,6 @@ import { loadRecents, pushRecent, saveRecents } from "@/components/room/chat/rec
 
 const DESKTOP_COLUMNS = 7;
 
-type Region = "recents" | "grid";
-
 type CellProps = {
   entry: EmojiEntry;
   active: boolean;
@@ -51,7 +49,7 @@ export function EmojiPicker({
   id: string;
   onPick: (emoji: string) => void;
 }) {
-  const [stored, setStored] = useState<string[]>(() => loadRecents());
+  const [stored] = useState<string[]>(() => loadRecents());
   const [categoryId, setCategoryId] = useState(EMOJI_CATEGORIES[0].id);
   const [query, setQuery] = useState("");
   const [recentIndex, setRecentIndex] = useState(0);
@@ -60,7 +58,7 @@ export function EmojiPicker({
   const recentsRef = useRef<HTMLDivElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const tabsRef = useRef<HTMLDivElement | null>(null);
-  const pickedRef = useRef<{ region: Region; emoji: string } | null>(null);
+  const pendingRef = useRef<string[]>(stored);
   const baseId = useId();
 
   const recents = stored.length > 0 ? stored : [...REACTION_EMOJIS];
@@ -79,27 +77,11 @@ export function EmojiPicker({
     focusCell(recentsRef.current, 0);
   }, []);
 
-  useEffect(() => {
-    const picked = pickedRef.current;
-    if (!picked) return;
-    pickedRef.current = null;
-    const container = picked.region === "recents" ? recentsRef.current : gridRef.current;
-    const target = Array.from(container?.querySelectorAll<HTMLElement>("[data-cell]") ?? []).find(
-      (element) => element.dataset.emoji === picked.emoji,
-    );
-    target?.focus();
-  }, [stored]);
-
   const pick = useCallback(
-    (region: Region, emoji: string) => {
-      pickedRef.current = { region, emoji };
+    (emoji: string) => {
       onPick(emoji);
-      setStored((current) => {
-        const next = pushRecent(current, emoji);
-        saveRecents(next);
-        return next;
-      });
-      if (region === "recents") setRecentIndex(0);
+      pendingRef.current = pushRecent(pendingRef.current, emoji);
+      saveRecents(pendingRef.current);
     },
     [onPick],
   );
@@ -160,7 +142,7 @@ export function EmojiPicker({
               entry={{ emoji, nome: nomeDoEmoji(emoji) }}
               active={index === recentIndex}
               onFocusCell={() => setRecentIndex(index)}
-              onPick={(value) => pick("recents", value)}
+              onPick={pick}
             />
           ))}
         </div>
@@ -230,7 +212,7 @@ export function EmojiPicker({
                 entry={entry}
                 active={index === gridIndex}
                 onFocusCell={() => setGridIndex(index)}
-                onPick={(value) => pick("grid", value)}
+                onPick={pick}
               />
             ))}
           </div>
