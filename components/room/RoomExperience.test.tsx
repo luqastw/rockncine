@@ -724,7 +724,7 @@ describe("constraints de captura (FR-006, FR-015)", () => {
   it('expõe a captura de áudio no seletor: systemAudio "include"', async () => {
     const options = await iniciar();
     expect(options.systemAudio).toBe("include");
-    expect(options.audio).toBe(true);
+    expect(options.audio).toEqual({ echoCancellation: false, noiseSuppression: false, autoGainControl: false });
     vi.unstubAllGlobals();
   });
 

@@ -4,7 +4,7 @@
 // "browser" é só dica (aba é a captura mais barata e estável). A resolução e o
 // encoding vêm de lib/broadcast-quality.ts, via terceiro argumento da publicação.
 export const SCREEN_CAPTURE_OPTIONS = {
-  audio: true,
+  audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
   contentHint: "motion",
   video: { displaySurface: "browser" },
   selfBrowserSurface: "exclude",

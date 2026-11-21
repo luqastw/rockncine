@@ -27,5 +27,10 @@ describe("SCREEN_CAPTURE_OPTIONS", () => {
   it("exclui a própria aba e usa motion", () => {
     expect(SCREEN_CAPTURE_OPTIONS.selfBrowserSurface).toBe("exclude");
     expect(SCREEN_CAPTURE_OPTIONS.contentHint).toBe("motion");
+    expect(SCREEN_CAPTURE_OPTIONS.audio).toEqual({
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+    });
   });
 });

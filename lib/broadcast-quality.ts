@@ -1,4 +1,4 @@
-import { VideoPreset, type TrackPublishOptions } from "livekit-client";
+import { AudioPresets, VideoPreset, type TrackPublishOptions } from "livekit-client";
 
 export const BROADCAST_QUALITY = {
   preset: new VideoPreset({
@@ -17,5 +17,7 @@ export function broadcastPublishOptions(quality: BroadcastQuality): TrackPublish
     screenShareEncoding: quality.preset.encoding,
     degradationPreference: "maintain-framerate",
     simulcast: false,
+    audioPreset: AudioPresets.musicHighQuality,
+    dtx: false,
   };
 }
