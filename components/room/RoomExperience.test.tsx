@@ -47,6 +47,7 @@ const mocks = vi.hoisted(() => {
     writes,
     setScreenShareEnabled: vi.fn(),
     useTracksReturn: [] as unknown[],
+    audioPlayback: { canPlayAudio: true, startAudio: vi.fn() } as { canPlayAudio: boolean; startAudio: () => Promise<void> },
     // contador de renders da presença (ver o mock de `PresenceList` abaixo)
     presenceRenders: { n: 0 },
     presenceProps: [] as Record<string, unknown>[],
@@ -188,6 +189,7 @@ vi.mock("@livekit/components-react", () => ({
   // e exercitar FR-018.
   useMaybeRoomContext: () => mocks.livekitRoom,
   useConnectionState: () => mocks.connection,
+  useAudioPlayback: () => mocks.audioPlayback,
 }));
 
 // O `RoomExperience` é renderizado direto aqui, sem o `LiveKitProvider` acima —
@@ -287,6 +289,7 @@ beforeEach(() => {
   Object.assign(mocks.root, { video: VIDEO, player: PLAYER, broadcast: null });
   mocks.writes.length = 0;
   mocks.useTracksReturn = [];
+  mocks.audioPlayback = { canPlayAudio: true, startAudio: vi.fn().mockResolvedValue(undefined) };
   mocks.presenceRenders.n = 0;
   mocks.presenceProps.length = 0;
   mocks.auth = { status: "ready" };
@@ -445,24 +448,16 @@ describe("botão de transmissão (FR-009, FR-010, AC-004, AC-005)", () => {
 });
 
 describe("iniciar transmissão (FR-006, FR-007, FR-008)", () => {
-  it("FR-006: abre a URL do vídeo em nova aba antes de pedir a captura", async () => {
+  it("transmitir pede a captura sem abrir outra aba", async () => {
     const open = vi.fn();
     vi.stubGlobal("open", open);
     mocks.setScreenShareEnabled.mockResolvedValue({});
-    const ordem: string[] = [];
-    open.mockImplementation(() => ordem.push("open"));
-    mocks.setScreenShareEnabled.mockImplementation(() => {
-      ordem.push("captura");
-      return Promise.resolve({});
-    });
 
     renderRoom();
     fireEvent.click(screen.getByRole("button", { name: "Transmitir tela" }));
-    await waitFor(() => expect(ordem).toHaveLength(2));
+    await waitFor(() => expect(mocks.setScreenShareEnabled).toHaveBeenCalledTimes(1));
 
-    expect(open).toHaveBeenCalledWith("https://youtu.be/dQw4w9WgXcQ", "_blank", "noopener");
-    // A ordem importa: o seletor do SO precisa ter o que escolher.
-    expect(ordem).toEqual(["open", "captura"]);
+    expect(open).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 
@@ -573,6 +568,31 @@ describe("anexação da track ao elemento (FR-011, FR-012)", () => {
     renderRoom();
 
     expect(anexados).toEqual(["VIDEO", "AUDIO"]);
+  });
+
+  it("com o som bloqueado pelo navegador, o espectador libera o áudio com um clique", () => {
+    mocks.root.broadcast = broadcast;
+    mocks.audioPlayback.canPlayAudio = false;
+    const video = screenShareRef("outro", Track.Source.ScreenShare, fakeTrack(() => {}));
+    const audio = screenShareRef("outro", Track.Source.ScreenShareAudio, fakeTrack(() => {}));
+    mocks.useTracksReturn = [video, audio];
+
+    renderRoom();
+    fireEvent.click(screen.getByRole("button", { name: "Ativar som da transmissão" }));
+
+    expect(mocks.audioPlayback.startAudio).toHaveBeenCalledTimes(1);
+  });
+
+  it("o host não vê o botão de liberar som da própria transmissão", () => {
+    mocks.root.broadcast = { ...broadcast, broadcasterId: "eu" };
+    mocks.audioPlayback.canPlayAudio = false;
+    const video = screenShareRef("eu", Track.Source.ScreenShare, fakeTrack(() => {}), true);
+    const audio = screenShareRef("eu", Track.Source.ScreenShareAudio, fakeTrack(() => {}), true);
+    mocks.useTracksReturn = [video, audio];
+
+    renderRoom();
+
+    expect(screen.queryByRole("button", { name: "Ativar som da transmissão" })).toBeNull();
   });
 });
 

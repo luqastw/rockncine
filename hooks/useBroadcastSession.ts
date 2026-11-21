@@ -13,13 +13,11 @@ export function useBroadcastSession({
   broadcast,
   userId,
   userName,
-  videoSourceUrl,
   blockedReason,
 }: {
   broadcast: BroadcastState | null;
   userId: string;
   userName: string;
-  videoSourceUrl: string | null;
   blockedReason: string | null;
 }) {
   const room = useMaybeRoomContext();
@@ -83,10 +81,6 @@ export function useBroadcastSession({
     setBusy(true);
     setError(null);
 
-    if (videoSourceUrl) {
-      window.open(videoSourceUrl, "_blank", "noopener");
-    }
-
     try {
       await localParticipant.setScreenShareEnabled(
         true,
@@ -107,7 +101,7 @@ export function useBroadcastSession({
       busyRef.current = false;
       setBusy(false);
     }
-  }, [blockedReason, videoSourceUrl, localParticipant, startBroadcast, stopScreenShare]);
+  }, [blockedReason, localParticipant, startBroadcast, stopScreenShare]);
 
   useEffect(() => {
     if (!room || !isBroadcaster) return;

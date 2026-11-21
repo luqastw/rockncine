@@ -245,7 +245,6 @@ export function RoomExperience({
               avatarV={avatarV}
               livekitUrl={livekitUrl}
               broadcast={broadcast}
-              videoSourceUrl={video?.sourceUrl ?? null}
               lastEvent={lastEvent}
               isPlayingNow={isPlayingNow}
               syncLimited={syncLimited}

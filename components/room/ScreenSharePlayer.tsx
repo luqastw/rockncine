@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useTracks } from "@livekit/components-react";
+import { useAudioPlayback, useTracks } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import type { BroadcastState } from "@/liveblocks.config";
 import { broadcasterLabel } from "@/lib/broadcast";
@@ -81,6 +81,8 @@ export function ScreenSharePlayer({
   const audioEhMinha = audioRef?.participant.isLocal === true;
   // O que este espectador vai ouvir. Para o host, nada: o som esta na aba.
   const audioParaAssistir = audioEhMinha ? null : audioTrack;
+  const { canPlayAudio, startAudio } = useAudioPlayback();
+  const somBloqueado = Boolean(audioParaAssistir) && !canPlayAudio;
 
   // FR-011/FR-012: cada `MediaStreamTrack` no seu elemento. `muted` no `<video>`
   // é obrigatório: sem ele o navegador bloqueia o autoplay e o espectador vê
@@ -123,6 +125,13 @@ export function ScreenSharePlayer({
         </Badge>
         <Badge variant="soft">{broadcasterLabel(broadcast)}</Badge>
       </div>
+      {somBloqueado && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[var(--scrim)] px-6">
+          <Button type="button" variant="primary" onClick={() => void startAudio()}>
+            Ativar som da transmissão
+          </Button>
+        </div>
+      )}
       {!videoTrack && (
         <TrackWait broadcast={broadcast} onGiveUp={onGiveUp} />
       )}

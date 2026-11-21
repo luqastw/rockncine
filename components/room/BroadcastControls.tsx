@@ -15,12 +15,10 @@ export function BroadcastControls({
   broadcast,
   userId,
   userName,
-  videoSourceUrl,
 }: {
   broadcast: BroadcastState | null;
   userId: string;
   userName: string;
-  videoSourceUrl: string | null;
 }) {
   const connection = useConnectionState();
   const auth = useLiveKitAuth();
@@ -34,7 +32,6 @@ export function BroadcastControls({
     broadcast,
     userId,
     userName,
-    videoSourceUrl,
     blockedReason,
   });
 

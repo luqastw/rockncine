@@ -31,7 +31,6 @@ export function RoomHeader({
   avatarV,
   livekitUrl,
   broadcast,
-  videoSourceUrl,
   lastEvent,
   isPlayingNow,
   syncLimited,
@@ -50,7 +49,6 @@ export function RoomHeader({
   avatarV?: number | null;
   livekitUrl: string | null;
   broadcast: BroadcastState | null;
-  videoSourceUrl: string | null;
   lastEvent: PlayerEvent | null;
   isPlayingNow: boolean;
   syncLimited: boolean;
@@ -124,7 +122,6 @@ export function RoomHeader({
             broadcast={broadcast}
             userId={userId}
             userName={userName}
-            videoSourceUrl={videoSourceUrl}
           />
         )}
         <RoomActions
